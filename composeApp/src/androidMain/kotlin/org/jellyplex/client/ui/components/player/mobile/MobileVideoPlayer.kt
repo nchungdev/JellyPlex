@@ -62,11 +62,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import org.jellyplex.client.data.remote.IntroMarker
 import org.jellyplex.client.domain.models.MediaType
+import org.jellyplex.client.media.CustomHlsPlaylistParserFactory
 
 @OptIn(UnstableApi::class)
 @SuppressLint("UnsafeOptInUsageError")
@@ -124,6 +126,10 @@ fun MobileVideoPlayer(
                 DefaultMediaSourceFactory(context)
                     .setDataSourceFactory(httpDataSourceFactory)
 
+            val hlsMediaSourceFactory =
+                HlsMediaSource.Factory(httpDataSourceFactory)
+                    .setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
+
             ExoPlayer.Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build().apply {
@@ -135,12 +141,22 @@ fun MobileVideoPlayer(
                             url.contains(".m3u8") || url.contains(".m3u") || url.contains("hls") -> MimeTypes.APPLICATION_M3U8
                             else -> mimeType
                         }
-                    val mediaItem =
-                        MediaItem.Builder()
+
+                    if (resolvedMimeType == MimeTypes.APPLICATION_M3U8) {
+                        val mediaItem = MediaItem.Builder()
                             .setUri(url)
                             .setMimeType(resolvedMimeType)
                             .build()
-                    setMediaItem(mediaItem)
+                        setMediaSource(hlsMediaSourceFactory.createMediaSource(mediaItem))
+                    } else {
+                        val mediaItem =
+                            MediaItem.Builder()
+                                .setUri(url)
+                                .setMimeType(resolvedMimeType)
+                                .build()
+                        setMediaItem(mediaItem)
+                    }
+
                     setPlaybackSpeed(playbackSpeed)
                     prepare()
                     playWhenReady = true

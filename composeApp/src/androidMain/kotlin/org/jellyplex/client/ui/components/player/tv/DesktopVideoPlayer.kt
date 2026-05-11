@@ -1,37 +1,72 @@
 package org.jellyplex.client.ui.components.player.tv
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import io.ktor.client.HttpClient
@@ -42,6 +77,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyplex.client.data.remote.IntroMarker
 import org.jellyplex.client.domain.models.MediaType
+import org.jellyplex.client.media.CustomHlsPlaylistParserFactory
 
 @OptIn(UnstableApi::class)
 @SuppressLint("UnsafeOptInUsageError")
@@ -106,11 +142,18 @@ fun DesktopVideoPlayer(
         }
     }
 
-    val exoPlayer = remember {
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+    val httpDataSourceFactory = remember(accessToken) {
+        DefaultHttpDataSource.Factory()
             .setUserAgent("JellyPlex-Desktop/1.0")
             .setDefaultRequestProperties(mapOf("X-Emby-Authorization" to "MediaBrowser Client=\"JellyPlex\", Token=\"$accessToken\""))
+    }
 
+    val hlsMediaSourceFactory = remember(httpDataSourceFactory) {
+        HlsMediaSource.Factory(httpDataSourceFactory)
+            .setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
+    }
+
+    val exoPlayer = remember {
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory)
 
         ExoPlayer.Builder(context)
@@ -131,7 +174,7 @@ fun DesktopVideoPlayer(
 
     LaunchedEffect(resolvedUrl) {
         val resolvedMimeType = when {
-            resolvedUrl.contains(".m3u8") || resolvedUrl.contains("m3u8") -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
+            resolvedUrl.contains(".m3u8") || resolvedUrl.contains("m3u8") -> MimeTypes.APPLICATION_M3U8
             else -> mimeType
         }
 
@@ -139,7 +182,13 @@ fun DesktopVideoPlayer(
             .setUri(resolvedUrl)
             .setMimeType(resolvedMimeType)
             .build()
-        exoPlayer.setMediaItem(mediaItem)
+
+        if (resolvedMimeType == MimeTypes.APPLICATION_M3U8) {
+            exoPlayer.setMediaSource(hlsMediaSourceFactory.createMediaSource(mediaItem))
+        } else {
+            exoPlayer.setMediaItem(mediaItem)
+        }
+
         exoPlayer.setPlaybackSpeed(playbackSpeed)
         exoPlayer.prepare()
     }
