@@ -2,13 +2,13 @@ package org.jellyplex.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.discovery.DiscoveredServer
 import org.jellyplex.client.domain.usecases.DiscoverServersUseCase
@@ -77,7 +77,7 @@ class DiscoveryViewModel(
         scanJob?.cancel()
         scanJob =
             viewModelScope.launch(dispatchers.io) {
-                val startTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                val startTime: Long = Clock.System.now().toEpochMilliseconds()
                 _state.value = _state.value.copy(isScanning = true, error = null, discoveredServers = emptyList())
                 try {
                     discoverServersUseCase().collect { servers ->
@@ -87,9 +87,10 @@ class DiscoveryViewModel(
                     _state.value = _state.value.copy(error = e.message)
                 } finally {
                     // Ensure a minimum scanning time of 1500ms to prevent UI flicker
-                    val elapsedTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds() - startTime
-                    val remainingDelay = 1500L - elapsedTime
-                    if (remainingDelay > 0) {
+                    val currentTime: Long = Clock.System.now().toEpochMilliseconds()
+                    val elapsedTime: Long = currentTime - startTime
+                    val remainingDelay: Long = 1500L - elapsedTime
+                    if (remainingDelay > 0L) {
                         delay(remainingDelay)
                     }
                     _state.value = _state.value.copy(isScanning = false)

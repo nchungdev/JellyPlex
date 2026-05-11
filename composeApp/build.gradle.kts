@@ -1,4 +1,8 @@
+@file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.gradle.api.JavaVersion
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,7 +15,7 @@ plugins {
 kotlin {
     androidTarget {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
 
@@ -19,7 +23,6 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        moduleName = "composeApp"
         browser {
             commonWebpackConfig {
                 outputFileName = "composeApp.js"
@@ -31,14 +34,15 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(compose.runtime)
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(compose.ui)
-                implementation(compose.components.resources)
-                implementation(compose.components.uiToolingPreview)
-                implementation(compose.materialIconsExtended)
+                implementation(libs.cmp.runtime)
+                implementation(libs.cmp.foundation)
+                implementation(libs.cmp.material3)
+                implementation(libs.cmp.ui)
+                implementation(libs.cmp.components.resources)
+                implementation(libs.cmp.components.uiToolingPreview)
+                implementation(libs.cmp.materialIconsExtended)
 
+                implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.multiplatform.settings)
                 implementation(libs.ktor.client.core)
@@ -55,6 +59,7 @@ kotlin {
                 implementation(libs.koin.compose.viewmodel)
             }
         }
+
         val androidMain by getting {
             dependencies {
                 implementation(libs.androidx.appcompat)
@@ -70,15 +75,11 @@ kotlin {
                 implementation(libs.koin.android)
             }
         }
+
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.network)
-            }
-        }
-        val wasmJsMain by getting {
-            dependencies {
-                // Wasm specific dependencies
             }
         }
     }
@@ -88,10 +89,6 @@ android {
     namespace = "org.jellyplex.client"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
     defaultConfig {
         applicationId = "org.jellyplex.client"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -99,16 +96,19 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

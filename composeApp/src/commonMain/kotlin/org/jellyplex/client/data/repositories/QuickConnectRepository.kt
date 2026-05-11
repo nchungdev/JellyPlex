@@ -22,18 +22,26 @@ class QuickConnectRepository(
 
     override fun pollStatus(secret: String): Flow<QuickConnectResult> =
         flow {
+            println("QuickConnect: Starting polling with secret: $secret")
             while (true) {
-                val result = remoteDataSource.getStatus(secret)
-                if (result.authenticated && result.authenticationToken != null) {
-                    // Persist session
-                    val currentUrl = remoteDataSource.getBaseUrl().ifEmpty { sessionDataSource.baseUrl ?: "" }
-                    sessionDataSource.baseUrl = currentUrl
-                    sessionDataSource.accessToken = result.authenticationToken
-                    sessionDataSource.userId = result.userId
+                try {
+                    val result = remoteDataSource.getStatus(secret)
+                    println("QuickConnect: Polling status - Authenticated: ${result.authenticated}, HasToken: ${result.authenticationToken != null}")
+
+                    emit(result)
+
+                    if (result.authenticated && result.authenticationToken != null) {
+                        println("QuickConnect: Auth SUCCESS! Token received. Persisting...")
+                        val currentUrl = remoteDataSource.getBaseUrl().ifEmpty { sessionDataSource.baseUrl ?: "" }
+                        sessionDataSource.baseUrl = currentUrl
+                        sessionDataSource.accessToken = result.authenticationToken
+                        sessionDataSource.userId = result.userId
+                        break
+                    }
+                } catch (e: Exception) {
+                    println("QuickConnect: Polling error - ${e.message}")
                 }
-                emit(result)
-                if (result.authenticated) break
-                delay(5000) // Poll every 5 seconds
+                delay(2000)
             }
         }
 }

@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,7 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,7 +77,7 @@ fun AppContent() {
     val sessionState by sessionViewModel.uiState.collectAsState()
     val isAuthenticated = sessionState.isAuthenticated
     val isValidating = sessionState.isValidating
-    
+
     LaunchedEffect(isAuthenticated, isValidating) {
         println("App: State - isAuthenticated: $isAuthenticated, isValidating: $isValidating")
     }
@@ -89,7 +86,7 @@ fun AppContent() {
     val loginState by loginViewModel.state.collectAsState()
     val discoveryState by discoveryViewModel.state.collectAsState()
 
-    var loginMode by rememberSaveable { mutableStateOf(AuthDestination.ServerSelection) }
+    var loginMode by remember { mutableStateOf(AuthDestination.ServerSelection) }
 
     // Reset login mode when logged out or handle successful login
     LaunchedEffect(isAuthenticated) {
@@ -113,7 +110,11 @@ fun AppContent() {
         when (loginMode) {
             AuthDestination.ManualServerEntry -> loginMode = AuthDestination.ServerSelection
             AuthDestination.Home -> loginMode = AuthDestination.ServerSelection
-            AuthDestination.QuickConnect, AuthDestination.Manual -> loginMode = AuthDestination.Home
+            AuthDestination.QuickConnect -> {
+                qcViewModel.handleIntent(QuickConnectIntent.Cancel)
+                loginMode = AuthDestination.Home
+            }
+            AuthDestination.Manual -> loginMode = AuthDestination.Home
             else -> {}
         }
     }
@@ -203,43 +204,34 @@ fun AppContent() {
                             )
                         }
 
-                        else -> {
-                            Column(
-                                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center,
-                            ) {
-                                when (loginMode) {
-                                    AuthDestination.Home -> {
-                                        AuthHomeScreen(
-                                            baseUrl = sessionViewModel.getBaseUrl(),
-                                            onQuickConnect = {
-                                                loginMode = AuthDestination.QuickConnect
-                                                qcViewModel.handleIntent(QuickConnectIntent.Initiate)
-                                            },
-                                            onManualLogin = { loginMode = AuthDestination.Manual },
-                                            onChangeServer = { loginMode = AuthDestination.ServerSelection },
-                                        )
-                                    }
+                        AuthDestination.Home -> {
+                            AuthHomeScreen(
+                                baseUrl = sessionViewModel.getBaseUrl(),
+                                onQuickConnect = {
+                                    loginMode = AuthDestination.QuickConnect
+                                    qcViewModel.handleIntent(QuickConnectIntent.Initiate)
+                                },
+                                onManualLogin = { loginMode = AuthDestination.Manual },
+                                onChangeServer = { loginMode = AuthDestination.ServerSelection },
+                            )
+                        }
 
-                                    AuthDestination.QuickConnect -> QuickConnectScreen(qcState) {
-                                        loginMode = AuthDestination.Home
-                                    }
-
-                                    AuthDestination.Manual -> {
-                                        ManualLoginScreen(
-                                            state = loginState,
-                                            currentUrl = sessionViewModel.getBaseUrl(),
-                                            onLogin = { url, user, pass ->
-                                                loginViewModel.handleIntent(LoginIntent.Login(url, user, pass))
-                                            },
-                                            onBack = { loginMode = AuthDestination.Home },
-                                        )
-                                    }
-
-                                    else -> {}
-                                }
+                        AuthDestination.QuickConnect -> {
+                            QuickConnectScreen(qcState) {
+                                qcViewModel.handleIntent(QuickConnectIntent.Cancel)
+                                loginMode = AuthDestination.Home
                             }
+                        }
+
+                        AuthDestination.Manual -> {
+                            ManualLoginScreen(
+                                state = loginState,
+                                currentUrl = sessionViewModel.getBaseUrl(),
+                                onLogin = { url, user, pass ->
+                                    loginViewModel.handleIntent(LoginIntent.Login(url, user, pass))
+                                },
+                                onBack = { loginMode = AuthDestination.Home },
+                            )
                         }
                     }
                 }

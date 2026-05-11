@@ -2,7 +2,8 @@ package org.jellyplex.client.domain.models
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+
+expect val Dispatchers.IO: CoroutineDispatcher
 
 data class AppDispatchers(
     val main: CoroutineDispatcher = Dispatchers.Main,

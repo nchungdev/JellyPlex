@@ -1,6 +1,5 @@
 package org.jellyplex.client.data.datasource.remote
 
-import kotlinx.coroutines.flow.Flow
 import org.jellyplex.client.data.remote.JellyfinApi
 import org.jellyplex.client.domain.models.QuickConnectResult
 

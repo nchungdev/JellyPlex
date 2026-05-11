@@ -2,7 +2,7 @@ package org.jellyplex.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +22,7 @@ data class QuickConnectState(
 
 sealed class QuickConnectIntent {
     object Initiate : QuickConnectIntent()
+    object Cancel : QuickConnectIntent()
 }
 
 class QuickConnectViewModel(
@@ -32,15 +33,19 @@ class QuickConnectViewModel(
     private val _state = MutableStateFlow(QuickConnectState())
     val state: StateFlow<QuickConnectState> = _state.asStateFlow()
 
+    private var pollingJob: Job? = null
+
     fun handleIntent(intent: QuickConnectIntent) {
         when (intent) {
             is QuickConnectIntent.Initiate -> initiate()
+            is QuickConnectIntent.Cancel -> cancelPolling()
         }
     }
 
     private fun initiate() {
-        viewModelScope.launch(dispatchers.io) {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+        cancelPolling()
+        pollingJob = viewModelScope.launch(dispatchers.io) {
+            _state.value = _state.value.copy(isLoading = true, error = null, isAuthenticated = false)
 
             val result = initiateQuickConnectUseCase()
 
@@ -49,7 +54,9 @@ class QuickConnectViewModel(
 
                 quickConnectResult.secret?.let { secret ->
                     pollQuickConnectStatusUseCase(secret).collect { status ->
-                        if (status.authenticated) {
+                        // Fix: Only mark as authenticated when we actually have a token
+                        if (status.authenticated && status.authenticationToken != null) {
+                            println("QuickConnectViewModel: Authentication confirmed with token.")
                             viewModelScope.launch(dispatchers.main) {
                                 _state.value =
                                     _state.value.copy(
@@ -57,7 +64,10 @@ class QuickConnectViewModel(
                                         accessToken = status.authenticationToken,
                                         userId = status.userId,
                                     )
+                                cancelPolling() // Stop once confirmed
                             }
+                        } else if (status.authenticated) {
+                            println("QuickConnectViewModel: User authorized, waiting for token...")
                         }
                     }
                 }
@@ -72,5 +82,16 @@ class QuickConnectViewModel(
                 _state.value = _state.value.copy(isLoading = false, error = errorMsg)
             }
         }
+    }
+
+    private fun cancelPolling() {
+        println("QuickConnectViewModel: Cancelling polling job.")
+        pollingJob?.cancel()
+        pollingJob = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        cancelPolling()
     }
 }
