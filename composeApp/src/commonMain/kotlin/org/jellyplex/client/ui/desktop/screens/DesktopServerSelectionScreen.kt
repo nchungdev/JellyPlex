@@ -8,6 +8,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -65,14 +66,17 @@ fun DesktopServerSelectionScreen(
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 64.dp, vertical = 48.dp),
+            modifier = Modifier.fillMaxSize().padding(vertical = 48.dp),
             horizontalAlignment = Alignment.Start
         ) {
             // Header
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(horizontal = 64.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     "Select Server",
-                    fontSize = 42.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -88,27 +92,28 @@ fun DesktopServerSelectionScreen(
 
             Text(
                 "Choose a server from your network or add one manually",
-                fontSize = 18.sp,
+                fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier.padding(top = 8.dp, start = 64.dp, end = 64.dp)
             )
 
             if (state.error != null) {
                 Text(
                     text = state.error,
                     color = Color.Red,
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(top = 16.dp)
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 16.dp, start = 64.dp, end = 64.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(64.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Server Grid
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 280.dp),
+                columns = GridCells.Adaptive(minSize = 220.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
+                contentPadding = PaddingValues(horizontal = 64.dp, vertical = 16.dp),
                 modifier = Modifier.weight(1f)
             ) {
                 // Try Demo Card
@@ -191,7 +196,7 @@ fun DemoServerCard(onClick: () -> Unit) {
 
     Card(
         modifier = Modifier
-            .height(160.dp)
+            .height(130.dp)
             .scale(scale)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
@@ -207,13 +212,13 @@ fun DemoServerCard(onClick: () -> Unit) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Dns, null, tint = Color(0xFFFFB300), modifier = Modifier.size(32.dp))
-            Spacer(Modifier.height(16.dp))
-            Text("Try Demo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text("Official Jellyfin Demo Server", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Icon(Icons.Default.Dns, null, tint = Color(0xFFFFB300), modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(12.dp))
+            Text("Try Demo", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Official Jellyfin Demo Server", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
         }
     }
 }
@@ -225,7 +230,7 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
 
     Card(
         modifier = Modifier
-            .height(160.dp)
+            .height(130.dp)
             .scale(scale)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
@@ -241,13 +246,13 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Dns, null, tint = Color(0xFF24D366), modifier = Modifier.size(32.dp))
-            Spacer(Modifier.height(16.dp))
-            Text(name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            Text(address, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+            Icon(Icons.Default.Dns, null, tint = Color(0xFF24D366), modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(12.dp))
+            Text(name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(address, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
         }
     }
 }
@@ -259,7 +264,7 @@ fun AddServerCard(onClick: () -> Unit) {
 
     Card(
         modifier = Modifier
-            .height(160.dp)
+            .height(130.dp)
             .scale(scale)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
@@ -279,9 +284,9 @@ fun AddServerCard(onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(48.dp))
+            Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(32.dp))
             Spacer(Modifier.height(12.dp))
-            Text("Add Server Manually", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text("Add Server Manually", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
