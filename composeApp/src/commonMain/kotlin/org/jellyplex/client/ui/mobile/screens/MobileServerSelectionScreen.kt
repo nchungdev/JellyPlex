@@ -22,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ fun MobileServerSelectionScreen(
     onCancelScan: () -> Unit,
     onServerSelected: (DiscoveredServer) -> Unit,
     onManualInput: (String) -> Unit,
+    onTryDemo: () -> Unit,
 ) {
     var manualUrl by remember { mutableStateOf("") }
     var isDropdownExpanded by remember { mutableStateOf(false) }
@@ -112,9 +114,18 @@ fun MobileServerSelectionScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        if (state.error != null) {
+            Text(
+                text = state.error,
+                color = Color.Red,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+        }
+
         Button(
             onClick = { onManualInput(manualUrl) },
-            enabled = !state.isScanning && manualUrl.isNotEmpty(),
+            enabled = !state.isScanning && !state.isValidatingServer && manualUrl.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().height(60.dp),
             colors =
                 ButtonDefaults.buttonColors(
@@ -123,7 +134,24 @@ fun MobileServerSelectionScreen(
                 ),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text("Connect", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            if (state.isValidatingServer) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.Black,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text("Connect", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(
+            onClick = onTryDemo,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Try Demo Server", color = Color(0xFFFFB300), fontWeight = FontWeight.Bold)
         }
 
         if (state.discoveredServers.isNotEmpty() && !state.isScanning) {

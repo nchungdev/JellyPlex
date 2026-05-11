@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplex.client.domain.usecases.SearchItemsUseCase
@@ -24,6 +25,7 @@ data class SearchState(
 class SearchViewModel(
     private val searchItemsUseCase: SearchItemsUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = _state.asStateFlow()
@@ -40,7 +42,7 @@ class SearchViewModel(
         }
 
         searchJob =
-            viewModelScope.launch(Dispatchers.IO) {
+            viewModelScope.launch(dispatchers.io) {
                 delay(500) // Debounce
                 _state.value = _state.value.copy(isLoading = true)
                 val result = searchItemsUseCase(newQuery)

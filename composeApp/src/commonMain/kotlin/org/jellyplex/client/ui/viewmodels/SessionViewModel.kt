@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.usecases.*
 
 data class SessionState(
@@ -16,7 +17,8 @@ class SessionViewModel(
     private val validateSessionUseCase: ValidateSessionUseCase,
     private val clearSessionUseCase: ClearSessionUseCase,
     private val updateBaseUrlUseCase: UpdateBaseUrlUseCase,
-    private val getBaseUrlUseCase: GetBaseUrlUseCase
+    private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
 
     private val _isValidating = MutableStateFlow(getIsAuthenticatedUseCase().value)
@@ -42,7 +44,7 @@ class SessionViewModel(
     }
 
     private fun validateStartupSession() {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.main) {
             if (getIsAuthenticatedUseCase().value) {
                 _isValidating.value = true
                 try {
@@ -66,7 +68,7 @@ class SessionViewModel(
     }
 
     fun logout() {
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.main) {
             clearSessionUseCase()
         }
     }

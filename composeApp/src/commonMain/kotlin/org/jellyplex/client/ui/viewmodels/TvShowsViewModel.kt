@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.usecases.*
 
@@ -19,42 +20,40 @@ data class TvShowsState(
 
 class TvShowsViewModel(
     private val getTvShowsUseCase: GetTvShowsUseCase,
+    private val refreshTvShowsUseCase: RefreshTvShowsUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
-    private val getTvShowsCacheUseCase: GetTvShowsCacheUseCase,
-    private val saveTvShowsCacheUseCase: SaveTvShowsCacheUseCase,
     private val clearSessionUseCase: ClearSessionUseCase,
     private val hasSessionUseCase: HasSessionUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(TvShowsState())
     val state: StateFlow<TvShowsState> = _state.asStateFlow()
 
     init {
+        // SSOT: Observe local data flow
+        viewModelScope.launch {
+            getTvShowsUseCase().collect { tvShows ->
+                if (tvShows != null) {
+                    _state.value = _state.value.copy(
+                        tvShows = tvShows,
+                        baseUrl = getBaseUrlUseCase()
+                    )
+                }
+            }
+        }
+
         loadTvShows()
     }
 
     fun loadTvShows() {
         if (!hasSessionUseCase()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            // 1. Try cache first
-            val cached = getTvShowsCacheUseCase()
-            if (!cached.isNullOrEmpty()) {
-                _state.value = _state.value.copy(
-                    tvShows = cached,
-                    baseUrl = getBaseUrlUseCase()
-                )
-            }
-
-            // 2. Fetch from API
+        viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(isLoading = true, error = null)
-            val result = getTvShowsUseCase()
 
-            result.onSuccess { tvShows ->
-                _state.value = _state.value.copy(
-                    tvShows = tvShows,
-                    baseUrl = getBaseUrlUseCase(),
-                    isLoading = false,
-                )
-                saveTvShowsCacheUseCase(tvShows)
+            val result = refreshTvShowsUseCase()
+
+            result.onSuccess {
+                _state.value = _state.value.copy(isLoading = false)
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message, isLoading = false)
                 if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {

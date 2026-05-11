@@ -57,7 +57,8 @@ fun DesktopServerSelectionScreen(
     onScan: () -> Unit,
     onCancelScan: () -> Unit,
     onServerSelected: (DiscoveredServer) -> Unit,
-    onManualInput: (String) -> Unit, // Changed to () -> Unit to trigger UI transition
+    onManualInput: (String) -> Unit,
+    onTryDemo: () -> Unit,
 ) {
     var showManualDialog by remember { mutableStateOf(false) }
     var manualUrl by remember { mutableStateOf("http://") }
@@ -92,6 +93,15 @@ fun DesktopServerSelectionScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
+            if (state.error != null) {
+                Text(
+                    text = state.error,
+                    color = Color.Red,
+                    fontSize = 18.sp,
+                    modifier = Modifier.padding(top = 16.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(64.dp))
 
             // Server Grid
@@ -101,6 +111,11 @@ fun DesktopServerSelectionScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.weight(1f)
             ) {
+                // Try Demo Card
+                item {
+                    DemoServerCard(onClick = onTryDemo)
+                }
+
                 // Discovered Servers
                 items(state.discoveredServers) { server ->
                     ServerCard(
@@ -156,6 +171,49 @@ fun DesktopServerSelectionScreen(
                     }
                 }
             )
+        }
+
+        if (state.isValidatingServer) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color(0xFF24D366))
+            }
+        }
+    }
+}
+
+@Composable
+fun DemoServerCard(onClick: () -> Unit) {
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
+
+    Card(
+        modifier = Modifier
+            .height(160.dp)
+            .scale(scale)
+            .onFocusChanged { isFocused = it.isFocused }
+            .focusable()
+            .clickable { onClick() }
+            .border(
+                width = 2.dp,
+                color = if (isFocused) Color(0xFFFFB300) else Color.Transparent,
+                shape = RoundedCornerShape(12.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isFocused) Color(0xFFFFB300).copy(alpha = 0.2f) else Color(0xFFFFB300).copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(Icons.Default.Dns, null, tint = Color(0xFFFFB300), modifier = Modifier.size(32.dp))
+            Spacer(Modifier.height(16.dp))
+            Text("Try Demo", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Official Jellyfin Demo Server", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
         }
     }
 }

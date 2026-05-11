@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.usecases.*
 
@@ -19,42 +20,40 @@ data class MoviesState(
 
 class MoviesViewModel(
     private val getMoviesUseCase: GetMoviesUseCase,
+    private val refreshMoviesUseCase: RefreshMoviesUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
-    private val getMoviesCacheUseCase: GetMoviesCacheUseCase,
-    private val saveMoviesCacheUseCase: SaveMoviesCacheUseCase,
     private val clearSessionUseCase: ClearSessionUseCase,
     private val hasSessionUseCase: HasSessionUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MoviesState())
     val state: StateFlow<MoviesState> = _state.asStateFlow()
 
     init {
+        // SSOT: Observe local data flow
+        viewModelScope.launch {
+            getMoviesUseCase().collect { movies ->
+                if (movies != null) {
+                    _state.value = _state.value.copy(
+                        movies = movies,
+                        baseUrl = getBaseUrlUseCase()
+                    )
+                }
+            }
+        }
+
         loadMovies()
     }
 
     fun loadMovies() {
         if (!hasSessionUseCase()) return
-        viewModelScope.launch(Dispatchers.IO) {
-            // 1. Try cache first
-            val cached = getMoviesCacheUseCase()
-            if (!cached.isNullOrEmpty()) {
-                _state.value = _state.value.copy(
-                    movies = cached,
-                    baseUrl = getBaseUrlUseCase()
-                )
-            }
-
-            // 2. Fetch from API
+        viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(isLoading = true, error = null)
-            val result = getMoviesUseCase()
 
-            result.onSuccess { items ->
-                _state.value = _state.value.copy(
-                    movies = items,
-                    baseUrl = getBaseUrlUseCase(),
-                    isLoading = false
-                )
-                saveMoviesCacheUseCase(items)
+            val result = refreshMoviesUseCase()
+
+            result.onSuccess {
+                _state.value = _state.value.copy(isLoading = false)
             }.onFailure { e ->
                 _state.value = _state.value.copy(isLoading = false, error = e.message)
                 if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {

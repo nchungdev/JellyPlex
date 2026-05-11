@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.usecases.InitiateQuickConnectUseCase
 import org.jellyplex.client.domain.usecases.PollQuickConnectStatusUseCase
 
@@ -26,6 +27,7 @@ sealed class QuickConnectIntent {
 class QuickConnectViewModel(
     private val initiateQuickConnectUseCase: InitiateQuickConnectUseCase,
     private val pollQuickConnectStatusUseCase: PollQuickConnectStatusUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(QuickConnectState())
     val state: StateFlow<QuickConnectState> = _state.asStateFlow()
@@ -37,7 +39,7 @@ class QuickConnectViewModel(
     }
 
     private fun initiate() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(isLoading = true, error = null)
 
             val result = initiateQuickConnectUseCase()
@@ -48,12 +50,14 @@ class QuickConnectViewModel(
                 quickConnectResult.secret?.let { secret ->
                     pollQuickConnectStatusUseCase(secret).collect { status ->
                         if (status.authenticated) {
-                            _state.value =
-                                _state.value.copy(
-                                    isAuthenticated = true,
-                                    accessToken = status.authenticationToken,
-                                    userId = status.userId,
-                                )
+                            viewModelScope.launch(dispatchers.main) {
+                                _state.value =
+                                    _state.value.copy(
+                                        isAuthenticated = true,
+                                        accessToken = status.authenticationToken,
+                                        userId = status.userId,
+                                    )
+                            }
                         }
                     }
                 }

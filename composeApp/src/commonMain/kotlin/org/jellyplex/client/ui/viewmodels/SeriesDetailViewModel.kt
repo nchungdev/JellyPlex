@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplex.client.domain.usecases.GetEpisodesUseCase
@@ -30,6 +31,7 @@ class SeriesDetailViewModel(
     private val getSeasonsUseCase: GetSeasonsUseCase,
     private val getEpisodesUseCase: GetEpisodesUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SeriesDetailState())
     val state: StateFlow<SeriesDetailState> = _state.asStateFlow()
@@ -44,7 +46,7 @@ class SeriesDetailViewModel(
         if (_state.value.seriesId == seriesId && _state.value.seasons.isNotEmpty()) return
 
         loadSeriesJob?.cancel()
-        loadSeriesJob = viewModelScope.launch(Dispatchers.IO) {
+        loadSeriesJob = viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(
                 seriesId = seriesId,
                 isLoadingSeasons = true,
@@ -93,7 +95,7 @@ class SeriesDetailViewModel(
             return
         }
 
-        loadEpisodesJob = viewModelScope.launch(Dispatchers.IO) {
+        loadEpisodesJob = viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(isLoadingEpisodes = true, episodes = emptyList())
             val result = getEpisodesUseCase(seriesId, seasonId)
 

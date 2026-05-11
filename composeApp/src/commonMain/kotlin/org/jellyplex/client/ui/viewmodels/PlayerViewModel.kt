@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.usecases.GetAccessTokenUseCase
 import org.jellyplex.client.domain.usecases.GetUserIdUseCase
@@ -30,7 +31,8 @@ class PlayerViewModel(
     private val getAccessTokenUseCase: GetAccessTokenUseCase,
     private val reportPlaybackStartUseCase: ReportPlaybackStartUseCase,
     private val reportPlaybackProgressUseCase: ReportPlaybackProgressUseCase,
-    private val reportPlaybackStoppedUseCase: ReportPlaybackStoppedUseCase
+    private val reportPlaybackStoppedUseCase: ReportPlaybackStoppedUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state.asStateFlow()
@@ -38,7 +40,7 @@ class PlayerViewModel(
     fun loadStreamUrl(item: MediaItem) {
         if (_state.value.url != null) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.main) {
             _state.value = _state.value.copy(isLoading = true, accessToken = getAccessTokenUseCase() ?: "")
             val userId = getUserIdUseCase() ?: ""
             val deviceId = "CMP-ID"
@@ -68,7 +70,7 @@ class PlayerViewModel(
     }
 
     fun reportStart(itemId: String, playSessionId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatchers.io) {
             try {
                 reportPlaybackStartUseCase(itemId, playSessionId)
             } catch (_: Exception) {
@@ -83,7 +85,7 @@ class PlayerViewModel(
         isPaused: Boolean,
         isMuted: Boolean = false
     ) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatchers.io) {
             try {
                 reportPlaybackProgressUseCase(itemId, playSessionId, positionTicks, isPaused, isMuted)
             } catch (_: Exception) {
@@ -92,7 +94,7 @@ class PlayerViewModel(
     }
 
     fun reportStopped(itemId: String, playSessionId: String, positionTicks: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatchers.io) {
             try {
                 reportPlaybackStoppedUseCase(itemId, playSessionId, positionTicks)
             } catch (_: Exception) {

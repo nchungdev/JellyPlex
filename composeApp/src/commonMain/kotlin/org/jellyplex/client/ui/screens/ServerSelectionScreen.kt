@@ -15,12 +15,13 @@ fun ServerSelectionScreen(
     onCancelScan: () -> Unit,
     onServerSelected: (DiscoveredServer) -> Unit,
     onManualInput: (String) -> Unit,
+    onTryDemo: () -> Unit,
 ) {
     val uiType = LocalUiType.current
 
     if (uiType == UiType.Desktop) {
-        DesktopServerSelectionScreen(state, onScan, onCancelScan, onServerSelected, onManualInput)
+        DesktopServerSelectionScreen(state, onScan, onCancelScan, onServerSelected, onManualInput, onTryDemo)
     } else {
-        MobileServerSelectionScreen(state, onScan, onCancelScan, onServerSelected, onManualInput)
+        MobileServerSelectionScreen(state, onScan, onCancelScan, onServerSelected, onManualInput, onTryDemo)
     }
 }

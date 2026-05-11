@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.usecases.LoginUseCase
 
 data class LoginState(
@@ -24,6 +25,7 @@ sealed class LoginIntent {
 
 class LoginViewModel(
     private val loginUseCase: LoginUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginState())
     val state: StateFlow<LoginState> = _state.asStateFlow()
@@ -39,7 +41,7 @@ class LoginViewModel(
         username: String,
         password: String,
     ) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(isLoading = true, error = null)
             val result = loginUseCase(url, username, password)
 

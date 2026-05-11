@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.models.Person
 import org.jellyplex.client.domain.usecases.GetBaseUrlUseCase
@@ -28,6 +29,7 @@ class MovieDetailViewModel(
     private val getPeopleUseCase: GetPeopleUseCase,
     private val getUserIdUseCase: GetUserIdUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(MovieDetailState())
     val state: StateFlow<MovieDetailState> = _state.asStateFlow()
@@ -35,7 +37,7 @@ class MovieDetailViewModel(
     fun loadMovieDetails(item: MediaItem) {
         if (_state.value.itemId == item.id && _state.value.fullItem != null) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(dispatchers.main) {
             _state.value = MovieDetailState(
                 itemId = item.id,
                 fullItem = item,

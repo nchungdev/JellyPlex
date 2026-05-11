@@ -12,8 +12,11 @@ import androidx.compose.ui.unit.sp
 import org.jellyplex.client.ui.components.FocusableButton
 import org.jellyplex.client.ui.components.FocusableOutlinedButton
 
+import org.jellyplex.client.ui.viewmodels.DiscoveryState
+
 @Composable
 fun ManualServerEntryScreen(
+    state: DiscoveryState,
     onConnect: (String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -37,6 +40,7 @@ fun ManualServerEntryScreen(
         TextField(
             value = url,
             onValueChange = { url = it },
+            enabled = !state.isValidatingServer,
             modifier = Modifier.fillMaxWidth(0.6f),
             placeholder = { Text("http://") },
             colors = TextFieldDefaults.colors(
@@ -48,21 +52,36 @@ fun ManualServerEntryScreen(
                 unfocusedIndicatorColor = Color.Gray
             )
         )
+
+        if (state.error != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = state.error,
+                color = Color.Red,
+                fontSize = 14.sp
+            )
+        }
         
         Spacer(Modifier.height(64.dp))
         
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             FocusableOutlinedButton(
                 onClick = onBack,
+                enabled = !state.isValidatingServer,
                 modifier = Modifier.height(64.dp).width(160.dp)
             ) {
                 Text("Back", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
             FocusableButton(
                 onClick = { onConnect(url) },
+                enabled = !state.isValidatingServer && url.isNotEmpty(),
                 modifier = Modifier.height(64.dp).width(200.dp)
             ) {
-                Text("Connect", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                if (state.isValidatingServer) {
+                    CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Connect", color = Color.Black, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

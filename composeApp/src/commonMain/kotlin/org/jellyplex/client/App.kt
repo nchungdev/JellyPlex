@@ -91,9 +91,14 @@ fun AppContent() {
 
     var loginMode by rememberSaveable { mutableStateOf(AuthDestination.ServerSelection) }
 
-    // Reset login mode when logged out
+    // Reset login mode when logged out or handle successful login
     LaunchedEffect(isAuthenticated) {
-        if (!isAuthenticated) {
+        if (isAuthenticated) {
+            println("App: Authenticated! Moving to Home and loading data.")
+            loginMode = AuthDestination.Home
+            mainViewModel.loadData()
+        } else {
+            println("App: Not authenticated. Resetting to Server Selection.")
             loginMode = AuthDestination.ServerSelection
         }
     }
@@ -148,27 +153,51 @@ fun AppContent() {
                                 onScan = { discoveryViewModel.handleIntent(DiscoveryIntent.Scan) },
                                 onCancelScan = { discoveryViewModel.handleIntent(DiscoveryIntent.CancelScan) },
                                 onServerSelected = { server ->
-                                    sessionViewModel.updateServerUrl(server.address)
-                                    loginMode = AuthDestination.Home
+                                    discoveryViewModel.handleIntent(
+                                        DiscoveryIntent.ValidateAndConnect(server.address) {
+                                            sessionViewModel.updateServerUrl(server.address)
+                                            loginMode = AuthDestination.Home
+                                        }
+                                    )
                                 },
                                 onManualInput = { manualUrl ->
+                                    discoveryViewModel.handleIntent(DiscoveryIntent.ClearError)
                                     if (manualUrl.isNotEmpty()) {
-                                        sessionViewModel.updateServerUrl(manualUrl)
-                                        loginMode = AuthDestination.Home
+                                        discoveryViewModel.handleIntent(
+                                            DiscoveryIntent.ValidateAndConnect(manualUrl) {
+                                                sessionViewModel.updateServerUrl(manualUrl)
+                                                loginMode = AuthDestination.Home
+                                            }
+                                        )
                                     } else {
                                         loginMode = AuthDestination.ManualServerEntry
                                     }
                                 },
+                                onTryDemo = {
+                                    val demoUrl = "https://demo.jellyfin.org/stable"
+                                    discoveryViewModel.handleIntent(
+                                        DiscoveryIntent.ValidateAndConnect(demoUrl) {
+                                            sessionViewModel.updateServerUrl(demoUrl)
+                                            loginMode = AuthDestination.Home
+                                        }
+                                    )
+                                }
                             )
                         }
 
                         AuthDestination.ManualServerEntry -> {
                             ManualServerEntryScreen(
+                                state = discoveryState,
                                 onConnect = { url ->
-                                    sessionViewModel.updateServerUrl(url)
-                                    loginMode = AuthDestination.Home
+                                    discoveryViewModel.handleIntent(
+                                        DiscoveryIntent.ValidateAndConnect(url) {
+                                            sessionViewModel.updateServerUrl(url)
+                                            loginMode = AuthDestination.Home
+                                        }
+                                    )
                                 },
                                 onBack = {
+                                    discoveryViewModel.handleIntent(DiscoveryIntent.ClearError)
                                     loginMode = AuthDestination.ServerSelection
                                 }
                             )

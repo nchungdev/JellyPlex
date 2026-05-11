@@ -137,31 +137,55 @@ class JellyfinApi(
         return result
     }
 
-    fun updateBaseUrl(newUrl: String) {
-        var formattedUrl = newUrl.trim()
-        if (formattedUrl.isEmpty()) return
+    private fun formatUrl(url: String): String {
+        var formattedUrl = url.trim()
+        if (formattedUrl.isEmpty()) return ""
 
         if (!formattedUrl.startsWith("http")) {
-            formattedUrl = "http://$formattedUrl"
+            // Force https for official demo
+            formattedUrl = if (formattedUrl.contains("demo.jellyfin.org")) {
+                "https://$formattedUrl"
+            } else {
+                "http://$formattedUrl"
+            }
         }
 
         // Remove trailing slash
         formattedUrl = formattedUrl.removeSuffix("/")
 
-        // Automatically add port 8096 if no port is specified
+        // Automatically add port 8096 if no port is specified and it's not a common port
         val protocolSeparatorIndex = formattedUrl.indexOf("://")
-        val urlWithoutProtocol = formattedUrl.substring(protocolSeparatorIndex + 3)
+        val urlWithoutProtocol = if (protocolSeparatorIndex != -1) {
+            formattedUrl.substring(protocolSeparatorIndex + 3)
+        } else {
+            formattedUrl
+        }
 
-        if (!urlWithoutProtocol.contains(":")) {
+        // Only append 8096 if:
+        // 1. No port is explicitly specified
+        // 2. No path is present (it's just a host)
+        // 3. It's not the official demo domain (which uses standard 443 via reverse proxy)
+        val isDemo = urlWithoutProtocol.contains("demo.jellyfin.org")
+        val hasPath = urlWithoutProtocol.contains("/")
+        val hasPort = urlWithoutProtocol.contains(":")
+
+        if (!hasPort && !hasPath && !isDemo) {
             formattedUrl = "$formattedUrl:8096"
         }
 
-        baseUrl = formattedUrl
+        return formattedUrl
     }
 
-    suspend fun validateServer(): Boolean {
+    fun updateBaseUrl(newUrl: String) {
+        val formatted = formatUrl(newUrl)
+        if (formatted.isNotEmpty()) {
+            baseUrl = formatted
+        }
+    }
+
+    suspend fun validateServer(url: String? = null): Boolean {
         return try {
-            val info = getPublicSystemInfo()
+            val info = getPublicSystemInfo(url?.let { formatUrl(it) })
             !info.id.isNullOrEmpty()
         } catch (e: Exception) {
             false

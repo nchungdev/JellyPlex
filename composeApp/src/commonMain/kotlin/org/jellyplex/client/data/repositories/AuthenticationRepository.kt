@@ -1,64 +1,64 @@
 package org.jellyplex.client.data.repositories
 
 import kotlinx.coroutines.flow.StateFlow
-import org.jellyplex.client.data.local.SessionManager
-import org.jellyplex.client.data.remote.AuthenticateByNameRequest
-import org.jellyplex.client.data.remote.JellyfinApi
+import org.jellyplex.client.data.datasource.local.IMediaLocalDataSource
+import org.jellyplex.client.data.datasource.local.ISessionLocalDataSource
+import org.jellyplex.client.data.datasource.remote.IAuthRemoteDataSource
 import org.jellyplex.client.domain.models.AuthenticationResult
 
 import org.jellyplex.client.domain.repositories.IAuthenticationRepository
 
 class AuthenticationRepository(
-    private val api: JellyfinApi,
-    private val sessionManager: SessionManager,
+    private val remoteDataSource: IAuthRemoteDataSource,
+    private val localMediaDataSource: IMediaLocalDataSource,
+    private val sessionDataSource: ISessionLocalDataSource,
 ) : IAuthenticationRepository {
-    override val isAuthenticated: StateFlow<Boolean> = sessionManager.isAuthenticated
+    override val isAuthenticated: StateFlow<Boolean> = sessionDataSource.isAuthenticated
 
     override suspend fun login(
         url: String,
         username: String,
         password: String,
     ): AuthenticationResult {
-        api.updateBaseUrl(url)
-        val result = api.authenticateByName(AuthenticateByNameRequest(username, password))
+        val result = remoteDataSource.login(url, username, password)
 
         // Persist session
-        sessionManager.baseUrl = api.getBaseUrl()
-        sessionManager.accessToken = result.accessToken
-        sessionManager.userName = result.user?.name
-        sessionManager.userId = result.user?.id
-        sessionManager.password = password
-
-        api.accessToken = result.accessToken
+        sessionDataSource.baseUrl = remoteDataSource.getBaseUrl()
+        sessionDataSource.accessToken = result.accessToken
+        sessionDataSource.userName = result.user?.name
+        sessionDataSource.userId = result.user?.id
+        sessionDataSource.password = password
 
         return result
     }
 
-    override fun hasSession(): Boolean = sessionManager.hasSession()
+    override fun hasSession(): Boolean = sessionDataSource.hasSession()
 
     override fun clearSession() {
-        sessionManager.clear()
+        sessionDataSource.clear()
+        localMediaDataSource.clear()
     }
 
     override fun updateBaseUrl(url: String) {
-        val oldUrl = sessionManager.baseUrl
+        val oldUrl = sessionDataSource.baseUrl
         if (oldUrl != url) {
             println("Repository: Server URL changed from $oldUrl to $url. Clearing stale session.")
-            sessionManager.clear() // Clear everything to be safe
+            sessionDataSource.clear() // Clear everything to be safe
+            localMediaDataSource.clear()
         }
-        api.updateBaseUrl(url)
-        sessionManager.baseUrl = url
+        remoteDataSource.updateBaseUrl(url)
+        sessionDataSource.baseUrl = url
     }
 
-    override fun getBaseUrl(): String? = sessionManager.baseUrl
+    override fun getBaseUrl(): String? = sessionDataSource.baseUrl
 
-    override fun getUserId(): String? = sessionManager.userId
+    override fun getUserId(): String? = sessionDataSource.userId
 
     override suspend fun validate(): Boolean {
         if (!hasSession()) return false
         return try {
             // Use an endpoint that REQUIRES authentication to verify the token
-            val user = api.getCurrentUser()
+            val user = remoteDataSource.validateToken()
             println("Session check: Token is valid for user ${user.name}.")
             true
         } catch (e: Exception) {
@@ -68,10 +68,10 @@ class AuthenticationRepository(
                 clearSession() // CLEAR IT!
                 return false
             }
-            
+
             println("Session check: Network error or server unreachable ($message).")
             // If we can't reach the server, only allow offline if we have cache
-            val hasCache = !sessionManager.moviesCache.isNullOrEmpty() || !sessionManager.tvShowsCache.isNullOrEmpty()
+            val hasCache = localMediaDataSource.movies.value != null || localMediaDataSource.tvShows.value != null
             if (!hasCache) {
                 println("Session check: Unreachable and no cache. Rejecting session.")
                 return false
