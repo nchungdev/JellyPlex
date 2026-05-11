@@ -1,7 +1,9 @@
 package org.jellyplex.client.ui.mobile.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ButtonDefaults
@@ -23,7 +25,13 @@ fun MobileQuickConnectScreen(
     state: QuickConnectState,
     onBack: () -> Unit,
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
         if (state.isLoading) {
             CircularProgressIndicator(color = Color(0xFFFFB300))
             Text("Requesting Code...", modifier = Modifier.padding(top = 8.dp), color = Color.Gray)

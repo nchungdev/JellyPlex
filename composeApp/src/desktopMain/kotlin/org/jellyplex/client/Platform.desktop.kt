@@ -17,3 +17,7 @@ actual fun provideSettings(): Settings {
 actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
     // No system back button on desktop
 }
+
+actual fun getDeviceName(): String {
+    return System.getProperty("os.name") + " (" + System.getProperty("user.name") + ")"
+}

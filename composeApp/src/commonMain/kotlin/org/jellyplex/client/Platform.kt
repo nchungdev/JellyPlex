@@ -19,3 +19,5 @@ expect fun provideSettings(): Settings
 
 @Composable
 expect fun AppBackHandler(enabled: Boolean = true, onBack: () -> Unit)
+
+expect fun getDeviceName(): String

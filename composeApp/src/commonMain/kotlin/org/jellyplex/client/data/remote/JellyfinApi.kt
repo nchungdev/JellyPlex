@@ -14,7 +14,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.request.url
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.URLBuilder
 import io.ktor.http.appendPathSegments
@@ -26,13 +26,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jellyplex.client.data.local.SessionManager
-import org.jellyplex.client.domain.models.*
+import org.jellyplex.client.domain.models.AuthenticationResult
+import org.jellyplex.client.domain.models.MediaItem
+import org.jellyplex.client.domain.models.MediaType
+import org.jellyplex.client.domain.models.PublicSystemInfo
+import org.jellyplex.client.domain.models.QuickConnectResult
+import org.jellyplex.client.domain.models.UserDto
 
 @Serializable
 data class AuthenticateByNameRequest(
     @SerialName("Username") val username: String? = null,
     @SerialName("Pw") val pw: String? = null,
 )
+
+private val json = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+}
 
 class JellyfinApi(
     private val sessionManager: SessionManager? = null,
@@ -212,9 +222,11 @@ class JellyfinApi(
     }
 
     private fun authHeader(includeToken: Boolean = true): String {
+        val deviceName = sessionManager?.deviceName ?: "JellyPlex Device"
+        val deviceId = sessionManager?.deviceId ?: "UnknownDevice"
         var header =
-            "MediaBrowser Client=\"JellyPlex\", Device=\"CMP-Device\", " +
-                "DeviceId=\"CMP-ID\", Version=\"1.0.0\""
+            "MediaBrowser Client=\"JellyPlex\", Device=\"$deviceName\", " +
+                "DeviceId=\"$deviceId\", Version=\"1.0.0\""
         if (includeToken) {
             accessToken?.let {
                 header += ", Token=\"$it\""
@@ -241,15 +253,32 @@ class JellyfinApi(
     }
 
     suspend fun initiateQuickConnect(): QuickConnectResult {
-        return client.post {
+        val response = client.post {
             apiUrl("QuickConnect", "Initiate")
-        }.body()
+            header("X-Emby-Authorization", authHeader(includeToken = false))
+        }
+        val responseText = response.bodyAsText()
+        println("QuickConnect Initiate RAW JSON: $responseText")
+        return json.decodeFromString(QuickConnectResult.serializer(), responseText)
     }
 
     suspend fun getQuickConnectState(secret: String): QuickConnectResult {
-        return client.get {
+        val response = client.get {
             apiUrl("QuickConnect", "Connect")
             parameter("secret", secret)
+            header("X-Emby-Authorization", authHeader(includeToken = false))
+        }
+        val responseText = response.bodyAsText()
+        println("QuickConnect RAW JSON: $responseText")
+        return json.decodeFromString(QuickConnectResult.serializer(), responseText)
+    }
+
+    suspend fun authenticateWithQuickConnect(secret: String): AuthenticationResult {
+        return client.post {
+            apiUrl("Users", "AuthenticateWithQuickConnect")
+            header("X-Emby-Authorization", authHeader(includeToken = false))
+            contentType(ContentType.Application.Json)
+            setBody(mapOf("Secret" to secret))
         }.body()
     }
 

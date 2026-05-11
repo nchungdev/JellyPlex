@@ -12,6 +12,8 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
         private const val KEY_USER_NAME = "user_name"
         private const val KEY_PASSWORD = "password"
         private const val KEY_USER_ID = "user_id"
+        private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_DEVICE_NAME = "device_name"
     }
 
     private val _isAuthenticated = MutableStateFlow(hasSession())
@@ -49,6 +51,26 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
             if (!value.isNullOrEmpty()) settings.putString(KEY_USER_ID, value) else settings.remove(KEY_USER_ID)
         }
 
+    val deviceId: String
+        get() {
+            val currentId = settings.getStringOrNull(KEY_DEVICE_ID)
+            if (currentId != null) return currentId
+
+            val newId = org.jellyplex.client.utils.generateUuid()
+            settings.putString(KEY_DEVICE_ID, newId)
+            return newId
+        }
+
+    val deviceName: String
+        get() {
+            val currentName = settings.getStringOrNull(KEY_DEVICE_NAME)
+            if (currentName != null) return currentName
+
+            val newName = org.jellyplex.client.getDeviceName()
+            settings.putString(KEY_DEVICE_NAME, newName)
+            return newName
+        }
+
     override fun clear() {
         settings.remove(KEY_ACCESS_TOKEN)
         settings.remove(KEY_USER_ID)
@@ -59,7 +81,9 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
     }
 
     private fun updateAuthState() {
-        _isAuthenticated.value = hasSession()
+        val authenticated = hasSession()
+        println("SessionManager: Auth state updated. Authenticated=$authenticated (URL=${baseUrl?.isNotEmpty()}, Token=${accessToken?.isNotEmpty()})")
+        _isAuthenticated.value = authenticated
     }
 
     override fun hasSession(): Boolean {

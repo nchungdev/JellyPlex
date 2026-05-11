@@ -41,3 +41,7 @@ actual fun provideSettings(): Settings {
 actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
     androidx.activity.compose.BackHandler(enabled, onBack)
 }
+
+actual fun getDeviceName(): String {
+    return "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+}
