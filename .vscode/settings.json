@@ -1,0 +1,9 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "./gradlew": true,
+        "/^cd \"/Users/chungnh/Studio Projects/jellyfin/jellyplex-client\" && python3 - <<'PY'\nfrom pathlib import Path\npath=Path\\('composeApp/src/commonMain/kotlin/org/jellyplex/client/ui/screens/SeriesDetailScreen\\.kt'\\)\nlines=path\\.read_text\\(\\)\\.splitlines\\(\\)\nimports=\\[l for l in lines if l\\.startswith\\('import '\\)\\]\nfor idx,l in enumerate\\(imports,1\\):\n    print\\(f'\\{idx:02\\} \\{l\\}'\\)\nprint\\('--- sorted ---'\\)\nfor idx,l in enumerate\\(sorted\\(imports\\),1\\):\n    print\\(f'\\{idx:02\\} \\{l\\}'\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

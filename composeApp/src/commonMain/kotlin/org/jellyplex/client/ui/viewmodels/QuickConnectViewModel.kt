@@ -1,0 +1,72 @@
+package org.jellyplex.client.ui.viewmodels
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.jellyplex.client.domain.usecases.InitiateQuickConnectUseCase
+import org.jellyplex.client.domain.usecases.PollQuickConnectStatusUseCase
+
+data class QuickConnectState(
+    val isLoading: Boolean = false,
+    val code: String? = null,
+    val error: String? = null,
+    val isAuthenticated: Boolean = false,
+    val accessToken: String? = null,
+    val userId: String? = null,
+)
+
+sealed class QuickConnectIntent {
+    object Initiate : QuickConnectIntent()
+}
+
+class QuickConnectViewModel(
+    private val initiateQuickConnectUseCase: InitiateQuickConnectUseCase,
+    private val pollQuickConnectStatusUseCase: PollQuickConnectStatusUseCase,
+) : ViewModel() {
+    private val _state = MutableStateFlow(QuickConnectState())
+    val state: StateFlow<QuickConnectState> = _state.asStateFlow()
+
+    fun handleIntent(intent: QuickConnectIntent) {
+        when (intent) {
+            is QuickConnectIntent.Initiate -> initiate()
+        }
+    }
+
+    private fun initiate() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(isLoading = true, error = null)
+
+            val result = initiateQuickConnectUseCase()
+
+            result.onSuccess { quickConnectResult ->
+                _state.value = _state.value.copy(isLoading = false, code = quickConnectResult.code)
+
+                quickConnectResult.secret?.let { secret ->
+                    pollQuickConnectStatusUseCase(secret).collect { status ->
+                        if (status.authenticated) {
+                            _state.value =
+                                _state.value.copy(
+                                    isAuthenticated = true,
+                                    accessToken = status.authenticationToken,
+                                    userId = status.userId,
+                                )
+                        }
+                    }
+                }
+            }.onFailure { e ->
+                val errorMsg =
+                    if (e.message?.contains("NoTransformationFoundException") == true) {
+                        "Invalid server response. Ensure you are connecting to a Jellyfin server, " +
+                            "not a web portal or proxy."
+                    } else {
+                        e.message ?: "Unknown error occurred"
+                    }
+                _state.value = _state.value.copy(isLoading = false, error = errorMsg)
+            }
+        }
+    }
+}

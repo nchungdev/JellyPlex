@@ -1,0 +1,24 @@
+package org.jellyplex.client.ui
+
+import kotlinx.serialization.Serializable
+import org.jellyplex.client.domain.models.MediaItem
+import org.jellyplex.client.domain.models.MediaType
+
+@Serializable
+sealed class Screen {
+    @Serializable
+    object Home : Screen()
+
+    @Serializable
+    data class Details(val item: MediaItem) : Screen()
+
+    @Serializable
+    data class Listing(val type: MediaType, val title: String) : Screen()
+
+    @Serializable
+    data class Player(
+        val item: MediaItem,
+        val playlist: List<MediaItem> = emptyList(),
+        val parentItem: MediaItem? = null
+    ) : Screen()
+}
