@@ -9,6 +9,7 @@ import org.jellyplus.client.data.datasource.remote.IMediaRemoteDataSource
 import org.jellyplus.client.data.remote.models.ChapterInfo
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.HomeContent
+import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.Person
@@ -166,5 +167,19 @@ class MediaRepository(
             ChapterInfo(startPositionTicks = endTicks, name = "Custom_Preview_Marker_End"),
         )
         remoteDataSource.saveChapterMarker(itemId, chapters)
+    }
+
+    override suspend fun getIntroMarkers(itemId: String): List<IntroMarker> = withContext(dispatchers.io) {
+        try {
+            val response = remoteDataSource.getIntroTimestamps(itemId)
+            buildList {
+                response.introduction?.takeIf { it.valid }?.let {
+                    add(IntroMarker(startTicks = (it.start * 10_000_000).toLong(), endTicks = (it.end * 10_000_000).toLong(), type = null))
+                }
+                response.credits?.takeIf { it.valid }?.let {
+                    add(IntroMarker(startTicks = (it.start * 10_000_000).toLong(), endTicks = (it.end * 10_000_000).toLong(), type = "Credits"))
+                }
+            }
+        } catch (_: Exception) { emptyList() }
     }
 }

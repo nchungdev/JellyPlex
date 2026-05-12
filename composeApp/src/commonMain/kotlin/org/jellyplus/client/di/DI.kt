@@ -85,6 +85,7 @@ val domainModule = module {
     factoryOf(::SetAutoSkipUseCase)
     factoryOf(::GetAutoNextUseCase)
     factoryOf(::SetAutoNextUseCase)
+    factoryOf(::GetIntroMarkersUseCase)
     factoryOf(::DiscoverServersUseCase)
     factoryOf(::ValidateSessionUseCase)
 }

@@ -134,6 +134,7 @@ fun MainScreen(
             LaunchedEffect(screen.item.id) {
                 playerViewModel.loadStreamUrl(screen.item)
                 playerViewModel.setEpisodeContext(playlist, currentIndex)
+                playerViewModel.loadMarkers(screen.item.id)
             }
 
             fun goToNext() {
@@ -171,6 +172,7 @@ fun MainScreen(
                     },
                     uiType = uiType,
                     nextEpisodeConfig = playerState.nextEpisodeConfig,
+                    markers = playerState.markers,
                     autoSkipIntro = playerState.autoSkipIntro,
                     customMarkers = playerState.customMarkers,
                     onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },

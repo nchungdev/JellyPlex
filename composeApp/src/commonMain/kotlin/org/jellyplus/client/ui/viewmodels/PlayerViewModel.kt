@@ -7,11 +7,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.AppDispatchers
+import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
 import org.jellyplus.client.domain.usecases.GetAutoNextUseCase
 import org.jellyplus.client.domain.usecases.GetAutoSkipUseCase
+import org.jellyplus.client.domain.usecases.GetIntroMarkersUseCase
 import org.jellyplus.client.domain.usecases.GetUserIdUseCase
 import org.jellyplus.client.domain.usecases.MarkItemAsPlayedUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackProgressUseCase
@@ -36,6 +38,8 @@ data class PlayerState(
     val nextEpisodeItem: MediaItem? = null,
     val nextEpisodeConfig: PlaybackConfig? = null,
     val isPreloadingNextMeta: Boolean = false,
+    // Intro Skipper markers from server
+    val markers: List<IntroMarker> = emptyList(),
     // Player preferences
     val autoSkipIntro: Boolean = false,
     val autoNext: Boolean = false,
@@ -56,6 +60,7 @@ class PlayerViewModel(
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
     private val getAutoNextUseCase: GetAutoNextUseCase,
     private val setAutoNextUseCase: SetAutoNextUseCase,
+    private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
@@ -156,6 +161,15 @@ class PlayerViewModel(
         val next = !_state.value.autoNext
         setAutoNextUseCase(next)
         _state.value = _state.value.copy(autoNext = next)
+    }
+
+    fun loadMarkers(itemId: String) {
+        viewModelScope.launch(dispatchers.io) {
+            try {
+                val markers = getIntroMarkersUseCase(itemId)
+                _state.value = _state.value.copy(markers = markers)
+            } catch (_: Exception) {}
+        }
     }
 
     fun reportStart(itemId: String, playSessionId: String) {

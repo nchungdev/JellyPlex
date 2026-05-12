@@ -44,4 +44,5 @@ interface IMediaRepository {
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long)
     suspend fun markItemAsPlayed(userId: String, itemId: String)
     suspend fun saveCustomMarker(itemId: String, startTicks: Long, endTicks: Long)
+    suspend fun getIntroMarkers(itemId: String): List<IntroMarker>
 }

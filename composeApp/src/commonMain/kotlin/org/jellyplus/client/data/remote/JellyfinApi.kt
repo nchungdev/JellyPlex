@@ -395,6 +395,12 @@ class JellyfinApi(
         client.post { apiUrl("Users", userId, "PlayedItems", itemId) }
     }
 
+    suspend fun getIntroTimestamps(itemId: String): IntroSkipperResponse {
+        return client.get {
+            apiUrl("api", "v1", "Timestamps", itemId)
+        }.body()
+    }
+
     suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>) {
         client.post {
             apiUrl("Items", itemId, "Chapters")
