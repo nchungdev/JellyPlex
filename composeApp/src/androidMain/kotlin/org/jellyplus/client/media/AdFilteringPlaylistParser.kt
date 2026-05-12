@@ -10,7 +10,7 @@ import androidx.media3.exoplayer.hls.playlist.HlsPlaylistParserFactory
 import androidx.media3.exoplayer.upstream.ParsingLoadable
 import java.io.InputStream
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
     private val defaultParser = HlsPlaylistParser()
 
@@ -59,7 +59,7 @@ class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
     }
 }
 
-@OptIn(UnstableApi::class)
+@UnstableApi
 class CustomHlsPlaylistParserFactory : HlsPlaylistParserFactory {
     override fun createPlaylistParser(): ParsingLoadable.Parser<HlsPlaylist> {
         return AdFilteringPlaylistParser()

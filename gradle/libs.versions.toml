@@ -30,7 +30,7 @@ androidx-constraintlayout = "2.2.1"
 androidx-core-ktx = "1.15.0" # Sửa từ 1.18.0
 androidx-material = "1.13.0"
 androidx-security-crypto = "1.1.0"
-media3 = "1.5.1" # Google ExoPlayer
+media3 = "1.6.1" # Google ExoPlayer
 
 # Testing
 androidx-espresso-core = "3.7.0"
