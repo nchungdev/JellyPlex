@@ -357,6 +357,18 @@ class JellyfinApi(
         return response.items
     }
 
+    suspend fun markAsPlayed(userId: String, itemId: String) {
+        client.post { apiUrl("Users", userId, "PlayedItems", itemId) }
+    }
+
+    suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>) {
+        client.post {
+            apiUrl("Items", itemId, "Chapters")
+            contentType(ContentType.Application.Json)
+            setBody(chapters)
+        }
+    }
+
     suspend fun getPlaybackInfo(itemId: String, userId: String, deviceProfile: DeviceProfile? = null): PlaybackInfoResponse {
         return client.post {
             apiUrl("Items", itemId, "PlaybackInfo")

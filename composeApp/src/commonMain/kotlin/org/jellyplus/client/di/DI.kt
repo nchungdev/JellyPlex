@@ -27,6 +27,7 @@ val dataModule = module {
     singleOf(::PersistentSessionLocalDataSource)
     singleOf(::InMemorySessionLocalDataSource)
     singleOf(::MediaLocalDataSource)
+    singleOf(::PlayerSettingsLocalDataSource)
     
     // 2. Strategy Repositories
     single<ISessionRepository> { 
@@ -77,6 +78,10 @@ val domainModule = module {
     factoryOf(::ReportPlaybackStartUseCase)
     factoryOf(::ReportPlaybackProgressUseCase)
     factoryOf(::ReportPlaybackStoppedUseCase)
+    factoryOf(::MarkItemAsPlayedUseCase)
+    factoryOf(::SaveCustomMarkerUseCase)
+    factoryOf(::GetAutoSkipUseCase)
+    factoryOf(::SetAutoSkipUseCase)
     factoryOf(::DiscoverServersUseCase)
     factoryOf(::ValidateSessionUseCase)
 }

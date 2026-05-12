@@ -236,7 +236,7 @@ fun DesktopVideoPlayer(
                     if (!isControlsVisible) {
                         when (keyEvent.key) {
                             Key.DirectionLeft -> {
-                                triggerSeek(-10)
+                                triggerSeek(-5)
                                 if (keyEvent.nativeKeyEvent.repeatCount > 2) {
                                     exoPlayer.setPlaybackSpeed(2.0f)
                                 }
@@ -380,10 +380,7 @@ fun DesktopVideoPlayer(
                         )
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        DesktopPlayerIconButton(Icons.Default.Subtitles) { /* Subtitles */ }
-                        DesktopPlayerIconButton(Icons.Default.Settings) { /* Settings */ }
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
 
                 // Center Controls
@@ -435,15 +432,16 @@ fun DesktopVideoPlayer(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        Text(
-                            formatTime(currentPosition),
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        // Time: current / total
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(formatTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                            Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
+                        }
 
+                        // Seekbar
                         var isSeekbarFocused by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
@@ -454,16 +452,8 @@ fun DesktopVideoPlayer(
                                 .onKeyEvent { keyEvent ->
                                     if (keyEvent.type == KeyEventType.KeyDown) {
                                         when (keyEvent.key) {
-                                            Key.DirectionLeft -> {
-                                                exoPlayer.seekTo((currentPosition - 10000).coerceAtLeast(0))
-                                                true
-                                            }
-
-                                            Key.DirectionRight -> {
-                                                exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration))
-                                                true
-                                            }
-
+                                            Key.DirectionLeft -> { exoPlayer.seekTo((currentPosition - 5000).coerceAtLeast(0)); true }
+                                            Key.DirectionRight -> { exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration)); true }
                                             else -> false
                                         }
                                     } else false
@@ -476,34 +466,26 @@ fun DesktopVideoPlayer(
                                     .height(if (isSeekbarFocused) 10.dp else 6.dp)
                                     .background(
                                         if (isSeekbarFocused) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f),
-                                        RoundedCornerShape(5.dp)
+                                        RoundedCornerShape(5.dp),
                                     ),
                             )
-
                             val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth(progress)
                                         .height(if (isSeekbarFocused) 10.dp else 6.dp)
                                         .background(
                                             if (isSeekbarFocused) Color.White else Color(0xFF24D366),
-                                            RoundedCornerShape(5.dp)
+                                            RoundedCornerShape(5.dp),
                                         ),
                                 )
                             }
                         }
 
-                        Text(
-                            formatTime(duration),
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        // Captions + Settings
+                        DesktopPlayerIconButton(Icons.Default.Subtitles, size = 40.dp, iconSize = 22.dp) { /* Subtitles */ }
+                        DesktopPlayerIconButton(Icons.Default.Settings, size = 40.dp, iconSize = 22.dp) { /* Settings */ }
                     }
                 }
             }

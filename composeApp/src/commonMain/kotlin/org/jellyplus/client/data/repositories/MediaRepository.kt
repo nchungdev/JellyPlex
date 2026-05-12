@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import org.jellyplus.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplus.client.data.datasource.remote.IMediaRemoteDataSource
+import org.jellyplus.client.data.remote.models.ChapterInfo
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.HomeContent
 import org.jellyplus.client.domain.models.MediaItem
@@ -149,5 +150,17 @@ class MediaRepository(
 
     override suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) = withContext(dispatchers.io) {
         remoteDataSource.reportPlaybackStopped(itemId, playSessionId, positionTicks)
+    }
+
+    override suspend fun markItemAsPlayed(userId: String, itemId: String) = withContext(dispatchers.io) {
+        remoteDataSource.markAsPlayed(userId, itemId)
+    }
+
+    override suspend fun saveCustomMarker(itemId: String, startTicks: Long, endTicks: Long) = withContext(dispatchers.io) {
+        val chapters = listOf(
+            ChapterInfo(startPositionTicks = startTicks, name = "Custom_Preview_Marker_Start"),
+            ChapterInfo(startPositionTicks = endTicks, name = "Custom_Preview_Marker_End"),
+        )
+        remoteDataSource.saveChapterMarker(itemId, chapters)
     }
 }

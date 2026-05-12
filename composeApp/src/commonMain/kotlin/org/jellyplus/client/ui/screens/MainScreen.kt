@@ -125,6 +125,14 @@ fun MainScreen(
 
             LaunchedEffect(screen.item.id) {
                 playerViewModel.loadStreamUrl(screen.item)
+                playerViewModel.setEpisodeContext(playlist, currentIndex)
+            }
+
+            fun goToNext() {
+                val next = currentIndex + 1
+                if (next < playlist.size) {
+                    currentScreen = Screen.Player(playlist[next], playlist, screen.parentItem)
+                }
             }
 
             playerState.url?.let { url ->
@@ -146,19 +154,24 @@ fun MainScreen(
                     onPlaybackStopped = { itemId, sessionId, pos ->
                         playerViewModel.reportStopped(itemId, sessionId, pos)
                     },
-                    onNextEpisode = {
-                        val next = currentIndex + 1
-                        if (next < playlist.size) {
-                            currentScreen = Screen.Player(playlist[next], playlist, screen.parentItem)
-                        }
-                    },
+                    onNextEpisode = { goToNext() },
                     onPrevEpisode = {
                         val prev = currentIndex - 1
                         if (prev >= 0) {
                             currentScreen = Screen.Player(playlist[prev], playlist, screen.parentItem)
                         }
                     },
-                    uiType = uiType
+                    uiType = uiType,
+                    nextEpisodeConfig = playerState.nextEpisodeConfig,
+                    autoSkipIntro = playerState.autoSkipIntro,
+                    customMarkers = playerState.customMarkers,
+                    onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
+                    onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(screen.item.id) },
+                    onSaveCustomMarker = { startMs, endMs ->
+                        playerViewModel.addCustomMarker(startMs, endMs, screen.item.id)
+                    },
+                    onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
+                    onSeamlessNextEpisode = { goToNext() },
                 )
             }
         }
