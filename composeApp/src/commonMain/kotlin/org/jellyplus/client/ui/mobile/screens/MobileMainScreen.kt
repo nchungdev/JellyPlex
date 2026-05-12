@@ -208,38 +208,30 @@ private fun HomeContent(
                 }
             }
         } else {
-            // DATA STATE
-            val heroItem = state.items.firstOrNull()
+            // DATA STATE — hero ưu tiên: resume > recently added > first movie
+            val heroItem = homeState.resumeItems.firstOrNull()
+                ?: homeState.recentlyAddedItems.firstOrNull()
+                ?: state.items.firstOrNull()
 
             item {
                 Box(modifier = Modifier.fillMaxWidth().height(500.dp)) {
                     heroItem?.let { item ->
                         AsyncImage(
-                            model = item.getImageUrl(baseUrl),
+                            model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-                        // Status Bar Overlay
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
-                                    )
-                                )
+                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)))
                         )
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, Color(0xFF0F1113)),
-                                        startY = 600f
-                                    )
-                                )
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 600f))
                         )
                         Column(
                             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
@@ -266,8 +258,40 @@ private fun HomeContent(
                 }
             }
 
+            // Continue Watching — đặt đầu tiên vì đây là nội dung ưu tiên
+            if (homeState.resumeItems.isNotEmpty()) {
+                item {
+                    SectionHeader("Continue Watching")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(homeState.resumeItems) { item ->
+                            MobileContinueWatchingCard(item, baseUrl, onClick = { onMediaClick(item) })
+                        }
+                    }
+                }
+            }
+
+            // Recently Added
+            if (homeState.recentlyAddedItems.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    SectionHeader("Recently Added")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(homeState.recentlyAddedItems) { item ->
+                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                        }
+                    }
+                }
+            }
+
             if (state.movies.isNotEmpty()) {
                 item {
+                    Spacer(Modifier.height(20.dp))
                     SectionHeader("Movies", onViewAll = { onViewAll(MediaType.MOVIE, "Movies") })
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -290,21 +314,6 @@ private fun HomeContent(
                     ) {
                         items(state.tvShows) { item ->
                             MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                        }
-                    }
-                }
-            }
-
-            if (homeState.resumeItems.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("Continue Watching")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(homeState.resumeItems) { item ->
-                            MobileContinueWatchingCard(item, baseUrl, onClick = { onMediaClick(item) })
                         }
                     }
                 }
