@@ -49,6 +49,10 @@ class MediaRepository(
         }
     }
 
+    override suspend fun getWatchHistory(userId: String): List<MediaItem> = withContext(dispatchers.io) {
+        remoteDataSource.getWatchHistory(userId)
+    }
+
     override suspend fun searchItems(query: String): List<MediaItem> = withContext(dispatchers.io) {
         remoteDataSource.searchItems(query)
     }

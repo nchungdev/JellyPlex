@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Info
@@ -99,8 +100,8 @@ fun MobileMainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Search, null) },
-                    label = { Text("Search") },
+                    icon = { Icon(Icons.Default.History, null) },
+                    label = { Text("History") },
                     colors = navigationColors()
                 )
                 NavigationBarItem(
@@ -124,7 +125,7 @@ fun MobileMainScreen(
         Box(modifier = Modifier.fillMaxSize()) {
             when (selectedTab) {
                 0 -> HomeContent(viewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues)
-                1 -> SearchContent(paddingValues)
+                1 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onMediaClick)
                 2 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
                 3 -> ProfileContent(
                     sessionViewModel = sessionViewModel,
@@ -478,7 +479,7 @@ private fun SectionHeader(title: String, onViewAll: (() -> Unit)? = null) {
 }
 
 @Composable
-private fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
+internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
     val progress = if (item.runTimeTicks != null && item.runTimeTicks > 0) {
         item.playbackPositionTicks.toFloat() / item.runTimeTicks.toFloat()
     } else 0f

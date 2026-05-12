@@ -32,6 +32,7 @@ data class MediaItem(
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("SeasonId") val seasonId: String? = null,
     @SerialName("ParentIndexNumber") val parentIndexNumber: Int? = null,
+    @SerialName("SeriesName") val seriesName: String? = null,
     @SerialName("UserData") val userData: UserData? = null,
 ) {
     val isPlayed: Boolean get() = userData?.played ?: false

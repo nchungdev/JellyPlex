@@ -300,6 +300,20 @@ class JellyfinApi(
         }
     }
 
+    suspend fun getWatchHistory(userId: String): List<MediaItem> {
+        val response: ItemResponse = client.get {
+            apiUrl("Users", userId, "Items")
+            parameter("SortBy", "DatePlayed")
+            parameter("SortOrder", "Descending")
+            parameter("Filters", "IsPlayed")
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.EPISODE.value}")
+            parameter("Fields", "UserData,Overview,PrimaryImageAspectRatio,RunTimeTicks,SeriesName,ParentIndexNumber,IndexNumber")
+            parameter("Limit", 50)
+        }.body()
+        return response.items
+    }
+
     suspend fun getResumeItems(userId: String): List<MediaItem> {
         val response: ItemResponse = client.get {
             apiUrl("Users", userId, "Items", "Resume")

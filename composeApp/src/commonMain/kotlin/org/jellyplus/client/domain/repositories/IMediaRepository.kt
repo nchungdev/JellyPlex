@@ -19,6 +19,7 @@ interface IMediaRepository {
     suspend fun refreshHomeContent(userId: String): Result<Unit>
 
     // Other actions
+    suspend fun getWatchHistory(userId: String): List<MediaItem>
     suspend fun searchItems(query: String): List<MediaItem>
     suspend fun resolveStreamConfig(item: MediaItem, userId: String, deviceId: String): PlaybackConfig?
     suspend fun getItemDetails(itemId: String, userId: String): MediaItem
