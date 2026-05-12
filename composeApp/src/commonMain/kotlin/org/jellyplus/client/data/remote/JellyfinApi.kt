@@ -273,26 +273,50 @@ class JellyfinApi(
     }
 
     suspend fun reportPlaybackStart(itemId: String, playSessionId: String) {
-        client.post {
-            apiUrl("Sessions", "Playing")
-            contentType(ContentType.Application.Json)
-            setBody(PlaybackStartInfo(itemId = itemId, playSessionId = playSessionId))
+        val body = PlaybackStartInfo(itemId = itemId, playSessionId = playSessionId)
+        android.util.Log.d("JellyfinApi", "reportPlaybackStart → POST $baseUrl/Sessions/Playing | body=$body")
+        try {
+            val response = client.post {
+                apiUrl("Sessions", "Playing")
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+            android.util.Log.d("JellyfinApi", "reportPlaybackStart ← ${response.status}")
+        } catch (e: Exception) {
+            android.util.Log.e("JellyfinApi", "reportPlaybackStart FAILED: ${e.message}", e)
+            throw e
         }
     }
 
     suspend fun reportPlaybackProgress(itemId: String, playSessionId: String, positionTicks: Long, isPaused: Boolean, isMuted: Boolean = false) {
-        client.post {
-            apiUrl("Sessions", "Playing", "Progress")
-            contentType(ContentType.Application.Json)
-            setBody(PlaybackProgressInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks, isPaused = isPaused, isMuted = isMuted))
+        val body = PlaybackProgressInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks, isPaused = isPaused, isMuted = isMuted)
+        android.util.Log.d("JellyfinApi", "reportPlaybackProgress → POST $baseUrl/Sessions/Playing/Progress | body=$body")
+        try {
+            val response = client.post {
+                apiUrl("Sessions", "Playing", "Progress")
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+            android.util.Log.d("JellyfinApi", "reportPlaybackProgress ← ${response.status}")
+        } catch (e: Exception) {
+            android.util.Log.e("JellyfinApi", "reportPlaybackProgress FAILED: ${e.message}", e)
+            throw e
         }
     }
 
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) {
-        client.post {
-            apiUrl("Sessions", "Playing", "Stopped")
-            contentType(ContentType.Application.Json)
-            setBody(PlaybackStopInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks))
+        val body = PlaybackStopInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks)
+        android.util.Log.d("JellyfinApi", "reportPlaybackStopped → POST $baseUrl/Sessions/Playing/Stopped | body=$body")
+        try {
+            val response = client.post {
+                apiUrl("Sessions", "Playing", "Stopped")
+                contentType(ContentType.Application.Json)
+                setBody(body)
+            }
+            android.util.Log.d("JellyfinApi", "reportPlaybackStopped ← ${response.status}")
+        } catch (e: Exception) {
+            android.util.Log.e("JellyfinApi", "reportPlaybackStopped FAILED: ${e.message}", e)
+            throw e
         }
     }
 
