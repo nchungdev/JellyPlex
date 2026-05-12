@@ -172,6 +172,10 @@ fun MainScreen(
                     },
                     onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
                     onSeamlessNextEpisode = { goToNext() },
+                    autoNext = playerState.autoNext,
+                    onToggleAutoNext = { playerViewModel.toggleAutoNext() },
+                    playbackSpeed = playerState.playbackSpeed,
+                    onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
                 )
             }
         }

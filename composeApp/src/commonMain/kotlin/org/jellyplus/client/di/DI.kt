@@ -82,6 +82,10 @@ val domainModule = module {
     factoryOf(::SaveCustomMarkerUseCase)
     factoryOf(::GetAutoSkipUseCase)
     factoryOf(::SetAutoSkipUseCase)
+    factoryOf(::GetAutoNextUseCase)
+    factoryOf(::SetAutoNextUseCase)
+    factoryOf(::GetPlaybackSpeedUseCase)
+    factoryOf(::SetPlaybackSpeedUseCase)
     factoryOf(::DiscoverServersUseCase)
     factoryOf(::ValidateSessionUseCase)
 }

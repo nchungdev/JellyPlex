@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,13 +33,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
@@ -85,6 +95,9 @@ fun MobileVideoPlayer(
     onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
+    autoNext: Boolean = false,
+    onToggleAutoNext: () -> Unit = {},
+    onSpeedChange: (Float) -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -127,6 +140,23 @@ fun MobileVideoPlayer(
     var videoPreloaded by remember { mutableStateOf(false) }
     var isPrimaryActive by remember { mutableStateOf(true) }
 
+    // Dialog / menu state
+    var showCaptionDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
+
+    // Caption tracks
+    var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) } // index to label
+    var selectedTrackIndex by remember { mutableStateOf(-1) } // -1 = off
+
+    // Auto-next countdown
+    var autoNextCountdown by remember { mutableStateOf(0) } // seconds left; 0 = inactive
+
+    // Local playback speed (mirrors parent state, allows in-player change)
+    var currentSpeed by remember { mutableStateOf(playbackSpeed) }
+
+    val trackSelector = remember { DefaultTrackSelector(context) }
+
     val httpDataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0")
@@ -141,7 +171,10 @@ fun MobileVideoPlayer(
 
     fun buildExoPlayer(streamUrl: String, streamMimeType: String?, startPlaying: Boolean): ExoPlayer {
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory)
-        return ExoPlayer.Builder(context).setMediaSourceFactory(mediaSourceFactory).build().apply {
+        return ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .setTrackSelector(trackSelector)
+            .build().apply {
             val resolvedMimeType = when {
                 streamMimeType?.lowercase()?.contains("hls") == true -> MimeTypes.APPLICATION_M3U8
                 streamMimeType?.lowercase()?.contains("m3u8") == true -> MimeTypes.APPLICATION_M3U8
@@ -169,6 +202,25 @@ fun MobileVideoPlayer(
                     duration = this@apply.duration.coerceAtLeast(0L)
                     isBuffering = state == Player.STATE_BUFFERING
                 }
+                override fun onTracksChanged(tracks: Tracks) {
+                    val textTracks = mutableListOf<Pair<Int, String>>()
+                    var idx = 0
+                    for (group in tracks.groups) {
+                        if (group.type == C.TRACK_TYPE_TEXT) {
+                            for (i in 0 until group.length) {
+                                val format = group.getTrackFormat(i)
+                                val label = when {
+                                    !format.label.isNullOrBlank() -> format.label!!
+                                    !format.language.isNullOrBlank() -> format.language!!
+                                    else -> "Track ${idx + 1}"
+                                }
+                                textTracks += idx to label
+                                idx++
+                            }
+                        }
+                    }
+                    availableTextTracks = textTracks
+                }
             })
         }
     }
@@ -189,6 +241,33 @@ fun MobileVideoPlayer(
 
     LaunchedEffect(showSeekFeedback) {
         if (showSeekFeedback) { delay(800); showSeekFeedback = false }
+    }
+
+    // Sync speed when parent state changes
+    LaunchedEffect(playbackSpeed) {
+        currentSpeed = playbackSpeed
+        exoPlayer.setPlaybackSpeed(playbackSpeed)
+    }
+
+    // Auto-next countdown: starts at T-10s when autoNext=true and this is an episode
+    LaunchedEffect(autoNext, duration, item.id) {
+        if (!autoNext || item.type != MediaType.EPISODE || duration <= 0L) return@LaunchedEffect
+        while (true) {
+            val remaining = duration - exoPlayer.currentPosition
+            if (remaining in 1..10_000L && autoNextCountdown == 0) {
+                autoNextCountdown = (remaining / 1000).toInt().coerceAtLeast(1)
+            }
+            if (autoNextCountdown > 0) {
+                delay(1000)
+                autoNextCountdown = (autoNextCountdown - 1).coerceAtLeast(0)
+                if (autoNextCountdown == 0) {
+                    onNextEpisode()
+                    break
+                }
+            } else {
+                delay(500)
+            }
+        }
     }
 
     // Playback reporting
@@ -423,6 +502,43 @@ fun MobileVideoPlayer(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
 
+                    // Auto-next toggle (series/episodes only)
+                    if (item.type == MediaType.EPISODE) {
+                        IconButton(onClick = onToggleAutoNext) {
+                            Icon(
+                                if (autoNext) Icons.Default.SkipNext else Icons.Default.SkipNext,
+                                contentDescription = "Auto-next",
+                                tint = if (autoNext) Color(0xFF24D366) else Color.White.copy(alpha = 0.5f),
+                            )
+                        }
+                    }
+
+                    // More menu
+                    Box {
+                        IconButton(onClick = { showMoreMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
+                        }
+                        DropdownMenu(
+                            expanded = showMoreMenu,
+                            onDismissRequest = { showMoreMenu = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Auto-skip intro: ${if (autoSkipIntro) "ON" else "OFF"}") },
+                                onClick = { onToggleAutoSkip(); showMoreMenu = false },
+                            )
+                            if (item.type == MediaType.EPISODE) {
+                                DropdownMenuItem(
+                                    text = { Text("Auto-next: ${if (autoNext) "ON" else "OFF"}") },
+                                    onClick = { onToggleAutoNext(); showMoreMenu = false },
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Playback speed: ${currentSpeed}×") },
+                                onClick = { showSettingsDialog = true; showMoreMenu = false },
+                            )
+                        }
+                    }
+
                 }
 
                 // ── Center Controls ──────────────────────────────────────────
@@ -493,8 +609,13 @@ fun MobileVideoPlayer(
                         Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
                         Spacer(modifier = Modifier.weight(1f))
                         // Captions button
-                        IconButton(onClick = { /* Subtitles */ }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Subtitles, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        IconButton(onClick = { showCaptionDialog = true }, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Default.Subtitles,
+                                null,
+                                tint = if (selectedTrackIndex >= 0) Color(0xFF24D366) else Color.White,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
                         // Mark preview button — shown next to captions for episodes
                         if (item.type == MediaType.EPISODE) {
@@ -523,7 +644,7 @@ fun MobileVideoPlayer(
                             }
                         }
                         // Settings button
-                        IconButton(onClick = { /* Settings */ }, modifier = Modifier.size(36.dp)) {
+                        IconButton(onClick = { showSettingsDialog = true }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.Settings, null, tint = Color.White, modifier = Modifier.size(20.dp))
                         }
                     }
@@ -686,6 +807,116 @@ fun MobileVideoPlayer(
                 }
             }
         }
+        // Auto-next countdown overlay
+        if (autoNextCountdown > 0 && item.type == MediaType.EPISODE) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 100.dp)
+                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Next episode in ${autoNextCountdown}s", color = Color.White, fontSize = 14.sp)
+                    TextButton(onClick = { autoNextCountdown = 0 }) {
+                        Text("Cancel", color = Color(0xFF24D366), fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+
+    // Caption dialog
+    if (showCaptionDialog) {
+        AlertDialog(
+            onDismissRequest = { showCaptionDialog = false },
+            title = { Text("Subtitles") },
+            text = {
+                Column {
+                    // "Off" option
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedTrackIndex = -1
+                                trackSelector.setParameters(
+                                    trackSelector.buildUponParameters()
+                                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                                        .build()
+                                )
+                                showCaptionDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("Off")
+                        if (selectedTrackIndex == -1) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                    }
+                    if (availableTextTracks.isEmpty()) {
+                        Text("No subtitles available", color = Color.Gray, fontSize = 13.sp)
+                    } else {
+                        availableTextTracks.forEach { (idx, label) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedTrackIndex = idx
+                                        trackSelector.setParameters(
+                                            trackSelector.buildUponParameters()
+                                                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                                                .setPreferredTextLanguageAndRoleFlagsToCaptioningManagerSettings(context)
+                                                .build()
+                                        )
+                                        showCaptionDialog = false
+                                    }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(label)
+                                if (selectedTrackIndex == idx) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showCaptionDialog = false }) { Text("Close") } },
+        )
+    }
+
+    // Settings dialog (playback speed)
+    if (showSettingsDialog) {
+        val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+        AlertDialog(
+            onDismissRequest = { showSettingsDialog = false },
+            title = { Text("Playback Speed") },
+            text = {
+                Column {
+                    speedOptions.forEach { speed ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    currentSpeed = speed
+                                    exoPlayer.setPlaybackSpeed(speed)
+                                    onSpeedChange(speed)
+                                    showSettingsDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("${speed}×")
+                            if (currentSpeed == speed) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { showSettingsDialog = false }) { Text("Close") } },
+        )
     }
 }
 

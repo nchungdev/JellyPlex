@@ -10,7 +10,9 @@ import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
+import org.jellyplus.client.domain.usecases.GetAutoNextUseCase
 import org.jellyplus.client.domain.usecases.GetAutoSkipUseCase
+import org.jellyplus.client.domain.usecases.GetPlaybackSpeedUseCase
 import org.jellyplus.client.domain.usecases.GetUserIdUseCase
 import org.jellyplus.client.domain.usecases.MarkItemAsPlayedUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackProgressUseCase
@@ -18,7 +20,9 @@ import org.jellyplus.client.domain.usecases.ReportPlaybackStartUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
 import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
 import org.jellyplus.client.domain.usecases.SaveCustomMarkerUseCase
+import org.jellyplus.client.domain.usecases.SetAutoNextUseCase
 import org.jellyplus.client.domain.usecases.SetAutoSkipUseCase
+import org.jellyplus.client.domain.usecases.SetPlaybackSpeedUseCase
 
 data class PlayerState(
     val url: String? = null,
@@ -35,6 +39,8 @@ data class PlayerState(
     val isPreloadingNextMeta: Boolean = false,
     // Player preferences
     val autoSkipIntro: Boolean = false,
+    val autoNext: Boolean = false,
+    val playbackSpeed: Float = 1.0f,
     // Custom markers in RAM: list of (startMs, endMs)
     val customMarkers: List<Pair<Long, Long>> = emptyList(),
 )
@@ -50,13 +56,17 @@ class PlayerViewModel(
     private val saveCustomMarkerUseCase: SaveCustomMarkerUseCase,
     private val getAutoSkipUseCase: GetAutoSkipUseCase,
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
+    private val getAutoNextUseCase: GetAutoNextUseCase,
+    private val setAutoNextUseCase: SetAutoNextUseCase,
+    private val getPlaybackSpeedUseCase: GetPlaybackSpeedUseCase,
+    private val setPlaybackSpeedUseCase: SetPlaybackSpeedUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
     init {
-        loadAutoSkipPreference()
+        loadPreferences()
     }
 
     fun loadStreamUrl(item: MediaItem) {
@@ -138,6 +148,17 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoSkipIntro = next)
     }
 
+    fun toggleAutoNext() {
+        val next = !_state.value.autoNext
+        setAutoNextUseCase(next)
+        _state.value = _state.value.copy(autoNext = next)
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        setPlaybackSpeedUseCase(speed)
+        _state.value = _state.value.copy(playbackSpeed = speed)
+    }
+
     fun reportStart(itemId: String, playSessionId: String) {
         viewModelScope.launch(dispatchers.io) {
             try { reportPlaybackStartUseCase(itemId, playSessionId) } catch (_: Exception) {}
@@ -164,7 +185,11 @@ class PlayerViewModel(
         }
     }
 
-    private fun loadAutoSkipPreference() {
-        _state.value = _state.value.copy(autoSkipIntro = getAutoSkipUseCase())
+    private fun loadPreferences() {
+        _state.value = _state.value.copy(
+            autoSkipIntro = getAutoSkipUseCase(),
+            autoNext = getAutoNextUseCase(),
+            playbackSpeed = getPlaybackSpeedUseCase(),
+        )
     }
 }

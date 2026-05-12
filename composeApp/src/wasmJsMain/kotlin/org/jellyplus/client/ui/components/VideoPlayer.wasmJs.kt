@@ -47,6 +47,8 @@ actual fun VideoPlayerImpl(
     onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
+    autoNext: Boolean,
+    onToggleAutoNext: () -> Unit,
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }

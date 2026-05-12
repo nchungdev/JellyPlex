@@ -86,6 +86,8 @@ fun DesktopVideoPlayer(
     onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
+    autoNext: Boolean = false,
+    onToggleAutoNext: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val playFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
