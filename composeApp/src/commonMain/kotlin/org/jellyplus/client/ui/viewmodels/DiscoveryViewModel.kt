@@ -2,6 +2,7 @@ package org.jellyplus.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,10 +41,6 @@ class DiscoveryViewModel(
     val state: StateFlow<DiscoveryState> = _state.asStateFlow()
     private var scanJob: Job? = null
 
-    init {
-        scan()
-    }
-
     fun handleIntent(intent: DiscoveryIntent) {
         when (intent) {
             is DiscoveryIntent.Scan -> scan()
@@ -65,8 +62,10 @@ class DiscoveryViewModel(
                 } else {
                     _state.value = _state.value.copy(error = "Could not connect to server: $url")
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message ?: "Unknown error during validation")
+                _state.value = _state.value.copy(error = "Could not connect to server: $url")
             } finally {
                 _state.value = _state.value.copy(isValidatingServer = false)
             }
@@ -83,8 +82,10 @@ class DiscoveryViewModel(
                     discoverServersUseCase().collect { servers ->
                         _state.value = _state.value.copy(discoveredServers = servers)
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    _state.value = _state.value.copy(error = e.message)
+                    _state.value = _state.value.copy(error = "Could not scan network")
                 } finally {
                     // Ensure a minimum scanning time of 1500ms to prevent UI flicker
                     val currentTime: Long = Clock.System.now().toEpochMilliseconds()

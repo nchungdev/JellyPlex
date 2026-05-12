@@ -7,7 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -129,68 +129,47 @@ internal fun BoxScope.MobilePlayerOverlays(
         exit = fadeOut(),
         modifier = Modifier.fillMaxSize(),
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val boxSize = 80.dp
-            val xOffset = if (seekFeedbackIsRight) maxWidth * 0.75f - boxSize / 2 else maxWidth * 0.25f - boxSize / 2
-            Box(
-                modifier = Modifier
-                    .size(boxSize)
-                    .offset(x = xOffset, y = maxHeight / 2 - boxSize / 2)
-                    .background(Color.White.copy(alpha = 0.15f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(seekFeedback + "s", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Row(Modifier.fillMaxWidth()) {
+                if (seekFeedbackIsRight) Spacer(Modifier.weight(0.5f))
+                Box(Modifier.weight(0.5f), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .background(Color.White.copy(alpha = 0.15f), CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(seekFeedback + "s", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (!seekFeedbackIsRight) Spacer(Modifier.weight(0.5f))
             }
         }
     }
 
-    // Brightness / Volume gesture indicator
+    // Brightness gesture indicator (Volume uses system UI)
     AnimatedVisibility(
-        visible = showGestureIndicator,
+        visible = showGestureIndicator && gestureType == "brightness",
         enter = fadeIn(),
         exit = fadeOut(),
         modifier = Modifier.align(Alignment.Center),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 64.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 64.dp).align(Alignment.CenterStart)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.alpha(if (gestureType == "brightness") 1f else 0f),
+            Box(
+                modifier = Modifier.width(6.dp).height(120.dp)
+                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
             ) {
                 Box(
-                    modifier = Modifier.width(6.dp).height(120.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(brightness)
-                            .align(Alignment.BottomCenter)
-                            .background(Color.White, RoundedCornerShape(3.dp)),
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Icon(Icons.Default.WbSunny, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(brightness)
+                        .align(Alignment.BottomCenter)
+                        .background(Color.White, RoundedCornerShape(3.dp)),
+                )
             }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.alpha(if (gestureType == "volume") 1f else 0f),
-            ) {
-                Box(
-                    modifier = Modifier.width(6.dp).height(120.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(volume)
-                            .align(Alignment.BottomCenter)
-                            .background(Color.White, RoundedCornerShape(3.dp)),
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Icon(Icons.Default.WbSunny, null, tint = Color.White, modifier = Modifier.size(24.dp))
         }
     }
 

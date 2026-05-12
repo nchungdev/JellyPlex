@@ -17,9 +17,27 @@ import org.jellyplus.client.domain.discovery.DiscoveredServer
 import org.jellyplus.client.domain.discovery.IServerDiscovery
 import org.jellyplus.client.domain.discovery.JellyfinDiscoveryResponse
 import java.net.NetworkInterface
+import java.net.URI
 
 actual class PlatformServerDiscovery actual constructor() : IServerDiscovery {
     private val json = Json { ignoreUnknownKeys = true }
+
+    private fun resolveAddress(reportedAddress: String, senderAddress: io.ktor.network.sockets.SocketAddress): String {
+        return try {
+            val uri = URI(reportedAddress)
+            val host = uri.host ?: return reportedAddress
+            val isLoopback = host == "::1" || host == "0:0:0:0:0:0:0:1" || host == "127.0.0.1" || host.equals("localhost", ignoreCase = true)
+            if (isLoopback) {
+                val senderHost = (senderAddress as? InetSocketAddress)?.hostname
+                if (senderHost != null) {
+                    val port = if (uri.port > 0) ":${uri.port}" else ""
+                    "${uri.scheme}://$senderHost$port"
+                } else reportedAddress
+            } else reportedAddress
+        } catch (e: Exception) {
+            reportedAddress
+        }
+    }
 
     private fun getBroadcastAddresses(): List<InetSocketAddress> {
         val addresses = mutableListOf<InetSocketAddress>()
@@ -89,11 +107,12 @@ actual class PlatformServerDiscovery actual constructor() : IServerDiscovery {
                         val response =
                             json.decodeFromString<JellyfinDiscoveryResponse>(responseText)
                         if (response.Address != null) {
+                            val resolvedAddress = resolveAddress(response.Address, datagram.address)
                             val discovered =
                                 DiscoveredServer(
                                     name = response.Name ?: "Jellyfin",
-                                    address = response.Address,
-                                    id = response.Id ?: response.Address,
+                                    address = resolvedAddress,
+                                    id = response.Id ?: resolvedAddress,
                                 )
                             if (servers.add(discovered)) {
                                 println("DEBUG: Emitting server: ${discovered.name}")

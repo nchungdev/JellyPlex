@@ -373,7 +373,7 @@ fun MobileVideoPlayer(
                 .fillMaxSize()
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
-                        onDragStart = { showGestureIndicator = true },
+                        onDragStart = { /* We determine type in onVerticalDrag */ },
                         onDragEnd = { /* Auto-hide by LaunchedEffect */ },
                         onVerticalDrag = { change, dragAmount ->
                             change.consume()
@@ -387,6 +387,7 @@ fun MobileVideoPlayer(
                                     params.screenBrightness = brightness
                                     a.window.attributes = params
                                 }
+                                showGestureIndicator = true
                             } else {
                                 gestureType = "volume"
                                 val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -397,8 +398,9 @@ fun MobileVideoPlayer(
                                     (volume * maxVol).roundToInt(),
                                     AudioManager.FLAG_SHOW_UI
                                 )
+                                // For volume, we let system UI handle it, so we ensure our indicator is hidden
+                                showGestureIndicator = false
                             }
-                            showGestureIndicator = true
                         }
                     )
                 }

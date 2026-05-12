@@ -49,10 +49,12 @@ fun MobileServerSelectionScreen(
 ) {
     var manualUrl by remember { mutableStateOf("") }
     var isDropdownExpanded by remember { mutableStateOf(false) }
+    var selectedServerName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.discoveredServers, state.isScanning) {
         if (!state.isScanning && state.discoveredServers.size == 1) {
             manualUrl = state.discoveredServers.first().address
+            selectedServerName = state.discoveredServers.first().name
         }
         if (!state.isScanning && state.discoveredServers.size > 1) {
             isDropdownExpanded = true
@@ -86,7 +88,7 @@ fun MobileServerSelectionScreen(
         OutlinedTextField(
             value = if (state.isScanning) "Scanning..." else manualUrl,
             onValueChange = { manualUrl = it },
-            label = { Text("Server Address") },
+            label = { Text(selectedServerName ?: "Server Address") },
             enabled = !state.isScanning,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -126,7 +128,7 @@ fun MobileServerSelectionScreen(
         Button(
             onClick = { onManualInput(manualUrl) },
             enabled = !state.isScanning && !state.isValidatingServer && manualUrl.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth().height(60.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFFFB300),
@@ -160,7 +162,11 @@ fun MobileServerSelectionScreen(
             Spacer(modifier = Modifier.height(16.dp))
             state.discoveredServers.forEach { server ->
                 Surface(
-                    onClick = { onServerSelected(server) },
+                    onClick = {
+                        manualUrl = server.address
+                        selectedServerName = server.name
+                        onServerSelected(server)
+                    },
                     modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                     color = Color.White.copy(alpha = 0.05f),
                     shape = RoundedCornerShape(12.dp),

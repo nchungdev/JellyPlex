@@ -37,12 +37,6 @@ actual fun VideoPlayerImpl(
     onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
-    autoNext: Boolean,
-    onToggleAutoNext: () -> Unit,
-    autoSkipOutro: Boolean,
-    onToggleAutoSkipOutro: () -> Unit,
-    autoSkipPreview: Boolean,
-    onToggleAutoSkipPreview: () -> Unit,
 ) {
     if (uiType == UiType.Desktop) {
         org.jellyplus.client.ui.components.player.desktop.DesktopVideoPlayer(
@@ -62,20 +56,6 @@ actual fun VideoPlayerImpl(
             showNextPrev = showNextPrev,
             onNextEpisode = onNextEpisode,
             onPrevEpisode = onPrevEpisode,
-            nextEpisodeConfig = nextEpisodeConfig,
-            autoSkipIntro = autoSkipIntro,
-            customMarkers = customMarkers,
-            onPreloadNextMeta = onPreloadNextMeta,
-            onMarkCurrentAsPlayed = onMarkCurrentAsPlayed,
-            onSaveCustomMarker = onSaveCustomMarker,
-            onToggleAutoSkip = onToggleAutoSkip,
-            onSeamlessNextEpisode = onSeamlessNextEpisode,
-            autoNext = autoNext,
-            onToggleAutoNext = onToggleAutoNext,
-            autoSkipOutro = autoSkipOutro,
-            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
-            autoSkipPreview = autoSkipPreview,
-            onToggleAutoSkipPreview = onToggleAutoSkipPreview,
         )
     } else {
         org.jellyplus.client.ui.components.player.mobile.MobileVideoPlayer(
@@ -103,13 +83,6 @@ actual fun VideoPlayerImpl(
             onSaveCustomMarker = onSaveCustomMarker,
             onToggleAutoSkip = onToggleAutoSkip,
             onSeamlessNextEpisode = onSeamlessNextEpisode,
-            autoNext = autoNext,
-            onToggleAutoNext = onToggleAutoNext,
-            onSpeedChange = onSpeedChange,
-            autoSkipOutro = autoSkipOutro,
-            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
-            autoSkipPreview = autoSkipPreview,
-            onToggleAutoSkipPreview = onToggleAutoSkipPreview,
         )
     }
 }
