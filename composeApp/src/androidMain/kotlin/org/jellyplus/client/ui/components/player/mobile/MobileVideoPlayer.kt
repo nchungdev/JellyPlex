@@ -408,10 +408,12 @@ fun MobileVideoPlayer(
                 .pointerInput(isControlsVisible, playbackSpeed) {
                     if (!isControlsVisible) awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
-                        val up = withTimeoutOrNull(2000L) { // Hold for more than 2s
-                            waitForUpOrCancellation()
-                        }
-                        if (up == null) {
+                        val startTime = System.currentTimeMillis()
+                        val up = withTimeoutOrNull(2000L) { waitForUpOrCancellation() }
+                        val elapsed = System.currentTimeMillis() - startTime
+                        // up == null có thể do timeout (long press thực sự) hoặc event bị consumed bởi handler khác.
+                        // Chỉ kích hoạt speedup khi thực sự giữ đủ 2s.
+                        if (up == null && elapsed >= 2000L) {
                             isLongPressing = true
                             currentPlayer.setPlaybackSpeed(2f)
                             try {

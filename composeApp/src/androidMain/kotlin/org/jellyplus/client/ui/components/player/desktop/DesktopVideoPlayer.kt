@@ -185,8 +185,20 @@ fun DesktopVideoPlayer(
             .onKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown) {
                     if (!isControlsVisible) when (keyEvent.key) {
-                        Key.DirectionLeft -> { triggerSeek(-5); if (keyEvent.nativeKeyEvent.repeatCount > 2) exoPlayer.setPlaybackSpeed(2f); true }
-                        Key.DirectionRight -> { triggerSeek(10); if (keyEvent.nativeKeyEvent.repeatCount > 2) exoPlayer.setPlaybackSpeed(2f); true }
+                        Key.DirectionLeft -> {
+                            if (keyEvent.nativeKeyEvent.repeatCount > 2) {
+                                seekIndicatorJob?.cancel(); showSeekIndicator = false; seekValue = 0
+                                exoPlayer.setPlaybackSpeed(2f)
+                            } else triggerSeek(-5)
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            if (keyEvent.nativeKeyEvent.repeatCount > 2) {
+                                seekIndicatorJob?.cancel(); showSeekIndicator = false; seekValue = 0
+                                exoPlayer.setPlaybackSpeed(2f)
+                            } else triggerSeek(10)
+                            true
+                        }
                         Key.DirectionUp, Key.DirectionDown, Key.Enter, Key.DirectionCenter -> { isControlsVisible = true; true }
                         else -> false
                     } else when (keyEvent.key) {
