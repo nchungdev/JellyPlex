@@ -77,7 +77,7 @@ fun MobileMovieDetailScreen(
             .background(Color(0xFF0F1113))
             .verticalScroll(rememberScrollState())
     ) {
-        // ── Backdrop ────────────────────────────────────────────────────────
+        // ── Backdrop + overlaid info ─────────────────────────────────────────
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
             AsyncImage(
                 model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
@@ -85,11 +85,11 @@ fun MobileMovieDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Top gradient — darkens status bar area
+            // Top gradient — status bar readability
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.35f)
+                    .fillMaxHeight(0.3f)
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.verticalGradient(
@@ -97,11 +97,11 @@ fun MobileMovieDetailScreen(
                         )
                     )
             )
-            // Bottom gradient — fades into background
+            // Bottom scrim — behind info overlay
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(0.45f)
+                    .fillMaxHeight(0.65f)
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
@@ -109,7 +109,7 @@ fun MobileMovieDetailScreen(
                         )
                     )
             )
-            // X close button top-right
+            // X close button
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
@@ -126,87 +126,75 @@ fun MobileMovieDetailScreen(
                     Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
-        }
-
-        // ── Title ───────────────────────────────────────────────────────────
-        Text(
-            text = fullItem.title,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 28.sp,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
-        )
-
-        // ── Metadata row: year • genre • HD ─────────────────────────────────
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            fullItem.year?.let {
-                Text("$it", color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
-                MetaDot()
-            }
-            fullItem.genres?.firstOrNull()?.let {
-                Text(it, color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
-                MetaDot()
-            }
-            Text(
-                "HD",
-                color = Color.White.copy(alpha = 0.75f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+            // Info overlay at bottom
+            Column(
                 modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(3.dp))
-                    .padding(horizontal = 5.dp, vertical = 2.dp)
-            )
-        }
-
-        // ── Rating ──────────────────────────────────────────────────────────
-        fullItem.rating?.let { rating ->
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
-                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
                 Text(
-                    "${(rating * 10).toInt() / 10f} / 10",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 13.sp
+                    text = fullItem.title,
+                    color = Color.White,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 28.sp
                 )
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    fullItem.year?.let {
+                        Text("$it", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                        MetaDot()
+                    }
+                    fullItem.genres?.firstOrNull()?.let {
+                        Text(it, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                        MetaDot()
+                    }
+                    Text(
+                        "HD",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    )
+                    fullItem.rating?.let { rating ->
+                        MetaDot()
+                        Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(13.dp))
+                        Text(
+                            "${(rating * 10).toInt() / 10f}",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                    DetailActionButton(
+                        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        label = "My List",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                        onClick = { isFavorite = !isFavorite }
+                    )
+                    DetailActionButton(Icons.Default.Share, "Share")
+                    DetailActionButton(Icons.Default.Download, "Download")
+                }
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = { onPlay(fullItem) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
-        }
-
-        // ── Action icons ────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp)
-        ) {
-            DetailActionButton(
-                icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                label = "My List",
-                tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
-                onClick = { isFavorite = !isFavorite }
-            )
-            DetailActionButton(Icons.Default.Share, "Share")
-            DetailActionButton(Icons.Default.Download, "Download")
-        }
-
-        // ── Play button ─────────────────────────────────────────────────────
-        Button(
-            onClick = { onPlay(fullItem) },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .height(52.dp)
-        ) {
-            Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
         // ── Overview ────────────────────────────────────────────────────────

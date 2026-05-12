@@ -78,7 +78,7 @@ fun MobileSeriesDetailScreen(
             .fillMaxSize()
             .background(Color(0xFF0F1113))
     ) {
-        // ── Backdrop ────────────────────────────────────────────────────────
+        // ── Backdrop + overlaid info ─────────────────────────────────────────
         item {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
                 AsyncImage(
@@ -87,10 +87,11 @@ fun MobileSeriesDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+                // Top gradient — status bar readability
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.35f)
+                        .fillMaxHeight(0.3f)
                         .align(Alignment.TopCenter)
                         .background(
                             Brush.verticalGradient(
@@ -98,10 +99,11 @@ fun MobileSeriesDetailScreen(
                             )
                         )
                 )
+                // Bottom scrim — behind info overlay
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .fillMaxHeight(0.45f)
+                        .fillMaxHeight(0.65f)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
@@ -109,6 +111,7 @@ fun MobileSeriesDetailScreen(
                             )
                         )
                 )
+                // X close button
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
@@ -125,109 +128,80 @@ fun MobileSeriesDetailScreen(
                         Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
-            }
-        }
-
-        // ── Title ───────────────────────────────────────────────────────────
-        item {
-            Text(
-                text = item.title,
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.ExtraBold,
-                lineHeight = 28.sp,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
-            )
-        }
-
-        // ── Metadata row ─────────────────────────────────────────────────────
-        item {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (state.seasons.isNotEmpty()) {
-                    Text(
-                        "${state.seasons.size} Season${if (state.seasons.size > 1) "s" else ""}",
-                        color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 13.sp
-                    )
-                    Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
-                }
-                item.year?.let {
-                    Text("$it", color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
-                    Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
-                }
-                Text(
-                    "HD",
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                // Info overlay at bottom
+                Column(
                     modifier = Modifier
-                        .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(3.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                )
-            }
-        }
-
-        // ── Rating ──────────────────────────────────────────────────────────
-        item.rating?.let { rating ->
-            item {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
                 ) {
-                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
                     Text(
-                        "${(rating * 10).toInt() / 10f} / 10",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 13.sp
+                        text = item.title,
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 28.sp
                     )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (state.seasons.isNotEmpty()) {
+                            Text(
+                                "${state.seasons.size} Season${if (state.seasons.size > 1) "s" else ""}",
+                                color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp
+                            )
+                            Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+                        }
+                        item.year?.let {
+                            Text("$it", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                            Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+                        }
+                        Text(
+                            "HD",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(3.dp))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        )
+                        item.rating?.let { rating ->
+                            Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(13.dp))
+                            Text("${(rating * 10).toInt() / 10f}", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                        DetailActionButton(
+                            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            label = "My List",
+                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                            onClick = { isFavorite = !isFavorite }
+                        )
+                        DetailActionButton(Icons.Default.Share, "Share")
+                        DetailActionButton(Icons.Default.Download, "Download")
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            val firstEpisode = state.episodes.firstOrNull()
+                            if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Play ${state.selectedSeason?.title ?: "Season 1"}",
+                            color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp
+                        )
+                    }
                 }
-            }
-        }
-
-        // ── Action icons ────────────────────────────────────────────────────
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(28.dp)
-            ) {
-                DetailActionButton(
-                    icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    label = "My List",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
-                    onClick = { isFavorite = !isFavorite }
-                )
-                DetailActionButton(Icons.Default.Share, "Share")
-                DetailActionButton(Icons.Default.Download, "Download")
-            }
-        }
-
-        // ── Play button ─────────────────────────────────────────────────────
-        item {
-            Button(
-                onClick = {
-                    val firstEpisode = state.episodes.firstOrNull()
-                    if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .height(52.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    "Play ${state.selectedSeason?.title ?: "Season 1"}",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
             }
         }
 
@@ -259,32 +233,21 @@ fun MobileSeriesDetailScreen(
         // ── Season tabs — sticky header ──────────────────────────────────────
         if (state.seasons.isNotEmpty()) {
             stickyHeader {
-                Column(
+                LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF0F1113))
-                        .padding(top = 20.dp, bottom = 8.dp)
+                        .padding(vertical = 12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(
-                        "Episodes",
-                        color = Color.White,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 16.dp, bottom = 10.dp)
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(state.seasons) { season ->
-                            MobileSeasonTab(
-                                season = season,
-                                isSelected = season.id == state.selectedSeason?.id,
-                                onClick = { viewModel.selectSeason(season) }
-                            )
-                        }
+                    items(state.seasons) { season ->
+                        MobileSeasonTab(
+                            season = season,
+                            isSelected = season.id == state.selectedSeason?.id,
+                            onClick = { viewModel.selectSeason(season) }
+                        )
                     }
-                    Spacer(Modifier.height(4.dp))
                 }
             }
         }
