@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -370,11 +371,15 @@ fun MobileVideoPlayer(
             modifier = Modifier.fillMaxSize().alpha(if (isPrimaryActive) 1f else 0f),
         )
 
-        // x2 speed indicator
-        if (isLongPressing) {
+        // x2 speed indicator — fades in on hold, fades out on release
+        AnimatedVisibility(
+            visible = isLongPressing,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center),
+        ) {
             Box(
                 modifier = Modifier
-                    .align(Alignment.Center)
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 20.dp, vertical = 10.dp),
             ) {
@@ -418,12 +423,12 @@ fun MobileVideoPlayer(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
 
-                    // Auto-skip toggle
+                    // Auto-skip toggle — uses Timer icon to avoid confusion with next-episode button
                     IconButton(onClick = onToggleAutoSkip) {
                         Icon(
-                            if (autoSkipIntro) Icons.Default.FastForward else Icons.Default.SkipNext,
-                            contentDescription = "Auto-skip",
-                            tint = if (autoSkipIntro) Color(0xFF24D366) else Color.White,
+                            if (autoSkipIntro) Icons.Default.Timer else Icons.Default.TimerOff,
+                            contentDescription = "Auto-skip intro",
+                            tint = if (autoSkipIntro) Color(0xFF24D366) else Color.White.copy(alpha = 0.6f),
                         )
                     }
                 }
@@ -484,78 +489,23 @@ fun MobileVideoPlayer(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(start = 24.dp, end = 24.dp, bottom = 32.dp),
+                        .padding(start = 16.dp, end = 8.dp, bottom = 32.dp),
                 ) {
-                    // Seekbar row: [time] [track] [captions] [settings]
+                    // Info row: [time]  [spacer]  [captions] [mark?] [settings]
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Time text
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(formatTime(currentPosition), color = Color.White, fontSize = 12.sp)
-                            Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-                            Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Seekbar
-                        Box(
-                            modifier = Modifier.weight(1f).height(20.dp),
-                            contentAlignment = Alignment.CenterStart,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
-                            )
-                            val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(progress)
-                                    .height(4.dp)
-                                    .background(Color(0xFF24D366), RoundedCornerShape(2.dp)),
-                            )
-                            if (duration > 0) {
-                                Slider(
-                                    value = currentPosition.toFloat(),
-                                    onValueChange = {
-                                        currentPosition = it.toLong()
-                                        exoPlayer.seekTo(it.toLong())
-                                        stablePlaybackMs = 0L
-                                    },
-                                    valueRange = 0f..duration.toFloat(),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = Color.White,
-                                        activeTrackColor = Color.Transparent,
-                                        inactiveTrackColor = Color.Transparent,
-                                    ),
-                                    thumb = {
-                                        Box(modifier = Modifier.size(14.dp).background(Color.White, CircleShape))
-                                    },
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
+                        Text(formatTime(currentPosition), color = Color.White, fontSize = 12.sp)
+                        Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                        Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                        Spacer(modifier = Modifier.weight(1f))
                         // Captions button
                         IconButton(onClick = { /* Subtitles */ }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Subtitles, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                            Icon(Icons.Default.Subtitles, null, tint = Color.White, modifier = Modifier.size(20.dp))
                         }
-                        // Settings button
-                        IconButton(onClick = { /* Settings */ }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Settings, null, tint = Color.White, modifier = Modifier.size(22.dp))
-                        }
-                    }
-
-                    // Episode-only: marker button row
-                    if (item.type == MediaType.EPISODE) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Mark preview button — shown next to captions for episodes
+                        if (item.type == MediaType.EPISODE) {
                             IconButton(
                                 onClick = {
                                     when (markerState) {
@@ -570,13 +520,59 @@ fun MobileVideoPlayer(
                                         }
                                     }
                                 },
+                                modifier = Modifier.size(36.dp),
                             ) {
                                 Icon(
                                     Icons.Default.BookmarkAdd,
                                     contentDescription = "Mark preview",
                                     tint = if (markerState == MarkerState.MARKING) Color.Red else Color.White,
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
+                        }
+                        // Settings button
+                        IconButton(onClick = { /* Settings */ }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Settings, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
+                    }
+
+                    // Seekbar row — full width
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(20.dp).padding(end = 8.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
+                        )
+                        val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress)
+                                .height(4.dp)
+                                .background(Color(0xFF24D366), RoundedCornerShape(2.dp)),
+                        )
+                        if (duration > 0) {
+                            Slider(
+                                value = currentPosition.toFloat(),
+                                onValueChange = {
+                                    currentPosition = it.toLong()
+                                    exoPlayer.seekTo(it.toLong())
+                                    stablePlaybackMs = 0L
+                                },
+                                valueRange = 0f..duration.toFloat(),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color.White,
+                                    activeTrackColor = Color.Transparent,
+                                    inactiveTrackColor = Color.Transparent,
+                                ),
+                                thumb = {
+                                    Box(modifier = Modifier.size(14.dp).background(Color.White, CircleShape))
+                                },
+                            )
                         }
                     }
                 }
@@ -617,27 +613,31 @@ fun MobileVideoPlayer(
             }
         }
 
-        // Double-tap seek feedback overlay (+10 / -5)
+        // Double-tap seek feedback overlay — left at 1/4 width, right at 3/4 width
         AnimatedVisibility(
             visible = showSeekFeedback,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier
-                .align(if (seekFeedbackIsRight) Alignment.CenterEnd else Alignment.CenterStart)
-                .padding(horizontal = 32.dp),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 80.dp, height = 80.dp)
-                    .background(Color.White.copy(alpha = 0.15f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = seekFeedback + "s",
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                )
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val boxSize = 80.dp
+                val xOffset = if (seekFeedbackIsRight) maxWidth * 0.75f - boxSize / 2 else maxWidth * 0.25f - boxSize / 2
+                val yOffset = maxHeight / 2 - boxSize / 2
+                Box(
+                    modifier = Modifier
+                        .size(boxSize)
+                        .offset(x = xOffset, y = yOffset)
+                        .background(Color.White.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = seekFeedback + "s",
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
 
