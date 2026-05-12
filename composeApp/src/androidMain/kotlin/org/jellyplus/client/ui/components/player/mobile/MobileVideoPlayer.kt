@@ -371,58 +371,63 @@ fun MobileVideoPlayer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { /* We determine type in onVerticalDrag */ },
-                        onDragEnd = { /* Auto-hide by LaunchedEffect */ },
-                        onVerticalDrag = { change, dragAmount ->
-                            change.consume()
-                            val isLeft = change.position.x < size.width / 2
-                            if (isLeft) {
-                                gestureType = "brightness"
-                                val delta = (dragAmount / size.height) * -1f
-                                brightness = (brightness + delta).coerceIn(0f, 1f)
-                                activity?.let { a ->
-                                    val params = a.window.attributes
-                                    params.screenBrightness = brightness
-                                    a.window.attributes = params
+                .pointerInput(isControlsVisible) {
+                    if (!isControlsVisible) {
+                        detectVerticalDragGestures(
+                            onDragStart = { /* Determined in onVerticalDrag */ },
+                            onDragEnd = { /* Auto-hide by LaunchedEffect */ },
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                val isLeft = change.position.x < size.width / 2
+                                if (isLeft) {
+                                    gestureType = "brightness"
+                                    val delta = (dragAmount / size.height) * -1f
+                                    brightness = (brightness + delta).coerceIn(0f, 1f)
+                                    activity?.let { a ->
+                                        val params = a.window.attributes
+                                        params.screenBrightness = brightness
+                                        a.window.attributes = params
+                                    }
+                                    showGestureIndicator = true
+                                } else {
+                                    gestureType = "volume"
+                                    val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                    val delta = (dragAmount / size.height) * -2f
+                                    volume = (volume + delta).coerceIn(0f, 1f)
+                                    audioManager.setStreamVolume(
+                                        AudioManager.STREAM_MUSIC,
+                                        (volume * maxVol).roundToInt(),
+                                        AudioManager.FLAG_SHOW_UI
+                                    )
+                                    showGestureIndicator = false
                                 }
-                                showGestureIndicator = true
-                            } else {
-                                gestureType = "volume"
-                                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                                val delta = (dragAmount / size.height) * -2f
-                                volume = (volume + delta).coerceIn(0f, 1f)
-                                audioManager.setStreamVolume(
-                                    AudioManager.STREAM_MUSIC,
-                                    (volume * maxVol).roundToInt(),
-                                    AudioManager.FLAG_SHOW_UI
-                                )
-                                // For volume, we let system UI handle it, so we ensure our indicator is hidden
-                                showGestureIndicator = false
                             }
-                        }
-                    )
+                        )
+                    }
                 }
                 .pointerInput(isControlsVisible, playbackSpeed) {
                     if (!isControlsVisible) awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
-                        val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation() }
+                        val up = withTimeoutOrNull(2000L) { // Hold for more than 2s
+                            waitForUpOrCancellation()
+                        }
                         if (up == null) {
                             isLongPressing = true
                             currentPlayer.setPlaybackSpeed(2f)
-                            try { waitForUpOrCancellation() } finally {
+                            try {
+                                waitForUpOrCancellation()
+                            } finally {
                                 currentPlayer.setPlaybackSpeed(playbackSpeed)
                                 isLongPressing = false
                             }
                         }
                     }
                 }
-                .pointerInput(Unit) {
+                .pointerInput(isControlsVisible) {
                     detectTapGestures(
                         onTap = { if (!isLongPressing) isControlsVisible = !isControlsVisible },
                         onDoubleTap = { offset ->
-                            if (!isLongPressing) {
+                            if (!isLongPressing && !isControlsVisible) {
                                 val isRight = offset.x >= size.width / 2
                                 if (isRight) {
                                     currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration))

@@ -1,9 +1,11 @@
 package org.jellyplus.client.ui.components.player.mobile
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,8 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.models.MediaType
@@ -60,7 +63,7 @@ internal fun MobilePlayerBottomControls(
             .fillMaxWidth()
             .padding(start = 32.dp, end = 32.dp, bottom = 32.dp),
     ) {
-        // Info row: time | spacer | captions | mark (episodes) | audio
+        // Info row: time | spacer | captions | audio | mark (episodes)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -68,7 +71,7 @@ internal fun MobilePlayerBottomControls(
             Text(formatPlayerTime(displayPosition), color = Color.White, fontSize = 12.sp)
             Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
             Text(formatPlayerTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            androidx.compose.foundation.layout.Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
             IconButton(onClick = onShowCaptionDialog, modifier = Modifier.size(36.dp)) {
                 Icon(
@@ -110,41 +113,8 @@ internal fun MobilePlayerBottomControls(
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
             )
 
-            // Marker highlight (if marking)
-            if (markerState == MarkerState.MARKING && duration > 0) {
-                val startPos = (markerStartMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-                val currentPos = (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-                val leftFraction = minOf(startPos, currentPos)
-                val widthFraction = (maxOf(startPos, currentPos) - leftFraction).coerceIn(0f, 1f)
-
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    // Spacer to push the highlight to the correct starting position
-                    androidx.compose.foundation.layout.Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth(leftFraction)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .padding(start = (leftFraction * 100).let { if (it >= 100f) 0.dp else 0.dp }) // This is tricky in Compose without a Row or BoxWithConstraints
-                            // Actually, let's use a simpler approach with a Row
-                    )
-                }
-
-                // Better way: Use a Box with fillMaxWidth and a sub-Box with horizontal offset
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(widthFraction)
-                            .height(4.dp)
-                            .align(Alignment.CenterStart)
-                            .graphicsLayer(translationX = leftFraction * 1000f) // We need the actual width here
-                            .background(Color.Red.copy(alpha = 0.6f))
-                    )
-                }
-            }
-
-            // Re-think: Using a Canvas is much cleaner for this
-            androidx.compose.foundation.Canvas(
+            // Marker highlights and start indicator using Canvas
+            Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
@@ -152,36 +122,37 @@ internal fun MobilePlayerBottomControls(
                 val width = size.width
                 val height = size.height
 
-                // Marker highlight
                 if (markerState == MarkerState.MARKING && duration > 0) {
                     val startX = (markerStartMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
                     val currentX = (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
                     val left = minOf(startX, currentX)
                     val right = maxOf(startX, currentX)
 
+                    // Draw the red highlight for the selection range
                     drawRect(
                         color = Color.Red.copy(alpha = 0.6f),
-                        topLeft = androidx.compose.ui.geometry.Offset(left, 0f),
-                        size = androidx.compose.ui.geometry.Size(right - left, height)
+                        topLeft = Offset(left, 0f),
+                        size = Size(right - left, height)
                     )
 
-                    // Marker start indicator
+                    // Draw the vertical indicator at the start position
                     drawRect(
                         color = Color.Red,
-                        topLeft = androidx.compose.ui.geometry.Offset(startX - 1.dp.toPx(), -2.dp.toPx()),
-                        size = androidx.compose.ui.geometry.Size(2.dp.toPx(), height + 4.dp.toPx())
+                        topLeft = Offset(startX - 1.dp.toPx(), -2.dp.toPx()),
+                        size = Size(2.dp.toPx(), height + 4.dp.toPx())
                     )
                 }
             }
 
-            val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-            // Active track
+            val progress = if (duration > 0) (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+            // Active track (Green) - Uses displayPosition to follow finger during drag
             Box(
                 modifier = Modifier
                     .fillMaxWidth(progress)
                     .height(4.dp)
                     .background(Color(0xFF24D366), RoundedCornerShape(2.dp)),
             )
+
             if (duration > 0) {
                 Slider(
                     value = draggingValue ?: currentPosition.toFloat(),
@@ -205,7 +176,7 @@ internal fun MobilePlayerBottomControls(
                     thumb = {
                         Box(
                             modifier = Modifier
-                                .size(20.dp) // Slightly larger thumb for better visibility while dragging
+                                .size(20.dp)
                                 .background(Color.White, CircleShape)
                         )
                     },
