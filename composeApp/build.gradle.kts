@@ -2,6 +2,7 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -97,20 +98,20 @@ android {
     }
 
     val keystorePropsFile = rootProject.file("keystore.properties")
-    val keystoreProps = java.util.Properties().apply {
+    val keystoreProps = Properties().apply {
         if (keystorePropsFile.exists()) load(keystorePropsFile.inputStream())
     }
 
     signingConfigs {
         create("release") {
-            storeFile = (keystoreProps["KEYSTORE_FILE"] as String?
+            storeFile = (keystoreProps.getProperty("KEYSTORE_FILE")
                 ?: System.getenv("KEYSTORE_FILE"))
                 ?.let { file(it) }
-            storePassword = keystoreProps["KEYSTORE_PASSWORD"] as String?
+            storePassword = keystoreProps.getProperty("KEYSTORE_PASSWORD")
                 ?: System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = keystoreProps["KEY_ALIAS"] as String?
+            keyAlias = keystoreProps.getProperty("KEY_ALIAS")
                 ?: System.getenv("KEY_ALIAS")
-            keyPassword = keystoreProps["KEY_PASSWORD"] as String?
+            keyPassword = keystoreProps.getProperty("KEY_PASSWORD")
                 ?: System.getenv("KEY_PASSWORD")
         }
     }
