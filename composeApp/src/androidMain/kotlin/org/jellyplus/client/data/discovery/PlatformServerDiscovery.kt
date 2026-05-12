@@ -25,15 +25,21 @@ actual class PlatformServerDiscovery actual constructor() : IServerDiscovery {
     private fun resolveAddress(reportedAddress: String, senderAddress: io.ktor.network.sockets.SocketAddress): String {
         return try {
             val uri = URI(reportedAddress)
-            val host = uri.host ?: return reportedAddress
-            val isLoopback = host == "::1" || host == "0:0:0:0:0:0:0:1" || host == "127.0.0.1" || host.equals("localhost", ignoreCase = true)
-            if (isLoopback) {
-                val senderHost = (senderAddress as? InetSocketAddress)?.hostname
-                if (senderHost != null) {
-                    val port = if (uri.port > 0) ":${uri.port}" else ""
-                    "${uri.scheme}://$senderHost$port"
-                } else reportedAddress
-            } else reportedAddress
+            val senderInetAddr = (senderAddress as? InetSocketAddress)?.hostname?.let {
+                runCatching { java.net.InetAddress.getByName(it) }.getOrNull()
+            }
+            // Always prefer the UDP packet's source IP — it's always the real server address
+            if (senderInetAddr != null && !senderInetAddr.isLoopbackAddress) {
+                val scheme = uri.scheme ?: "http"
+                val port = if (uri.port > 0) ":${uri.port}" else ""
+                val hostPart = when (senderInetAddr) {
+                    is java.net.Inet6Address -> "[${senderInetAddr.hostAddress?.substringBefore('%')}]"
+                    else -> senderInetAddr.hostAddress ?: return reportedAddress
+                }
+                "$scheme://$hostPart$port"
+            } else {
+                reportedAddress
+            }
         } catch (e: Exception) {
             reportedAddress
         }

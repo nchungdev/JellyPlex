@@ -116,14 +116,12 @@ fun MobileServerSelectionScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        if (state.error != null) {
-            Text(
-                text = state.error,
-                color = Color.Red,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        }
+        Text(
+            text = state.error ?: "",
+            color = Color.Red,
+            fontSize = 14.sp,
+            modifier = Modifier.height(36.dp).padding(bottom = 8.dp),
+        )
 
         Button(
             onClick = { onManualInput(manualUrl) },
