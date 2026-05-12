@@ -52,7 +52,7 @@ fun AppMainContent(
     if (isValidating) {
         LoadingScreen()
     } else if (isAuthenticated) {
-        MainScreen(mainViewModel = mainViewModel, sessionViewModel = sessionViewModel)
+        MainScreen(mainViewModel = mainViewModel)
     } else {
         AuthNavigation(
             loginMode = loginMode,
