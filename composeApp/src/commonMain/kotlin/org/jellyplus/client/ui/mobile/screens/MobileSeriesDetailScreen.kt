@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,34 +78,38 @@ fun MobileSeriesDetailScreen(
             .background(Color(0xFF0F1113))
             .verticalScroll(rememberScrollState())
     ) {
-        // ── Backdrop with play overlay ──────────────────────────────────────
-        Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+        // ── Backdrop ────────────────────────────────────────────────────────
+        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
             AsyncImage(
                 model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
+            // Top gradient — darkens status bar area
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.35f)
+                    .align(Alignment.TopCenter)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.15f), Color(0xFF0F1113)),
-                            startY = 320f
+                            colors = listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)
                         )
                     )
             )
-            // Play button center
+            // Bottom gradient — fades into background
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .align(Alignment.Center)
-                    .background(Color.Black.copy(alpha = 0.45f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(34.dp))
-            }
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.45f)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color(0xFF0F1113))
+                        )
+                    )
+            )
             // X close button
             IconButton(
                 onClick = onBack,
