@@ -69,8 +69,10 @@ import org.jellyplus.client.isDebug
 import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.components.MediaPosterPlaceholder
 import org.jellyplus.client.ui.components.MediaRowPlaceholder
+import org.jellyplus.client.ui.viewmodels.HomeViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.SessionViewModel
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun MobileMainScreen(
@@ -81,7 +83,12 @@ fun MobileMainScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val sessionState by sessionViewModel.uiState.collectAsState()
+    val homeViewModel: HomeViewModel = koinViewModel()
     var selectedTab by remember { mutableStateOf(0) }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) homeViewModel.loadHomeContent()
+    }
 
     Scaffold(
         bottomBar = {
@@ -124,7 +131,7 @@ fun MobileMainScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             when (selectedTab) {
-                0 -> HomeContent(viewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues)
+                0 -> HomeContent(viewModel, homeViewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues)
                 1 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onMediaClick)
                 2 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
                 3 -> ProfileContent(
@@ -140,12 +147,14 @@ fun MobileMainScreen(
 @Composable
 private fun HomeContent(
     viewModel: MainViewModel,
+    homeViewModel: HomeViewModel,
     state: org.jellyplus.client.ui.viewmodels.MainState,
     baseUrl: String,
     onMediaClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit,
     paddingValues: PaddingValues
 ) {
+    val homeState by homeViewModel.state.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
@@ -285,7 +294,7 @@ private fun HomeContent(
                 }
             }
 
-            if (state.items.isNotEmpty()) {
+            if (homeState.resumeItems.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(20.dp))
                     SectionHeader("Continue Watching")
@@ -293,7 +302,7 @@ private fun HomeContent(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.items.reversed().take(5)) { item ->
+                        items(homeState.resumeItems) { item ->
                             MobileContinueWatchingCard(item, baseUrl, onClick = { onMediaClick(item) })
                         }
                     }
