@@ -10,6 +10,7 @@ import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
+import org.jellyplus.client.domain.usecases.GetAutoNextUseCase
 import org.jellyplus.client.domain.usecases.GetAutoSkipUseCase
 import org.jellyplus.client.domain.usecases.GetUserIdUseCase
 import org.jellyplus.client.domain.usecases.MarkItemAsPlayedUseCase
@@ -18,6 +19,7 @@ import org.jellyplus.client.domain.usecases.ReportPlaybackStartUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
 import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
 import org.jellyplus.client.domain.usecases.SaveCustomMarkerUseCase
+import org.jellyplus.client.domain.usecases.SetAutoNextUseCase
 import org.jellyplus.client.domain.usecases.SetAutoSkipUseCase
 
 data class PlayerState(
@@ -36,6 +38,7 @@ data class PlayerState(
     val isPreloadingNextMeta: Boolean = false,
     // Player preferences
     val autoSkipIntro: Boolean = false,
+    val autoNext: Boolean = false,
     // Custom markers in RAM: list of (startMs, endMs)
     val customMarkers: List<Pair<Long, Long>> = emptyList(),
 )
@@ -51,6 +54,8 @@ class PlayerViewModel(
     private val saveCustomMarkerUseCase: SaveCustomMarkerUseCase,
     private val getAutoSkipUseCase: GetAutoSkipUseCase,
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
+    private val getAutoNextUseCase: GetAutoNextUseCase,
+    private val setAutoNextUseCase: SetAutoNextUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
@@ -147,6 +152,12 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoSkipIntro = next)
     }
 
+    fun toggleAutoNext() {
+        val next = !_state.value.autoNext
+        setAutoNextUseCase(next)
+        _state.value = _state.value.copy(autoNext = next)
+    }
+
     fun reportStart(itemId: String, playSessionId: String) {
         viewModelScope.launch(dispatchers.io) {
             try {
@@ -184,6 +195,9 @@ class PlayerViewModel(
     }
 
     private fun loadAutoSkipPreference() {
-        _state.value = _state.value.copy(autoSkipIntro = getAutoSkipUseCase())
+        _state.value = _state.value.copy(
+            autoSkipIntro = getAutoSkipUseCase(),
+            autoNext = getAutoNextUseCase(),
+        )
     }
 }

@@ -37,6 +37,8 @@ actual fun VideoPlayerImpl(
     onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
+    autoNext: Boolean,
+    onToggleAutoNext: () -> Unit,
 ) {
     if (uiType == UiType.Desktop) {
         org.jellyplus.client.ui.components.player.desktop.DesktopVideoPlayer(
@@ -83,6 +85,8 @@ actual fun VideoPlayerImpl(
             onSaveCustomMarker = onSaveCustomMarker,
             onToggleAutoSkip = onToggleAutoSkip,
             onSeamlessNextEpisode = onSeamlessNextEpisode,
+            autoNext = autoNext,
+            onToggleAutoNext = onToggleAutoNext,
         )
     }
 }

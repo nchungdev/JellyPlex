@@ -180,6 +180,8 @@ fun MainScreen(
                     },
                     onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
                     onSeamlessNextEpisode = { goToNext() },
+                    autoNext = playerState.autoNext,
+                    onToggleAutoNext = { playerViewModel.toggleAutoNext() },
                 )
             }
         }

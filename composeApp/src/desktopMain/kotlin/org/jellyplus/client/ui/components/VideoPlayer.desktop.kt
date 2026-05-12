@@ -42,6 +42,8 @@ actual fun VideoPlayerImpl(
     onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
+    autoNext: Boolean,
+    onToggleAutoNext: () -> Unit,
 ) {
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),
