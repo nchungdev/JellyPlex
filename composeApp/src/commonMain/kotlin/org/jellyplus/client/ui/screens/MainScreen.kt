@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.jellyplus.client.LocalUiType
+import org.jellyplus.client.OrientationEffect
+import org.jellyplus.client.ScreenOrientation
 import org.jellyplus.client.UiType
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.Screen
@@ -50,6 +52,9 @@ fun MainScreen(
 
     val uiType = LocalUiType.current
     val mainState by mainViewModel.state.collectAsState()
+    val isPlayerScreen = currentScreen is Screen.Player
+
+    OrientationEffect(if (isPlayerScreen) ScreenOrientation.Landscape else ScreenOrientation.Portrait)
 
     org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Details) {
         currentScreen = Screen.Home

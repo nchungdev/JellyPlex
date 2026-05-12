@@ -21,6 +21,7 @@ import org.jellyplus.client.domain.usecases.SaveCustomMarkerUseCase
 import org.jellyplus.client.domain.usecases.SetAutoSkipUseCase
 
 data class PlayerState(
+    val itemId: String? = null,
     val url: String? = null,
     val mimeType: String? = null,
     val accessToken: String = "",
@@ -60,10 +61,18 @@ class PlayerViewModel(
     }
 
     fun loadStreamUrl(item: MediaItem) {
-        if (_state.value.url != null) return
+        if (_state.value.itemId == item.id && _state.value.url != null) return
 
         viewModelScope.launch(dispatchers.main) {
-            _state.value = _state.value.copy(isLoading = true, accessToken = getAccessTokenUseCase() ?: "")
+            _state.value = _state.value.copy(
+                itemId = item.id,
+                url = null,
+                mimeType = null,
+                playSessionId = null,
+                error = null,
+                isLoading = true,
+                accessToken = getAccessTokenUseCase() ?: ""
+            )
             val userId = getUserIdUseCase() ?: ""
             val deviceId = "CMP-ID"
 

@@ -152,6 +152,7 @@ fun MobileVideoPlayer(
     var autoNextCountdown by remember { mutableStateOf(0) }
     var isUserSeeking by remember { mutableStateOf(false) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+    var showBufferingIndicator by remember { mutableStateOf(false) }
 
     val trackSelector = remember { DefaultTrackSelector(context) }
     val httpDataSourceFactory = remember {
@@ -239,6 +240,7 @@ fun MobileVideoPlayer(
     val currentPlayer = if (isPrimaryActive) primaryExoPlayer else (secondaryExoPlayer ?: primaryExoPlayer)
 
     LaunchedEffect(item.id) {
+        isControlsVisible = false
         secondaryExoPlayer?.release()
         secondaryExoPlayer = null
         metaPreloaded = false
@@ -258,6 +260,14 @@ fun MobileVideoPlayer(
         if (isControlsVisible && isPlaying) {
             delay(5000)
             isControlsVisible = false
+        }
+    }
+    LaunchedEffect(isBuffering) {
+        if (isBuffering) {
+            delay(1000L)
+            showBufferingIndicator = true
+        } else {
+            showBufferingIndicator = false
         }
     }
     LaunchedEffect(showGestureIndicator) { if (showGestureIndicator) { delay(2000); showGestureIndicator = false } }
@@ -358,13 +368,9 @@ fun MobileVideoPlayer(
     )
 
     DisposableEffect(Unit) {
-        activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             val sessionId = playSessionId
             if (sessionId != null) onPlaybackStopped(item.id, sessionId, currentPlayer.currentPosition * 10_000L)
-            activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -469,6 +475,15 @@ fun MobileVideoPlayer(
                     )
                 }
         )
+
+        // Buffering spinner — always visible after 1s debounce, independent of controls overlay
+        if (showBufferingIndicator && !isControlsVisible) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(48.dp).align(Alignment.Center),
+                color = Color.White,
+                strokeWidth = 3.dp,
+            )
+        }
 
         androidx.compose.animation.AnimatedVisibility(
             visible = isControlsVisible,
