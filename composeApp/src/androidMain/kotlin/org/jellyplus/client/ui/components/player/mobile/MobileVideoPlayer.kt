@@ -53,6 +53,7 @@ import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
 import org.jellyplus.client.ui.common.components.player.PlayerAudioDialog
 import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
 import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
+import kotlin.math.roundToInt
 
 private fun PlayerView.applyTextureViewSurface() {
     try {
@@ -112,11 +113,14 @@ fun MobileVideoPlayer(
     var currentSpeed by remember { mutableStateOf(playbackSpeed) }
 
     // Gesture state
-    var brightness by remember { mutableStateOf(activity?.window?.attributes?.screenBrightness ?: 0.5f) }
+    var brightness by remember {
+        val current = activity?.window?.attributes?.screenBrightness ?: 0.5f
+        mutableStateOf(if (current < 0) 0.5f else current)
+    }
     var volume by remember {
         mutableStateOf(
             audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() /
-                audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         )
     }
     var showGestureIndicator by remember { mutableStateOf(false) }
@@ -351,53 +355,6 @@ fun MobileVideoPlayer(
 
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { if (!isLongPressing) isControlsVisible = !isControlsVisible },
-                    onDoubleTap = { offset ->
-                        if (!isLongPressing) {
-                            val isRight = offset.x >= size.width / 2
-                            if (isRight) { currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration)); seekFeedback = "+10" }
-                            else { currentPlayer.seekTo((currentPlayer.currentPosition - 5000).coerceAtLeast(0)); seekFeedback = "-5" }
-                            seekFeedbackIsRight = isRight; showSeekFeedback = true; stablePlaybackMs = 0L
-                        }
-                    },
-                    onLongPress = {},
-                )
-            }
-            .pointerInput(isControlsVisible, playbackSpeed) {
-                if (!isControlsVisible) awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation() }
-                    if (up == null) {
-                        isLongPressing = true; currentPlayer.setPlaybackSpeed(2f)
-                        try { waitForUpOrCancellation() } finally { currentPlayer.setPlaybackSpeed(playbackSpeed); isLongPressing = false }
-                    }
-                }
-            }
-            .pointerInput(Unit) {
-                detectVerticalDragGestures(
-                    onDragStart = { showGestureIndicator = true },
-                    onDragEnd = {},
-                    onVerticalDrag = { change, dragAmount ->
-                        val isLeft = change.position.x < size.width / 2
-                        if (isLeft) {
-                            gestureType = "volume"
-                            val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                            val newVol = (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) + (dragAmount / size.height) * maxVol * -2f).toInt().coerceIn(0, maxVol)
-                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0); volume = newVol.toFloat() / maxVol
-                        } else {
-                            gestureType = "brightness"
-                            activity?.let { a ->
-                                val params = a.window.attributes
-                                params.screenBrightness = (params.screenBrightness + (dragAmount / size.height) * -1f).coerceIn(0.01f, 1.0f)
-                                a.window.attributes = params; brightness = params.screenBrightness
-                            }
-                        }
-                        showGestureIndicator = true
-                    },
-                )
-            },
     ) {
         secondaryExoPlayer?.let { secondary ->
             AndroidView(
@@ -408,6 +365,77 @@ fun MobileVideoPlayer(
         AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { player = primaryExoPlayer; useController = false; applyTextureViewSurface() } },
             modifier = Modifier.fillMaxSize().alpha(if (isPrimaryActive) 1f else 0f),
+        )
+
+        // Gesture Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { showGestureIndicator = true },
+                        onDragEnd = { /* Auto-hide by LaunchedEffect */ },
+                        onVerticalDrag = { change, dragAmount ->
+                            change.consume()
+                            val isLeft = change.position.x < size.width / 2
+                            if (isLeft) {
+                                gestureType = "brightness"
+                                val delta = (dragAmount / size.height) * -1f
+                                brightness = (brightness + delta).coerceIn(0f, 1f)
+                                activity?.let { a ->
+                                    val params = a.window.attributes
+                                    params.screenBrightness = brightness
+                                    a.window.attributes = params
+                                }
+                            } else {
+                                gestureType = "volume"
+                                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                val delta = (dragAmount / size.height) * -2f
+                                volume = (volume + delta).coerceIn(0f, 1f)
+                                audioManager.setStreamVolume(
+                                    AudioManager.STREAM_MUSIC,
+                                    (volume * maxVol).roundToInt(),
+                                    AudioManager.FLAG_SHOW_UI
+                                )
+                            }
+                            showGestureIndicator = true
+                        }
+                    )
+                }
+                .pointerInput(isControlsVisible, playbackSpeed) {
+                    if (!isControlsVisible) awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation() }
+                        if (up == null) {
+                            isLongPressing = true
+                            currentPlayer.setPlaybackSpeed(2f)
+                            try { waitForUpOrCancellation() } finally {
+                                currentPlayer.setPlaybackSpeed(playbackSpeed)
+                                isLongPressing = false
+                            }
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { if (!isLongPressing) isControlsVisible = !isControlsVisible },
+                        onDoubleTap = { offset ->
+                            if (!isLongPressing) {
+                                val isRight = offset.x >= size.width / 2
+                                if (isRight) {
+                                    currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration))
+                                    seekFeedback = "+10"
+                                } else {
+                                    currentPlayer.seekTo((currentPlayer.currentPosition - 5000).coerceAtLeast(0))
+                                    seekFeedback = "-5"
+                                }
+                                seekFeedbackIsRight = isRight
+                                showSeekFeedback = true
+                                stablePlaybackMs = 0L
+                            }
+                        }
+                    )
+                }
         )
 
         androidx.compose.animation.AnimatedVisibility(
@@ -427,7 +455,8 @@ fun MobileVideoPlayer(
                 )
                 MobilePlayerBottomControls(
                     item = item, currentPosition = currentPosition, duration = duration,
-                    markerState = markerState, selectedTextTrackIndex = selectedTextTrackIndex,
+                    markerState = markerState, markerStartMs = markerStartMs,
+                    selectedTextTrackIndex = selectedTextTrackIndex,
                     onSeek = { currentPlayer.seekTo(it); stablePlaybackMs = 0L },
                     onSeekStarted = { isUserSeeking = true },
                     onSeekFinished = { pos ->

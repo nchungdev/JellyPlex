@@ -343,7 +343,7 @@ class JellyfinApi(
     suspend fun getSeasons(seriesId: String): List<MediaItem> {
         val response: ItemResponse = client.get {
             apiUrl("Shows", seriesId, "Seasons")
-            parameter("Fields", "Overview,ImageTags")
+            parameter("Fields", "Overview,ImageTags,UserData")
         }.body()
         return response.items
     }
@@ -352,7 +352,7 @@ class JellyfinApi(
         val response: ItemResponse = client.get {
             apiUrl("Shows", seriesId, "Episodes")
             parameter("seasonId", seasonId)
-            parameter("Fields", "Overview,RunTimeTicks,ImageTags")
+            parameter("Fields", "Overview,RunTimeTicks,ImageTags,UserData")
         }.body()
         return response.items
     }

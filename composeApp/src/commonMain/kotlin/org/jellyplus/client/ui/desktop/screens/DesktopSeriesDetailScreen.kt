@@ -350,20 +350,29 @@ fun DesktopSeriesDetailScreen(
 
                     1 -> {
                         // Overview Tab
-                        Text(
-                            text = item.overview ?: "No overview available.",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 18.sp,
-                            lineHeight = 28.sp,
-                            modifier = Modifier.fillMaxWidth(0.8f)
-                        )
+                        val overview = item.overview?.takeIf { it.isNotBlank() }
+                        if (overview != null) {
+                            Text(
+                                text = overview,
+                                color = Color.White.copy(alpha = 0.7f),
+                                fontSize = 18.sp,
+                                lineHeight = 28.sp,
+                                modifier = Modifier.fillMaxWidth(0.8f)
+                            )
+                            Spacer(modifier = Modifier.height(48.dp))
+                        }
 
-                        Spacer(modifier = Modifier.height(48.dp))
+                        val actors = item.people?.filter { it.type == "Actor" }?.take(5)?.joinToString { it.name }
+                        val genres = item.genres?.joinToString()
 
                         Row(horizontalArrangement = Arrangement.spacedBy(64.dp)) {
-                            MetaItem("Cast", "Multiple")
-                            MetaItem("Status", "Ended")
-                            MetaItem("Studio", "Multiple")
+                            if (!actors.isNullOrBlank()) {
+                                MetaItem("Cast", actors)
+                            }
+                            if (!genres.isNullOrBlank()) {
+                                MetaItem("Genres", genres)
+                            }
+                            MetaItem("Rating", "${item.rating ?: "N/A"}")
                         }
                     }
                 }
@@ -425,19 +434,35 @@ private fun EpisodeCard(episode: MediaItem, baseUrl: String, onClick: () -> Unit
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            AsyncImage(
-                model = episode.getBackdropUrl(baseUrl) ?: episode.getImageUrl(baseUrl),
-                contentDescription = null,
-                modifier = Modifier.width(160.dp).height(90.dp).clip(RoundedCornerShape(6.dp)),
-                contentScale = ContentScale.Crop,
-            )
+            Box(modifier = Modifier.width(160.dp).height(90.dp).clip(RoundedCornerShape(6.dp))) {
+                AsyncImage(
+                    model = episode.getBackdropUrl(baseUrl) ?: episode.getImageUrl(baseUrl),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+
+                // Progress Bar if watching
+                if (episode.playbackPositionTicks > 0 && episode.runTimeTicks != null && episode.runTimeTicks > 0) {
+                    val progress = episode.playbackPositionTicks.toFloat() / episode.runTimeTicks.toFloat()
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.3f))
+                            .align(Alignment.BottomCenter)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(progress).height(4.dp).background(Color(0xFF24D366))
+                        )
+                    }
+                }
+            }
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = buildString {
                         episode.index?.let { append("E${it.toString().padStart(2, '0')}  ") }
                         append(episode.title)
                     },
-                    color = if (isFocused) MaterialTheme.colorScheme.primary else Color.White,
+                    color = if (isFocused) MaterialTheme.colorScheme.primary else if (episode.isPlayed) Color.White.copy(alpha = 0.5f) else Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                 )

@@ -32,7 +32,7 @@ class SessionViewModel(
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
 
-    private val _isValidating = MutableStateFlow(false)
+    private val _isValidating = MutableStateFlow(true) // Khởi tạo là true để giữ LoadingScreen ngay từ đầu
 
     val uiState: StateFlow<SessionState> = combine(
         getIsAuthenticatedUseCase(),
@@ -57,16 +57,16 @@ class SessionViewModel(
 
     private fun validateStartupSession() {
         viewModelScope.launch(dispatchers.main) {
+            // Lấy trạng thái auth hiện tại từ local storage
             val isCurrentlyAuthenticated = getIsAuthenticatedUseCase().first()
+
             if (isCurrentlyAuthenticated) {
-                _isValidating.value = true
+                // Nếu đã có session, tiến hành validate với server
                 try {
                     val isValid = validateSessionUseCase()
                     if (!isValid) {
                         println("SessionViewModel: Session invalid. Clearing.")
                         clearSessionUseCase()
-                    } else {
-                        println("SessionViewModel: Validation success or network error (keeping session).")
                     }
                 } catch (e: Exception) {
                     println("SessionViewModel: Auth error detected. Clearing session.")
@@ -75,6 +75,7 @@ class SessionViewModel(
                     _isValidating.value = false
                 }
             } else {
+                // Nếu không có session, tắt loading ngay để vào màn Auth
                 _isValidating.value = false
             }
         }

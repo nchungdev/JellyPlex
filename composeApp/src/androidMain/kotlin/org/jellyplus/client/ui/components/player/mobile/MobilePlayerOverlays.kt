@@ -158,24 +158,6 @@ internal fun BoxScope.MobilePlayerOverlays(
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.alpha(if (gestureType == "volume") 1f else 0f),
-            ) {
-                Box(
-                    modifier = Modifier.width(6.dp).height(120.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(volume)
-                            .align(Alignment.BottomCenter)
-                            .background(Color.White, RoundedCornerShape(3.dp)),
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.alpha(if (gestureType == "brightness") 1f else 0f),
             ) {
                 Box(
@@ -190,6 +172,24 @@ internal fun BoxScope.MobilePlayerOverlays(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Icon(Icons.Default.WbSunny, null, tint = Color.White, modifier = Modifier.size(24.dp))
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.alpha(if (gestureType == "volume") 1f else 0f),
+            ) {
+                Box(
+                    modifier = Modifier.width(6.dp).height(120.dp)
+                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight(volume)
+                            .align(Alignment.BottomCenter)
+                            .background(Color.White, RoundedCornerShape(3.dp)),
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(24.dp))
             }
         }
     }

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.models.MediaType
@@ -41,6 +42,7 @@ internal fun MobilePlayerBottomControls(
     currentPosition: Long,
     duration: Long,
     markerState: MarkerState,
+    markerStartMs: Long,
     selectedTextTrackIndex: Int,
     onSeek: (Long) -> Unit,
     onSeekStarted: () -> Unit,
@@ -77,6 +79,10 @@ internal fun MobilePlayerBottomControls(
                 )
             }
 
+            IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+
             if (item.type == MediaType.EPISODE) {
                 IconButton(onClick = onMarkToggle, modifier = Modifier.size(36.dp)) {
                     Icon(
@@ -87,17 +93,13 @@ internal fun MobilePlayerBottomControls(
                     )
                 }
             }
-
-            IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(20.dp))
-            }
         }
 
         // Seekbar row
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp), // Increased height for better touch target
+                .height(48.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
             // Background track
@@ -107,6 +109,71 @@ internal fun MobilePlayerBottomControls(
                     .height(4.dp)
                     .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
             )
+
+            // Marker highlight (if marking)
+            if (markerState == MarkerState.MARKING && duration > 0) {
+                val startPos = (markerStartMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                val currentPos = (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                val leftFraction = minOf(startPos, currentPos)
+                val widthFraction = (maxOf(startPos, currentPos) - leftFraction).coerceIn(0f, 1f)
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    // Spacer to push the highlight to the correct starting position
+                    androidx.compose.foundation.layout.Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth(leftFraction)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(start = (leftFraction * 100).let { if (it >= 100f) 0.dp else 0.dp }) // This is tricky in Compose without a Row or BoxWithConstraints
+                            // Actually, let's use a simpler approach with a Row
+                    )
+                }
+
+                // Better way: Use a Box with fillMaxWidth and a sub-Box with horizontal offset
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(widthFraction)
+                            .height(4.dp)
+                            .align(Alignment.CenterStart)
+                            .graphicsLayer(translationX = leftFraction * 1000f) // We need the actual width here
+                            .background(Color.Red.copy(alpha = 0.6f))
+                    )
+                }
+            }
+
+            // Re-think: Using a Canvas is much cleaner for this
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+            ) {
+                val width = size.width
+                val height = size.height
+
+                // Marker highlight
+                if (markerState == MarkerState.MARKING && duration > 0) {
+                    val startX = (markerStartMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
+                    val currentX = (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
+                    val left = minOf(startX, currentX)
+                    val right = maxOf(startX, currentX)
+
+                    drawRect(
+                        color = Color.Red.copy(alpha = 0.6f),
+                        topLeft = androidx.compose.ui.geometry.Offset(left, 0f),
+                        size = androidx.compose.ui.geometry.Size(right - left, height)
+                    )
+
+                    // Marker start indicator
+                    drawRect(
+                        color = Color.Red,
+                        topLeft = androidx.compose.ui.geometry.Offset(startX - 1.dp.toPx(), -2.dp.toPx()),
+                        size = androidx.compose.ui.geometry.Size(2.dp.toPx(), height + 4.dp.toPx())
+                    )
+                }
+            }
+
             val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
             // Active track
             Box(

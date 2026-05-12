@@ -114,25 +114,30 @@ fun DesktopMovieDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Action, Thriller", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                    val genres = fullItem.genres?.joinToString()
+                    if (!genres.isNullOrEmpty()) {
+                        Text(genres, color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                    }
+
                     Text(
-                        "  •  TV-MA",
+                        "  •  ${fullItem.year ?: ""}",
                         color = Color.White.copy(alpha = 0.5f),
                         fontSize = 16.sp,
                         modifier = Modifier.padding(start = 12.dp)
                     )
-                    Text(
-                        "  •  ${fullItem.year}",
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(start = 12.dp)
-                    )
-                    Text(
-                        "  •  1 hr",
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(start = 12.dp)
-                    )
+
+                    fullItem.runTimeTicks?.let { ticks ->
+                        val minutes = ticks / 10_000_000 / 60
+                        val hours = minutes / 60
+                        val remainingMinutes = minutes % 60
+                        val durationText = if (hours > 0) "${hours}h ${remainingMinutes}m" else "${remainingMinutes}m"
+                        Text(
+                            "  •  $durationText",
+                            color = Color.White.copy(alpha = 0.5f),
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -157,16 +162,31 @@ fun DesktopMovieDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    FocusableButton(
-                        onClick = { onPlay(fullItem) },
-                        modifier = Modifier
-                            .height(56.dp)
-                            .width(160.dp)
-                            .focusRequester(playFocusRequester),
-                    ) {
-                        Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Column(horizontalAlignment = Alignment.Start) {
+                        FocusableButton(
+                            onClick = { onPlay(fullItem) },
+                            modifier = Modifier
+                                .height(56.dp)
+                                .width(160.dp)
+                                .focusRequester(playFocusRequester),
+                        ) {
+                            Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+
+                        // Movie Progress Bar
+                        if (fullItem.playbackPositionTicks > 0 && fullItem.runTimeTicks != null && fullItem.runTimeTicks > 0) {
+                            Spacer(Modifier.height(8.dp))
+                            val progress = fullItem.playbackPositionTicks.toFloat() / fullItem.runTimeTicks.toFloat()
+                            Box(
+                                modifier = Modifier.width(160.dp).height(4.dp).background(Color.White.copy(alpha = 0.2f)).clip(RoundedCornerShape(2.dp))
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(progress).height(4.dp).background(Color(0xFF24D366))
+                                )
+                            }
+                        }
                     }
 
                     FocusableOutlinedButton(

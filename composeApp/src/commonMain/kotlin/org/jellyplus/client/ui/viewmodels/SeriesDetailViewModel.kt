@@ -43,27 +43,37 @@ class SeriesDetailViewModel(
     private var loadEpisodesJob: Job? = null
 
     fun loadSeriesDetails(seriesId: String) {
+        // Luôn cập nhật baseUrl mới nhất từ session
+        val currentBaseUrl = getBaseUrlUseCase()
+        if (_state.value.baseUrl != currentBaseUrl) {
+            _state.value = _state.value.copy(baseUrl = currentBaseUrl)
+        }
+
         if (_state.value.seriesId == seriesId && _state.value.seasons.isNotEmpty()) return
 
         loadSeriesJob?.cancel()
         loadSeriesJob = viewModelScope.launch(dispatchers.io) {
             _state.value = _state.value.copy(
                 seriesId = seriesId,
-                isLoadingSeasons = true,
-                baseUrl = getBaseUrlUseCase()
+                isLoadingSeasons = true
             )
             val result = getSeasonsUseCase(seriesId)
 
             result.onSuccess { seasons ->
-                val firstSeason = seasons.firstOrNull()
+                // Ưu tiên chọn season chưa xem xong hoặc season đầu tiên
+                val lastSelectedSeasonId = _state.value.selectedSeason?.id
+                val seasonToSelect = seasons.find { it.id == lastSelectedSeasonId }
+                    ?: seasons.find { !it.isPlayed }
+                    ?: seasons.firstOrNull()
+
                 _state.value = _state.value.copy(
                     seasons = seasons,
-                    selectedSeason = _state.value.selectedSeason ?: firstSeason,
+                    selectedSeason = seasonToSelect,
                     isLoadingSeasons = false
                 )
-                val seasonToLoad = _state.value.selectedSeason ?: firstSeason
-                if (seasonToLoad != null) {
-                    loadEpisodes(seriesId, seasonToLoad.id)
+
+                if (seasonToSelect != null) {
+                    loadEpisodes(seriesId, seasonToSelect.id)
                 }
             }.onFailure { e ->
                 _state.value = _state.value.copy(isLoadingSeasons = false, error = e.message)

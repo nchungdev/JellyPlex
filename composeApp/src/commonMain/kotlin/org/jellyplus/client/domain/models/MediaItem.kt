@@ -4,6 +4,15 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class UserData(
+    @SerialName("PlaybackPositionTicks") val playbackPositionTicks: Long = 0,
+    @SerialName("PlayCount") val playCount: Int = 0,
+    @SerialName("IsFavorite") val isFavorite: Boolean = false,
+    @SerialName("Played") val played: Boolean = false,
+    @SerialName("Key") val key: String? = null,
+)
+
+@Serializable
 data class MediaItem(
     @SerialName("Id") val id: String,
     @SerialName("Name") val title: String,
@@ -23,7 +32,11 @@ data class MediaItem(
     @SerialName("SeriesId") val seriesId: String? = null,
     @SerialName("SeasonId") val seasonId: String? = null,
     @SerialName("ParentIndexNumber") val parentIndexNumber: Int? = null,
+    @SerialName("UserData") val userData: UserData? = null,
 ) {
+    val isPlayed: Boolean get() = userData?.played ?: false
+    val playbackPositionTicks: Long get() = userData?.playbackPositionTicks ?: 0L
+
     fun getImageUrl(baseUrl: String): String? {
         return if (imageTags?.containsKey("Primary") == true) {
             "$baseUrl/Items/$id/Images/Primary"

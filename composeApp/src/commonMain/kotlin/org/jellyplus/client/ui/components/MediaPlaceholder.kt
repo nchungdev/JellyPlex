@@ -28,9 +28,9 @@ fun MediaPosterPlaceholder(
     )
 
     val shimmerColors = listOf(
-        Color.DarkGray.copy(alpha = 0.6f),
-        Color.DarkGray.copy(alpha = 0.2f),
-        Color.DarkGray.copy(alpha = 0.6f),
+        Color.White.copy(alpha = 0.1f),
+        Color.White.copy(alpha = 0.3f),
+        Color.White.copy(alpha = 0.1f),
     )
 
     val brush = Brush.linearGradient(
@@ -43,6 +43,7 @@ fun MediaPosterPlaceholder(
         modifier = modifier
             .aspectRatio(2f / 3f)
             .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.05f))
             .background(brush)
     )
 }

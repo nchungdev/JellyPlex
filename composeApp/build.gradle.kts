@@ -97,6 +97,10 @@ android {
         versionName = "1.0"
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     val keystorePropsFile = rootProject.file("keystore.properties")
     val keystoreProps = Properties().apply {
         if (keystorePropsFile.exists()) load(keystorePropsFile.inputStream())

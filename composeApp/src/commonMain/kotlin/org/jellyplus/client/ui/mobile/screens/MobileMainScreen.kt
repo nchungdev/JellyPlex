@@ -62,10 +62,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jellyplus.client.isDebug
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
+import org.jellyplus.client.isDebug
 import org.jellyplus.client.ui.components.MediaPoster
+import org.jellyplus.client.ui.components.MediaPosterPlaceholder
 import org.jellyplus.client.ui.components.MediaRowPlaceholder
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.SessionViewModel
@@ -151,7 +152,7 @@ private fun HomeContent(
         if (state.isLoading && state.items.isEmpty()) {
             // GLOBAL SKELETON
             item {
-                Box(modifier = Modifier.fillMaxWidth().height(500.dp).background(Color.White.copy(alpha = 0.05f)))
+                MediaPosterPlaceholder(Modifier.fillMaxWidth().height(500.dp))
             }
             item {
                 Column(Modifier.padding(top = 16.dp)) {
@@ -208,6 +209,17 @@ private fun HomeContent(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
+                        // Status Bar Overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                                    )
+                                )
+                        )
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -236,7 +248,7 @@ private fun HomeContent(
                             }
                         }
                     } ?: if (state.isLoading) {
-                        Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.05f)))
+                        MediaPosterPlaceholder(Modifier.fillMaxSize())
                     } else {
                         Spacer(Modifier.height(1.dp))
                     }
@@ -467,6 +479,10 @@ private fun SectionHeader(title: String, onViewAll: (() -> Unit)? = null) {
 
 @Composable
 private fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
+    val progress = if (item.runTimeTicks != null && item.runTimeTicks > 0) {
+        item.playbackPositionTicks.toFloat() / item.runTimeTicks.toFloat()
+    } else 0f
+
     Column(
         modifier = Modifier.width(240.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
             .clickable { onClick() }) {
@@ -477,16 +493,28 @@ private fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClick
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            Box(
-                modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp)
-                    .background(Color.Gray.copy(alpha = 0.5f))
-            ) {
-                Box(modifier = Modifier.fillMaxWidth(0.4f).fillMaxHeight().background(MaterialTheme.colorScheme.primary))
+            // Progress Bar
+            if (progress > 0) {
+                Box(
+                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp)
+                        .background(Color.Gray.copy(alpha = 0.5f))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.primary)
+                    )
+                }
             }
         }
         Column(modifier = Modifier.padding(12.dp)) {
             Text(item.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            Text("Resume watching", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            val subText = if (item.type == MediaType.EPISODE) {
+                "S${item.parentIndexNumber ?: 0}E${item.index ?: 0}"
+            } else {
+                "Resume watching"
+            }
+            Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1)
         }
     }
 }

@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -65,6 +66,17 @@ fun MobileSeriesDetailScreen(
             contentDescription = null,
             modifier = Modifier.fillMaxWidth().height(280.dp),
             contentScale = ContentScale.Crop
+        )
+        // Status Bar Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                    )
+                )
         )
         Box(
             modifier = Modifier
@@ -129,16 +141,9 @@ fun MobileSeriesDetailScreen(
                 )
             }
 
-            // Seasons Row
-            Text(
-                "Seasons",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            // Seasons Row acting as Tabs
             LazyRow(
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(state.seasons) { season ->
@@ -149,13 +154,6 @@ fun MobileSeriesDetailScreen(
             }
 
             // Episodes
-            Text(
-                state.selectedSeason?.title ?: "Episodes",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
             if (state.isLoadingEpisodes) {
                 Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = Color(0xFF24D366))
@@ -189,22 +187,38 @@ fun MobileSeasonCard(season: MediaItem, baseUrl: String, isSelected: Boolean, on
     Surface(
         color = if (isSelected) Color(0xFF24D366).copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
         shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.clickable { onClick() }
+        modifier = Modifier
+            .width(150.dp)
+            .clickable { onClick() }
             .border(1.dp, if (isSelected) Color(0xFF24D366) else Color.Transparent, RoundedCornerShape(8.dp))
     ) {
-        Text(
-            season.title,
-            color = if (isSelected) Color(0xFF24D366) else Color.White,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            fontWeight = FontWeight.Bold
-        )
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Text(
+                season.title,
+                color = if (isSelected) Color(0xFF24D366) else Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+            Text(
+                season.overview?.takeIf { it.isNotBlank() } ?: "No description",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
 @Composable
 fun MobileEpisodeItem(episode: MediaItem, baseUrl: String, onClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().clickable { onClick() }, verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.width(120.dp).height(68.dp).clip(RoundedCornerShape(4.dp))) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.width(140.dp).height(80.dp).clip(RoundedCornerShape(8.dp))
+        ) {
             AsyncImage(
                 model = episode.getImageUrl(baseUrl),
                 contentDescription = null,
@@ -217,10 +231,34 @@ fun MobileEpisodeItem(episode: MediaItem, baseUrl: String, onClick: () -> Unit) 
             ) {
                 Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
             }
+
+            // Progress Bar if watching
+            if (episode.playbackPositionTicks > 0 && episode.runTimeTicks != null && episode.runTimeTicks > 0) {
+                val progress = episode.playbackPositionTicks.toFloat() / episode.runTimeTicks.toFloat()
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(4.dp).background(Color.White.copy(alpha = 0.3f))
+                        .align(Alignment.BottomCenter)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(progress).height(4.dp).background(Color(0xFF24D366))
+                    )
+                }
+            }
         }
         Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-            Text(episode.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-            Text("Episode ${episode.index ?: ""}", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+            Text(
+                episode.title,
+                color = if (episode.isPlayed) Color.White.copy(alpha = 0.5f) else Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "Episode ${episode.index ?: ""} ${if (episode.isPlayed) "• Played" else ""}",
+                color = Color.White.copy(alpha = 0.5f),
+                fontSize = 12.sp
+            )
         }
     }
 }

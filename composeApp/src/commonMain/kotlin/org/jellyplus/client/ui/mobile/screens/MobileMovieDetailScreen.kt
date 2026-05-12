@@ -65,6 +65,18 @@ fun MobileMovieDetailScreen(
             contentScale = ContentScale.Crop
         )
 
+        // Status Bar Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                    )
+                )
+        )
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -139,30 +151,34 @@ fun MobileMovieDetailScreen(
                 }
             }
 
-            Text(
-                "Overview",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Text(
-                fullItem.overview ?: "No overview available.",
-                color = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.padding(16.dp),
-                lineHeight = 22.sp
-            )
+            if (!fullItem.overview.isNullOrBlank()) {
+                Text(
+                    "Overview",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Text(
+                    fullItem.overview,
+                    color = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(16.dp),
+                    lineHeight = 22.sp
+                )
+            }
 
-            Text(
-                "Cast",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            LazyRow(contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.cast) { person ->
-                    MobileCastCard(person, baseUrl)
+            if (state.cast.isNotEmpty()) {
+                Text(
+                    "Cast",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                LazyRow(contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(state.cast) { person ->
+                        MobileCastCard(person, baseUrl)
+                    }
                 }
             }
 

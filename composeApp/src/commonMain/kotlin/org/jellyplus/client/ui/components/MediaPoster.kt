@@ -62,7 +62,8 @@ fun MediaPoster(
         ),
         interactionSource = interactionSource
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.05f))) {
+            MediaPosterPlaceholder(Modifier.fillMaxSize())
             AsyncImage(
                 model = item.getImageUrl(baseUrl),
                 contentDescription = item.title,
