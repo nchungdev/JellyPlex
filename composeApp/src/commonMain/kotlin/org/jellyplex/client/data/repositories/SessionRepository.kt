@@ -15,18 +15,19 @@ class SessionRepository(
         return url?.contains("demo.jellyfin.org") == true
     }
 
-    private fun hasMemorySession(): Boolean = inMemoryDataSource.hasSession()
-
     override val isAuthenticated: Flow<Boolean> = combine(
         persistentDataSource.isAuthenticated,
         inMemoryDataSource.isAuthenticated
     ) { p, m -> p || m }
 
-    override val baseUrl: String? get() = if (hasMemorySession()) inMemoryDataSource.baseUrl else persistentDataSource.baseUrl
-    override val accessToken: String? get() = if (hasMemorySession()) inMemoryDataSource.accessToken else persistentDataSource.accessToken
-    override val userId: String? get() = if (hasMemorySession()) inMemoryDataSource.userId else persistentDataSource.userId
-    override val userName: String? get() = if (hasMemorySession()) inMemoryDataSource.userName else persistentDataSource.userName
-    override val password: String? get() = if (hasMemorySession()) inMemoryDataSource.password else persistentDataSource.password
+    // Logic: Prioritize memory URL if set (even without session) to support connection phase
+    override val baseUrl: String? 
+        get() = inMemoryDataSource.baseUrl ?: persistentDataSource.baseUrl
+        
+    override val accessToken: String? get() = if (inMemoryDataSource.hasSession()) inMemoryDataSource.accessToken else persistentDataSource.accessToken
+    override val userId: String? get() = if (inMemoryDataSource.hasSession()) inMemoryDataSource.userId else persistentDataSource.userId
+    override val userName: String? get() = if (inMemoryDataSource.hasSession()) inMemoryDataSource.userName else persistentDataSource.userName
+    override val password: String? get() = if (inMemoryDataSource.hasSession()) inMemoryDataSource.password else persistentDataSource.password
     
     override val deviceId: String get() = persistentDataSource.deviceId
     override val deviceName: String get() = persistentDataSource.deviceName

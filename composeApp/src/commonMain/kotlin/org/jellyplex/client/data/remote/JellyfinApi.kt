@@ -23,20 +23,8 @@ import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import org.jellyplex.client.data.remote.models.AuthenticateByNameRequest
-import org.jellyplex.client.data.remote.models.DeviceProfile
-import org.jellyplex.client.data.remote.models.DirectPlayProfile
-import org.jellyplex.client.data.remote.models.ItemResponse
-import org.jellyplex.client.data.remote.models.PlaybackInfoResponse
-import org.jellyplex.client.data.remote.models.SubtitleProfile
-import org.jellyplex.client.data.remote.models.TranscodingProfile
-import org.jellyplex.client.domain.models.AuthenticationResult
-import org.jellyplex.client.domain.models.MediaItem
-import org.jellyplex.client.domain.models.MediaType
-import org.jellyplex.client.domain.models.Person
-import org.jellyplex.client.domain.models.PublicSystemInfo
-import org.jellyplex.client.domain.models.QuickConnectResult
-import org.jellyplex.client.domain.models.UserDto
+import org.jellyplex.client.data.remote.models.*
+import org.jellyplex.client.domain.models.*
 import org.jellyplex.client.domain.repositories.ISessionRepository
 
 private val json = Json {
@@ -96,6 +84,7 @@ class JellyfinApi(
                         val path = request.url.encodedPath
                         path.contains("/Users/AuthenticateByName") ||
                             path.contains("/QuickConnect/Connect") ||
+                            path.contains("/QuickConnect/Initiate") ||
                             path.contains("/System/Info/Public")
                     }
                 }
@@ -138,7 +127,7 @@ class JellyfinApi(
             }
             header("X-Emby-Authorization", authHeader(includeToken = false))
             contentType(ContentType.Application.Json)
-            setBody(AuthenticateByNameRequest(username, password))
+            setBody(org.jellyplex.client.data.remote.models.AuthenticateByNameRequest(username, password))
         }.body<AuthenticationResult>()
         loginClient.close()
         return result
@@ -251,7 +240,7 @@ class JellyfinApi(
         }.body()
     }
 
-    suspend fun authenticateByName(request: AuthenticateByNameRequest): AuthenticationResult {
+    suspend fun authenticateByName(request: org.jellyplex.client.data.remote.models.AuthenticateByNameRequest): AuthenticationResult {
         return client.post {
             apiUrl("Users", "AuthenticateByName")
             header("X-Emby-Authorization", authHeader(includeToken = false))
