@@ -4,6 +4,7 @@ import org.jellyplus.client.data.remote.JellyfinApi
 import org.jellyplus.client.data.remote.models.PlaybackInfoResponse
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.Person
+import org.jellyplus.client.data.remote.models.ChapterInfo
 
 interface IMediaRemoteDataSource {
     suspend fun getMovies(): List<MediaItem>
@@ -28,6 +29,8 @@ interface IMediaRemoteDataSource {
     )
 
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long)
+    suspend fun markAsPlayed(userId: String, itemId: String)
+    suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>)
     fun getBaseUrl(): String
     fun getAccessToken(): String?
 }
@@ -62,6 +65,12 @@ class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSour
 
     override suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) =
         api.reportPlaybackStopped(itemId, playSessionId, positionTicks)
+
+    override suspend fun markAsPlayed(userId: String, itemId: String) =
+        api.markAsPlayed(userId, itemId)
+
+    override suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>) =
+        api.saveChapterMarker(itemId, chapters)
 
     override fun getBaseUrl(): String = api.baseUrl
     override fun getAccessToken(): String? = api.accessToken

@@ -9,7 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
-import org.jellyplus.client.data.remote.IntroMarker
+import org.jellyplus.client.domain.models.IntroMarker
+import org.jellyplus.client.domain.models.PlaybackConfig
 
 @Composable
 actual fun VideoPlayerImpl(
@@ -33,6 +34,14 @@ actual fun VideoPlayerImpl(
     showNextPrev: Boolean,
     playbackSpeed: Float,
     uiType: org.jellyplus.client.UiType,
+    nextEpisodeConfig: PlaybackConfig?,
+    autoSkipIntro: Boolean,
+    customMarkers: List<Pair<Long, Long>>,
+    onPreloadNextMeta: () -> Unit,
+    onMarkCurrentAsPlayed: () -> Unit,
+    onSaveCustomMarker: (Long, Long) -> Unit,
+    onToggleAutoSkip: () -> Unit,
+    onSeamlessNextEpisode: () -> Unit,
 ) {
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),

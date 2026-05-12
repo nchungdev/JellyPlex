@@ -14,7 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.delay
-import org.jellyplus.client.data.remote.IntroMarker
+import org.jellyplus.client.domain.models.IntroMarker
+import org.jellyplus.client.domain.models.PlaybackConfig
 
 @Composable
 actual fun VideoPlayerImpl(
@@ -38,6 +39,14 @@ actual fun VideoPlayerImpl(
     showNextPrev: Boolean,
     playbackSpeed: Float,
     uiType: org.jellyplus.client.UiType,
+    nextEpisodeConfig: PlaybackConfig?,
+    autoSkipIntro: Boolean,
+    customMarkers: List<Pair<Long, Long>>,
+    onPreloadNextMeta: () -> Unit,
+    onMarkCurrentAsPlayed: () -> Unit,
+    onSaveCustomMarker: (Long, Long) -> Unit,
+    onToggleAutoSkip: () -> Unit,
+    onSeamlessNextEpisode: () -> Unit,
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }

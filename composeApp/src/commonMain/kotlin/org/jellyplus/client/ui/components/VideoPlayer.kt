@@ -3,6 +3,7 @@ package org.jellyplus.client.ui.components
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import org.jellyplus.client.domain.models.IntroMarker
+import org.jellyplus.client.domain.models.PlaybackConfig
 
 @Composable
 expect fun VideoPlayerImpl(
@@ -26,6 +27,14 @@ expect fun VideoPlayerImpl(
     showNextPrev: Boolean,
     playbackSpeed: Float,
     uiType: org.jellyplus.client.UiType,
+    nextEpisodeConfig: PlaybackConfig? = null,
+    autoSkipIntro: Boolean = false,
+    customMarkers: List<Pair<Long, Long>> = emptyList(),
+    onPreloadNextMeta: () -> Unit = {},
+    onMarkCurrentAsPlayed: () -> Unit = {},
+    onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
+    onToggleAutoSkip: () -> Unit = {},
+    onSeamlessNextEpisode: () -> Unit = {},
 )
 
 @Composable
@@ -50,27 +59,22 @@ fun VideoPlayer(
     showNextPrev: Boolean = false,
     playbackSpeed: Float = 1.0f,
     uiType: org.jellyplus.client.UiType = org.jellyplus.client.UiType.Mobile,
+    nextEpisodeConfig: PlaybackConfig? = null,
+    autoSkipIntro: Boolean = false,
+    customMarkers: List<Pair<Long, Long>> = emptyList(),
+    onPreloadNextMeta: () -> Unit = {},
+    onMarkCurrentAsPlayed: () -> Unit = {},
+    onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
+    onToggleAutoSkip: () -> Unit = {},
+    onSeamlessNextEpisode: () -> Unit = {},
 ) {
     VideoPlayerImpl(
-        item,
-        parentItem,
-        url,
-        accessToken,
-        playSessionId,
-        mimeType,
-        markers,
-        modifier,
-        onBack,
-        onSkipEnding,
-        onNextEpisode,
-        onPrevEpisode,
-        onSpeedChange,
-        onPlaybackStart,
-        onPlaybackProgress,
-        onPlaybackStopped,
-        showSkipEnding,
-        showNextPrev,
-        playbackSpeed,
-        uiType,
+        item, parentItem, url, accessToken, playSessionId, mimeType, markers, modifier,
+        onBack, onSkipEnding, onNextEpisode, onPrevEpisode, onSpeedChange,
+        onPlaybackStart, onPlaybackProgress, onPlaybackStopped,
+        showSkipEnding, showNextPrev, playbackSpeed, uiType,
+        nextEpisodeConfig, autoSkipIntro, customMarkers,
+        onPreloadNextMeta, onMarkCurrentAsPlayed, onSaveCustomMarker,
+        onToggleAutoSkip, onSeamlessNextEpisode,
     )
 }

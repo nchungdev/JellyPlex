@@ -86,3 +86,9 @@ data class ItemResponse(
     @SerialName("Items") val items: List<MediaItem>,
     @SerialName("TotalRecordCount") val totalRecordCount: Int,
 )
+
+@Serializable
+data class ChapterInfo(
+    @SerialName("StartPositionTicks") val startPositionTicks: Long,
+    @SerialName("Name") val name: String,
+)
