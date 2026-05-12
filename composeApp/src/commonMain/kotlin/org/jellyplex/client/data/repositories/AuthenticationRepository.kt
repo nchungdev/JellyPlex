@@ -1,19 +1,19 @@
 package org.jellyplex.client.data.repositories
 
-import kotlinx.coroutines.flow.StateFlow
-import org.jellyplex.client.data.datasource.local.IMediaLocalDataSource
-import org.jellyplex.client.data.datasource.local.ISessionLocalDataSource
+import kotlinx.coroutines.flow.Flow
+import org.jellyplex.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplex.client.data.datasource.remote.IAuthRemoteDataSource
 import org.jellyplex.client.domain.models.AuthenticationResult
 
 import org.jellyplex.client.domain.repositories.IAuthenticationRepository
+import org.jellyplex.client.domain.repositories.ISessionRepository
 
 class AuthenticationRepository(
     private val remoteDataSource: IAuthRemoteDataSource,
-    private val localMediaDataSource: IMediaLocalDataSource,
-    private val sessionDataSource: ISessionLocalDataSource,
+    private val localMediaDataSource: MediaLocalDataSource,
+    private val sessionRepository: ISessionRepository,
 ) : IAuthenticationRepository {
-    override val isAuthenticated: StateFlow<Boolean> = sessionDataSource.isAuthenticated
+    override val isAuthenticated: Flow<Boolean> = sessionRepository.isAuthenticated
 
     override suspend fun login(
         url: String,
@@ -22,37 +22,39 @@ class AuthenticationRepository(
     ): AuthenticationResult {
         val result = remoteDataSource.login(url, username, password)
 
-        // Persist session
-        sessionDataSource.baseUrl = remoteDataSource.getBaseUrl()
-        sessionDataSource.accessToken = result.accessToken
-        sessionDataSource.userName = result.user?.name
-        sessionDataSource.userId = result.user?.id
-        sessionDataSource.password = password
+        // Persist session via SessionRepository (which handles Persistent vs Memory)
+        sessionRepository.saveSession(
+            url = remoteDataSource.getBaseUrl(),
+            token = result.accessToken ?: "",
+            userId = result.user?.id,
+            userName = result.user?.name,
+            password = password
+        )
 
         return result
     }
 
-    override fun hasSession(): Boolean = sessionDataSource.hasSession()
+    override fun hasSession(): Boolean = sessionRepository.hasSession()
 
     override fun clearSession() {
-        sessionDataSource.clear()
+        sessionRepository.clear()
         localMediaDataSource.clear()
     }
 
     override fun updateBaseUrl(url: String) {
-        val oldUrl = sessionDataSource.baseUrl
+        val oldUrl = sessionRepository.baseUrl
         if (oldUrl != url) {
             println("Repository: Server URL changed from $oldUrl to $url. Clearing stale session.")
-            sessionDataSource.clear() // Clear everything to be safe
+            sessionRepository.clear() // Clear everything to be safe
             localMediaDataSource.clear()
         }
         remoteDataSource.updateBaseUrl(url)
-        sessionDataSource.baseUrl = url
+        sessionRepository.updateBaseUrl(url)
     }
 
-    override fun getBaseUrl(): String? = sessionDataSource.baseUrl
+    override fun getBaseUrl(): String? = sessionRepository.baseUrl
 
-    override fun getUserId(): String? = sessionDataSource.userId
+    override fun getUserId(): String? = sessionRepository.userId
 
     override suspend fun validate(): Boolean {
         if (!hasSession()) return false

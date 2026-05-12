@@ -22,22 +22,22 @@ import io.ktor.http.contentType
 import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.jellyplex.client.data.local.SessionManager
+import org.jellyplex.client.data.remote.models.AuthenticateByNameRequest
+import org.jellyplex.client.data.remote.models.DeviceProfile
+import org.jellyplex.client.data.remote.models.DirectPlayProfile
+import org.jellyplex.client.data.remote.models.ItemResponse
+import org.jellyplex.client.data.remote.models.PlaybackInfoResponse
+import org.jellyplex.client.data.remote.models.SubtitleProfile
+import org.jellyplex.client.data.remote.models.TranscodingProfile
 import org.jellyplex.client.domain.models.AuthenticationResult
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.models.MediaType
+import org.jellyplex.client.domain.models.Person
 import org.jellyplex.client.domain.models.PublicSystemInfo
 import org.jellyplex.client.domain.models.QuickConnectResult
 import org.jellyplex.client.domain.models.UserDto
-
-@Serializable
-data class AuthenticateByNameRequest(
-    @SerialName("Username") val username: String? = null,
-    @SerialName("Pw") val pw: String? = null,
-)
+import org.jellyplex.client.domain.repositories.ISessionRepository
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -45,16 +45,12 @@ private val json = Json {
 }
 
 class JellyfinApi(
-    private val sessionManager: SessionManager? = null,
+    private val sessionRepository: ISessionRepository,
     var onSessionExpired: (() -> Unit)? = null,
 ) {
-    private var baseUrl: String = sessionManager?.baseUrl ?: ""
-
-    var accessToken: String?
-        get() = sessionManager?.accessToken
-        set(value) {
-            sessionManager?.accessToken = value
-        }
+    // Dynamic properties to ensure we always use the latest session data
+    val baseUrl: String get() = sessionRepository.baseUrl ?: ""
+    val accessToken: String? get() = sessionRepository.accessToken
 
     private val client =
         HttpClient {
@@ -73,17 +69,21 @@ class JellyfinApi(
             install(Auth) {
                 bearer {
                     loadTokens {
-                        sessionManager?.accessToken?.let { BearerTokens(it, "") }
+                        accessToken?.let { BearerTokens(it, "") }
                     }
                     refreshTokens {
-                        val username = sessionManager?.userName
-                        val password = sessionManager?.password
+                        val username = sessionRepository.userName
+                        val password = sessionRepository.password
                         if (username != null && password != null) {
                             try {
                                 val result = silentLogin(username, password)
-                                sessionManager.accessToken = result.accessToken
+                                // Update session via repository
+                                result.accessToken?.let {
+                                    sessionRepository.updateToken(it)
+                                }
                                 BearerTokens(result.accessToken ?: "", "")
                             } catch (e: Exception) {
+                                println("JellyfinApi: Token refresh failed - ${e.message}")
                                 onSessionExpired?.invoke()
                                 null
                             }
@@ -103,9 +103,6 @@ class JellyfinApi(
             expectSuccess = true
         }
 
-    /**
-     * Helper to configure the API URL and common headers for a request.
-     */
     private fun HttpRequestBuilder.apiUrl(vararg segments: String) {
         url {
             takeFrom(this@JellyfinApi.baseUrl)
@@ -114,23 +111,23 @@ class JellyfinApi(
         header("X-Emby-Authorization", authHeader())
     }
 
-    /**
-     * Builds a full URL string for public or media access (e.g. streaming).
-     * Automatically appends ApiKey if available and not already present.
-     */
     fun buildUrl(vararg segments: String, block: URLBuilder.() -> Unit = {}): String {
-        return URLBuilder(baseUrl).apply {
+        val currentBaseUrl = baseUrl
+        if (currentBaseUrl.isEmpty()) return ""
+
+        return URLBuilder(currentBaseUrl).apply {
             appendPathSegments(segments.toList())
             block()
             // Append ApiKey for media URLs if it's not already in the query
-            if (accessToken != null && !parameters.contains("ApiKey")) {
-                parameters.append("ApiKey", accessToken!!)
+            accessToken?.let { token ->
+                if (!parameters.contains("ApiKey")) {
+                    parameters.append("ApiKey", token)
+                }
             }
         }.buildString()
     }
 
     private suspend fun silentLogin(username: String, password: String): AuthenticationResult {
-        // Use a separate client or bypass Auth to avoid recursion
         val loginClient = HttpClient {
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
         }
@@ -152,7 +149,6 @@ class JellyfinApi(
         if (formattedUrl.isEmpty()) return ""
 
         if (!formattedUrl.startsWith("http")) {
-            // Force https for official demo
             formattedUrl = if (formattedUrl.contains("demo.jellyfin.org")) {
                 "https://$formattedUrl"
             } else {
@@ -160,10 +156,8 @@ class JellyfinApi(
             }
         }
 
-        // Remove trailing slash
         formattedUrl = formattedUrl.removeSuffix("/")
 
-        // Automatically add port 8096 if no port is specified and it's not a common port
         val protocolSeparatorIndex = formattedUrl.indexOf("://")
         val urlWithoutProtocol = if (protocolSeparatorIndex != -1) {
             formattedUrl.substring(protocolSeparatorIndex + 3)
@@ -171,10 +165,6 @@ class JellyfinApi(
             formattedUrl
         }
 
-        // Only append 8096 if:
-        // 1. No port is explicitly specified
-        // 2. No path is present (it's just a host)
-        // 3. It's not the official demo domain (which uses standard 443 via reverse proxy)
         val isDemo = urlWithoutProtocol.contains("demo.jellyfin.org")
         val hasPath = urlWithoutProtocol.contains("/")
         val hasPort = urlWithoutProtocol.contains(":")
@@ -189,7 +179,7 @@ class JellyfinApi(
     fun updateBaseUrl(newUrl: String) {
         val formatted = formatUrl(newUrl)
         if (formatted.isNotEmpty()) {
-            baseUrl = formatted
+            sessionRepository.updateBaseUrl(formatted)
         }
     }
 
@@ -202,35 +192,18 @@ class JellyfinApi(
         }
     }
 
-    fun getBaseUrl(): String = baseUrl
-
     fun getVideoStreamUrl(itemId: String): String {
         return buildUrl("videos", itemId, "stream") {
             parameters.append("Static", "true")
         }
     }
 
-    fun getStreamUrl(
-        itemId: String,
-        token: String,
-    ): String {
-        return buildUrl("videos", itemId, "stream") {
-            parameters.append("Static", "true")
-            // Override ApiKey if a specific token is provided
-            parameters["ApiKey"] = token
-        }
-    }
-
     private fun authHeader(includeToken: Boolean = true): String {
-        val deviceName = sessionManager?.deviceName ?: "JellyPlex Device"
-        val deviceId = sessionManager?.deviceId ?: "UnknownDevice"
-        var header =
-            "MediaBrowser Client=\"JellyPlex\", Device=\"$deviceName\", " +
-                "DeviceId=\"$deviceId\", Version=\"1.0.0\""
+        val deviceName = sessionRepository.deviceName
+        val deviceId = sessionRepository.deviceId
+        var header = "MediaBrowser Client=\"JellyPlex\", Device=\"$deviceName\", DeviceId=\"$deviceId\", Version=\"1.0.0\""
         if (includeToken) {
-            accessToken?.let {
-                header += ", Token=\"$it\""
-            }
+            accessToken?.let { header += ", Token=\"$it\"" }
         }
         return header
     }
@@ -257,9 +230,7 @@ class JellyfinApi(
             apiUrl("QuickConnect", "Initiate")
             header("X-Emby-Authorization", authHeader(includeToken = false))
         }
-        val responseText = response.bodyAsText()
-        println("QuickConnect Initiate RAW JSON: $responseText")
-        return json.decodeFromString(QuickConnectResult.serializer(), responseText)
+        return json.decodeFromString(QuickConnectResult.serializer(), response.bodyAsText())
     }
 
     suspend fun getQuickConnectState(secret: String): QuickConnectResult {
@@ -268,9 +239,7 @@ class JellyfinApi(
             parameter("secret", secret)
             header("X-Emby-Authorization", authHeader(includeToken = false))
         }
-        val responseText = response.bodyAsText()
-        println("QuickConnect RAW JSON: $responseText")
-        return json.decodeFromString(QuickConnectResult.serializer(), responseText)
+        return json.decodeFromString(QuickConnectResult.serializer(), response.bodyAsText())
     }
 
     suspend fun authenticateWithQuickConnect(secret: String): AuthenticationResult {
@@ -291,34 +260,29 @@ class JellyfinApi(
         }.body()
     }
 
-    suspend fun getItemDetails(
-        itemId: String,
-        userId: String,
-    ): MediaItem {
+    suspend fun getItemDetails(itemId: String, userId: String): MediaItem {
         return client.get {
             apiUrl("Users", userId, "Items", itemId)
             parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,Genres,CommunityRating,People,RunTimeTicks")
         }.body()
     }
 
-    suspend fun getPeople(itemId: String): List<org.jellyplex.client.domain.models.Person> {
-        val item = getItemDetails(itemId, "") // UserId is not strictly required for People
+    suspend fun getPeople(itemId: String): List<Person> {
+        val item = getItemDetails(itemId, "")
         return item.people ?: emptyList()
     }
 
     suspend fun searchItems(query: String): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Items")
-                parameter("searchTerm", query)
-                parameter("Recursive", true)
-                parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
-                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-            }.body()
+        val response: ItemResponse = client.get {
+            apiUrl("Items")
+            parameter("searchTerm", query)
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+        }.body()
         return response.items
     }
 
-    // Playback Reporting
     suspend fun reportPlaybackStart(itemId: String, playSessionId: String) {
         client.post {
             apiUrl("Sessions", "Playing")
@@ -327,13 +291,7 @@ class JellyfinApi(
         }
     }
 
-    suspend fun reportPlaybackProgress(
-        itemId: String,
-        playSessionId: String,
-        positionTicks: Long,
-        isPaused: Boolean,
-        isMuted: Boolean = false
-    ) {
+    suspend fun reportPlaybackProgress(itemId: String, playSessionId: String, positionTicks: Long, isPaused: Boolean, isMuted: Boolean = false) {
         client.post {
             apiUrl("Sessions", "Playing", "Progress")
             parameter("ItemId", itemId)
@@ -354,11 +312,10 @@ class JellyfinApi(
     }
 
     suspend fun getResumeItems(userId: String): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Users", userId, "Items", "Resume")
-                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-            }.body()
+        val response: ItemResponse = client.get {
+            apiUrl("Users", userId, "Items", "Resume")
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+        }.body()
         return response.items
     }
 
@@ -371,209 +328,74 @@ class JellyfinApi(
     }
 
     suspend fun getMovies(): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Items")
-                parameter("SortBy", "SortName")
-                parameter("SortOrder", "Ascending")
-                parameter("Recursive", true)
-                parameter("IncludeItemTypes", MediaType.MOVIE.value)
-                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-            }.body()
+        val response: ItemResponse = client.get {
+            apiUrl("Items")
+            parameter("SortBy", "SortName")
+            parameter("SortOrder", "Ascending")
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", MediaType.MOVIE.value)
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+        }.body()
         return response.items
     }
 
     suspend fun getTvShows(): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Items")
-                parameter("SortBy", "SortName")
-                parameter("SortOrder", "Ascending")
-                parameter("Recursive", true)
-                parameter("IncludeItemTypes", MediaType.SERIES.value)
-                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-            }.body()
+        val response: ItemResponse = client.get {
+            apiUrl("Items")
+            parameter("SortBy", "SortName")
+            parameter("SortOrder", "Ascending")
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", MediaType.SERIES.value)
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+        }.body()
         return response.items
-    }
-
-    suspend fun getIntroMarkers(itemId: String): List<IntroMarker> {
-        return try {
-            client.get {
-                apiUrl("Items", itemId, "IntroMarkers")
-            }.body()
-        } catch (e: Exception) {
-            emptyList()
-        }
     }
 
     suspend fun getSeasons(seriesId: String): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Shows", seriesId, "Seasons")
-                parameter("Fields", "Overview,ImageTags")
-            }.body()
+        val response: ItemResponse = client.get {
+            apiUrl("Shows", seriesId, "Seasons")
+            parameter("Fields", "Overview,ImageTags")
+        }.body()
         return response.items
     }
 
-    suspend fun getEpisodes(
-        seriesId: String,
-        seasonId: String,
-    ): List<MediaItem> {
-        val response: ItemResponse =
-            client.get {
-                apiUrl("Shows", seriesId, "Episodes")
-                parameter("seasonId", seasonId)
-                parameter("Fields", "Overview,RunTimeTicks,ImageTags")
-            }.body()
+    suspend fun getEpisodes(seriesId: String, seasonId: String): List<MediaItem> {
+        val response: ItemResponse = client.get {
+            apiUrl("Shows", seriesId, "Episodes")
+            parameter("seasonId", seasonId)
+            parameter("Fields", "Overview,RunTimeTicks,ImageTags")
+        }.body()
         return response.items
     }
 
-    suspend fun getPlaybackInfo(
-        itemId: String,
-        userId: String,
-        deviceProfile: DeviceProfile? = null,
-    ): PlaybackInfoResponse {
-        val response: PlaybackInfoResponse =
-            client.post {
-                apiUrl("Items", itemId, "PlaybackInfo")
-                parameter("userId", userId)
-                parameter("enableDirectPlay", false)
-                parameter("enableDirectStream", false)
-                contentType(ContentType.Application.Json)
-                setBody(deviceProfile ?: DefaultDeviceProfile)
-            }.body()
-        return response
+    suspend fun getPlaybackInfo(itemId: String, userId: String, deviceProfile: DeviceProfile? = null): PlaybackInfoResponse {
+        return client.post {
+            apiUrl("Items", itemId, "PlaybackInfo")
+            parameter("userId", userId)
+            parameter("enableDirectPlay", false)
+            parameter("enableDirectStream", false)
+            contentType(ContentType.Application.Json)
+            setBody(deviceProfile ?: DefaultDeviceProfile)
+        }.body()
     }
 }
 
-val DefaultDeviceProfile =
-    DeviceProfile(
-        directPlayProfiles =
-            listOf(
-                DirectPlayProfile(
-                    container = "mp4,m4v",
-                    type = "Video",
-                    videoCodec = "h264,hevc,vp9,av1",
-                    audioCodec = "aac,mp3,opus,flac,vorbis",
-                ),
-                DirectPlayProfile(
-                    container = "mkv",
-                    type = "Video",
-                    videoCodec = "h264,hevc,vp9,av1",
-                    audioCodec = "aac,mp3,opus,flac,vorbis",
-                ),
-                DirectPlayProfile(container = "mp3", type = "Audio"),
-                DirectPlayProfile(container = "aac", type = "Audio"),
-                DirectPlayProfile(container = "flac", type = "Audio"),
-                DirectPlayProfile(container = "opus", type = "Audio"),
-                DirectPlayProfile(container = "wav", type = "Audio"),
-            ),
-        transcodingProfiles =
-            listOf(
-                TranscodingProfile(
-                    container = "ts",
-                    type = "Video",
-                    audioCodec = "aac",
-                    videoCodec = "h264",
-                    protocol = "hls",
-                    context = "Streaming",
-                ),
-                TranscodingProfile(
-                    container = "mp3",
-                    type = "Audio",
-                    audioCodec = "mp3",
-                    videoCodec = "",
-                    protocol = "http",
-                    context = "Streaming",
-                ),
-            ),
-        subtitleProfiles =
-            listOf(
-                SubtitleProfile(format = "srt", method = "Embed"),
-                SubtitleProfile(format = "vtt", method = "Embed"),
-            ),
+val DefaultDeviceProfile = DeviceProfile(
+    directPlayProfiles = listOf(
+        DirectPlayProfile("mp4,m4v", "Video", "h264,hevc,vp9,av1", "aac,mp3,opus,flac,vorbis"),
+        DirectPlayProfile("mkv", "Video", "h264,hevc,vp9,av1", "aac,mp3,opus,flac,vorbis"),
+        DirectPlayProfile("mp3", "Audio"),
+        DirectPlayProfile("aac", "Audio"),
+        DirectPlayProfile("flac", "Audio"),
+        DirectPlayProfile("opus", "Audio"),
+        DirectPlayProfile("wav", "Audio")
+    ),
+    transcodingProfiles = listOf(
+        TranscodingProfile("ts", "Video", "h264", "aac", "hls", "Streaming"),
+        TranscodingProfile("mp3", "Audio", "", "mp3", "http", "Streaming")
+    ),
+    subtitleProfiles = listOf(
+        SubtitleProfile("srt", "Embed"),
+        SubtitleProfile("vtt", "Embed")
     )
-
-@Serializable
-data class DeviceProfile(
-    @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long = 140000000,
-    @SerialName("MaxStaticBitrate") val maxStaticBitrate: Long = 140000000,
-    @SerialName("MusicStreamingTranscodingBitrate") val musicStreamingTranscodingBitrate: Int = 192000,
-    @SerialName("DirectPlayProfiles") val directPlayProfiles: List<DirectPlayProfile> = emptyList(),
-    @SerialName("TranscodingProfiles") val transcodingProfiles: List<TranscodingProfile> = emptyList(),
-    @SerialName("ContainerProfiles") val containerProfiles: List<ContainerProfile> = emptyList(),
-    @SerialName("CodecProfiles") val codecProfiles: List<CodecProfile> = emptyList(),
-    @SerialName("ResponseProfiles") val responseProfiles: List<ResponseProfile> = emptyList(),
-    @SerialName("SubtitleProfiles") val subtitleProfiles: List<SubtitleProfile> = emptyList(),
-)
-
-@Serializable
-data class DirectPlayProfile(
-    @SerialName("Container") val container: String,
-    @SerialName("Type") val type: String,
-    @SerialName("VideoCodec") val videoCodec: String? = null,
-    @SerialName("AudioCodec") val audioCodec: String? = null,
-)
-
-@Serializable
-data class TranscodingProfile(
-    @SerialName("Container") val container: String,
-    @SerialName("Type") val type: String,
-    @SerialName("VideoCodec") val videoCodec: String,
-    @SerialName("AudioCodec") val audioCodec: String,
-    @SerialName("Protocol") val protocol: String,
-    @SerialName("Context") val context: String,
-)
-
-@Serializable
-data class ContainerProfile(
-    @SerialName("Type") val type: String,
-)
-
-@Serializable
-data class CodecProfile(
-    @SerialName("Type") val type: String,
-)
-
-@Serializable
-data class ResponseProfile(
-    @SerialName("Type") val type: String,
-)
-
-@Serializable
-data class SubtitleProfile(
-    @SerialName("Format") val format: String,
-    @SerialName("Method") val method: String,
-)
-
-@Serializable
-data class PlaybackInfoResponse(
-    @SerialName("MediaSources") val mediaSources: List<MediaSource>,
-    @SerialName("PlaySessionId") val playSessionId: String? = null,
-)
-
-@Serializable
-data class MediaSource(
-    @SerialName("Id") val id: String,
-    @SerialName("SupportsDirectPlay") val supportsDirectPlay: Boolean = false,
-    @SerialName("SupportsDirectStream") val supportsDirectStream: Boolean = false,
-    @SerialName("SupportsTranscoding") val supportsTranscoding: Boolean = false,
-    @SerialName("Container") val container: String? = null,
-    @SerialName("Protocol") val protocol: String? = null,
-    @SerialName("Path") val path: String? = null,
-    @SerialName("IsRemote") val isRemote: Boolean = false,
-    @SerialName("TranscodingUrl") val transcodingUrl: String? = null,
-)
-
-@Serializable
-data class IntroMarker(
-    @SerialName("StartPositionTicks") val startTicks: Long,
-    @SerialName("EndPositionTicks") val endTicks: Long,
-    @SerialName("Type") val type: String? = null,
-)
-
-@Serializable
-data class ItemResponse(
-    @SerialName("Items") val items: List<MediaItem>,
-    @SerialName("TotalRecordCount") val totalRecordCount: Int,
 )

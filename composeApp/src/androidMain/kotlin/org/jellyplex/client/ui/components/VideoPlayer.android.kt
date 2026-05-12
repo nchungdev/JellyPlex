@@ -1,18 +1,15 @@
 package org.jellyplex.client.ui.components
 
-import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.media3.common.util.UnstableApi
 import org.jellyplex.client.UiType
-import org.jellyplex.client.data.remote.IntroMarker
+import org.jellyplex.client.domain.models.MediaItem
+import org.jellyplex.client.domain.models.IntroMarker
 
-@OptIn(UnstableApi::class)
-@SuppressLint("UnsafeOptInUsageError")
 @Composable
 actual fun VideoPlayerImpl(
-    item: org.jellyplex.client.domain.models.MediaItem,
-    parentItem: org.jellyplex.client.domain.models.MediaItem?,
+    item: MediaItem,
+    parentItem: MediaItem?,
     url: String,
     accessToken: String,
     playSessionId: String?,
@@ -32,51 +29,43 @@ actual fun VideoPlayerImpl(
     playbackSpeed: Float,
     uiType: UiType,
 ) {
-    when (uiType) {
-        UiType.Desktop -> {
-            org.jellyplex.client.ui.components.player.tv.DesktopVideoPlayer(
-                item = item,
-                parentItem = parentItem,
-                url = url,
-                accessToken = accessToken,
-                playSessionId = playSessionId,
-                mimeType = mimeType,
-                markers = markers,
-                onBack = onBack,
-                onSkipEnding = onSkipEnding,
-                onNextEpisode = onNextEpisode,
-                onPrevEpisode = onPrevEpisode,
-                onSpeedChange = onSpeedChange,
-                onPlaybackStart = onPlaybackStart,
-                onPlaybackProgress = onPlaybackProgress,
-                onPlaybackStopped = onPlaybackStopped,
-                showSkipEnding = showSkipEnding,
-                showNextPrev = showNextPrev,
-                playbackSpeed = playbackSpeed,
-            )
-        }
-
-        else -> {
-            org.jellyplex.client.ui.components.player.mobile.MobileVideoPlayer(
-                item = item,
-                parentItem = parentItem,
-                url = url,
-                accessToken = accessToken,
-                playSessionId = playSessionId,
-                mimeType = mimeType,
-                markers = markers,
-                onBack = onBack,
-                onSkipEnding = onSkipEnding,
-                onNextEpisode = onNextEpisode,
-                onPrevEpisode = onPrevEpisode,
-                onSpeedChange = onSpeedChange,
-                onPlaybackStart = onPlaybackStart,
-                onPlaybackProgress = onPlaybackProgress,
-                onPlaybackStopped = onPlaybackStopped,
-                showSkipEnding = showSkipEnding,
-                showNextPrev = showNextPrev,
-                playbackSpeed = playbackSpeed,
-            )
-        }
+    if (uiType == UiType.Desktop) {
+        org.jellyplex.client.ui.components.player.desktop.DesktopVideoPlayer(
+            item = item,
+            parentItem = parentItem,
+            url = url,
+            accessToken = accessToken,
+            playSessionId = playSessionId,
+            mimeType = mimeType,
+            markers = markers,
+            modifier = modifier,
+            onBack = onBack,
+            onPlaybackStart = onPlaybackStart,
+            onPlaybackProgress = onPlaybackProgress,
+            onPlaybackStopped = onPlaybackStopped,
+            playbackSpeed = playbackSpeed,
+            showNextPrev = showNextPrev,
+            onNextEpisode = onNextEpisode,
+            onPrevEpisode = onPrevEpisode
+        )
+    } else {
+        org.jellyplex.client.ui.components.player.mobile.MobileVideoPlayer(
+            item = item,
+            parentItem = parentItem,
+            url = url,
+            accessToken = accessToken,
+            playSessionId = playSessionId,
+            mimeType = mimeType,
+            markers = markers,
+            modifier = modifier,
+            onBack = onBack,
+            onPlaybackStart = onPlaybackStart,
+            onPlaybackProgress = onPlaybackProgress,
+            onPlaybackStopped = onPlaybackStopped,
+            playbackSpeed = playbackSpeed,
+            showNextPrev = showNextPrev,
+            onNextEpisode = onNextEpisode,
+            onPrevEpisode = onPrevEpisode
+        )
     }
 }

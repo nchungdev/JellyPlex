@@ -1,10 +1,10 @@
 package org.jellyplex.client.domain.repositories
 
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import org.jellyplex.client.domain.models.AuthenticationResult
 
 interface IAuthenticationRepository {
-    val isAuthenticated: StateFlow<Boolean>
+    val isAuthenticated: Flow<Boolean>
 
     suspend fun login(
         url: String,

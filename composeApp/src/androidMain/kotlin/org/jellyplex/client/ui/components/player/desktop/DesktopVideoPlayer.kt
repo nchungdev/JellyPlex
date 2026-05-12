@@ -1,4 +1,4 @@
-package org.jellyplex.client.ui.components.player.tv
+package org.jellyplex.client.ui.components.player.desktop
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
@@ -10,40 +10,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.SkipPrevious
-import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
@@ -75,7 +50,7 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.jellyplex.client.data.remote.IntroMarker
+import org.jellyplex.client.domain.models.IntroMarker
 import org.jellyplex.client.domain.models.MediaType
 import org.jellyplex.client.media.CustomHlsPlaylistParserFactory
 
@@ -90,17 +65,15 @@ fun DesktopVideoPlayer(
     playSessionId: String? = null,
     mimeType: String?,
     markers: List<IntroMarker>,
+    modifier: Modifier = Modifier,
     onBack: () -> Unit,
-    onSkipEnding: () -> Unit,
-    onNextEpisode: () -> Unit,
-    onPrevEpisode: () -> Unit,
-    onSpeedChange: (Float) -> Unit,
     onPlaybackStart: (String, String) -> Unit,
     onPlaybackProgress: (String, String, Long, Boolean) -> Unit,
     onPlaybackStopped: (String, String, Long) -> Unit,
-    showSkipEnding: Boolean,
-    showNextPrev: Boolean,
     playbackSpeed: Float,
+    showNextPrev: Boolean = false,
+    onNextEpisode: () -> Unit = {},
+    onPrevEpisode: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val playFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -255,7 +228,7 @@ fun DesktopVideoPlayer(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
             .onKeyEvent { keyEvent ->

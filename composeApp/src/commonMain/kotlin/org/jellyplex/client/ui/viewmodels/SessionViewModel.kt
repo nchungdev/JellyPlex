@@ -21,7 +21,7 @@ class SessionViewModel(
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
 
-    private val _isValidating = MutableStateFlow(getIsAuthenticatedUseCase().value)
+    private val _isValidating = MutableStateFlow(false)
     
     val uiState: StateFlow<SessionState> = combine(
         getIsAuthenticatedUseCase(),
@@ -31,10 +31,7 @@ class SessionViewModel(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = SessionState(
-            isAuthenticated = getIsAuthenticatedUseCase().value,
-            isValidating = getIsAuthenticatedUseCase().value
-        )
+        initialValue = SessionState(isAuthenticated = false, isValidating = true)
     )
 
     fun getBaseUrl(): String = getBaseUrlUseCase()
@@ -45,7 +42,8 @@ class SessionViewModel(
 
     private fun validateStartupSession() {
         viewModelScope.launch(dispatchers.main) {
-            if (getIsAuthenticatedUseCase().value) {
+            val isCurrentlyAuthenticated = getIsAuthenticatedUseCase().first()
+            if (isCurrentlyAuthenticated) {
                 _isValidating.value = true
                 try {
                     val isValid = validateSessionUseCase()

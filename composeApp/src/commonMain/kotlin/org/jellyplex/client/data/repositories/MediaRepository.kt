@@ -3,16 +3,21 @@ package org.jellyplex.client.data.repositories
 import io.ktor.http.appendPathSegments
 import io.ktor.http.takeFrom
 import kotlinx.coroutines.flow.StateFlow
-import org.jellyplex.client.data.datasource.local.IMediaLocalDataSource
-import org.jellyplex.client.data.datasource.local.ISessionLocalDataSource
+import org.jellyplex.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplex.client.data.datasource.remote.IMediaRemoteDataSource
-import org.jellyplex.client.domain.models.*
+import org.jellyplex.client.domain.models.AppDispatchers
+import org.jellyplex.client.domain.models.HomeContent
+import org.jellyplex.client.domain.models.MediaItem
+import org.jellyplex.client.domain.models.MediaType
+import org.jellyplex.client.domain.models.Person
+import org.jellyplex.client.domain.models.PlaybackConfig
 import org.jellyplex.client.domain.repositories.IMediaRepository
+import org.jellyplex.client.domain.repositories.ISessionRepository
 
 class MediaRepository(
     private val remoteDataSource: IMediaRemoteDataSource,
-    private val localDataSource: IMediaLocalDataSource,
-    private val sessionDataSource: ISessionLocalDataSource,
+    private val localDataSource: MediaLocalDataSource,
+    private val sessionRepository: ISessionRepository,
     private val dispatchers: AppDispatchers,
 ) : IMediaRepository {
 
@@ -105,7 +110,7 @@ class MediaRepository(
 
     override fun getBaseUrl(): String = remoteDataSource.getBaseUrl()
 
-    override fun getAccessToken(): String? = remoteDataSource.getAccessToken()
+    override fun getAccessToken(): String? = sessionRepository.accessToken
 
     override fun clearCache() {
         localDataSource.clear()

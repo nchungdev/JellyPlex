@@ -17,5 +17,5 @@ class QuickConnectRemoteDataSource(private val api: JellyfinApi) : IQuickConnect
     override suspend fun initiate(): QuickConnectResult = api.initiateQuickConnect()
     override suspend fun getStatus(secret: String): QuickConnectResult = api.getQuickConnectState(secret)
     override suspend fun authenticate(secret: String): AuthenticationResult = api.authenticateWithQuickConnect(secret)
-    override fun getBaseUrl(): String = api.getBaseUrl()
+    override fun getBaseUrl(): String = api.baseUrl
 }

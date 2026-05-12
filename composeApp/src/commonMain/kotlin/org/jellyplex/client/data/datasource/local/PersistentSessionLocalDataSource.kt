@@ -1,11 +1,12 @@
-package org.jellyplex.client.data.local
+package org.jellyplex.client.data.datasource.local
 
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.jellyplex.client.data.datasource.local.ISessionLocalDataSource
+import org.jellyplex.client.getDeviceName
+import org.jellyplex.client.utils.generateUuid
 
-class SessionManager(private val settings: Settings = Settings()) : ISessionLocalDataSource {
+class PersistentSessionLocalDataSource(private val settings: Settings = Settings()) {
     companion object {
         private const val KEY_BASE_URL = "base_url"
         private const val KEY_ACCESS_TOKEN = "access_token"
@@ -17,35 +18,35 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
     }
 
     private val _isAuthenticated = MutableStateFlow(hasSession())
-    override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
+    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
 
-    override var baseUrl: String?
+    var baseUrl: String?
         get() = settings.getStringOrNull(KEY_BASE_URL)
         set(value) {
             if (!value.isNullOrEmpty()) settings.putString(KEY_BASE_URL, value) else settings.remove(KEY_BASE_URL)
             updateAuthState()
         }
 
-    override var accessToken: String?
+    var accessToken: String?
         get() = settings.getStringOrNull(KEY_ACCESS_TOKEN)
         set(value) {
             if (!value.isNullOrEmpty()) settings.putString(KEY_ACCESS_TOKEN, value) else settings.remove(KEY_ACCESS_TOKEN)
             updateAuthState()
         }
 
-    override var userName: String?
+    var userName: String?
         get() = settings.getStringOrNull(KEY_USER_NAME)
         set(value) {
             if (!value.isNullOrEmpty()) settings.putString(KEY_USER_NAME, value) else settings.remove(KEY_USER_NAME)
         }
 
-    override var password: String?
+    var password: String?
         get() = settings.getStringOrNull(KEY_PASSWORD)
         set(value) {
             if (!value.isNullOrEmpty()) settings.putString(KEY_PASSWORD, value) else settings.remove(KEY_PASSWORD)
         }
 
-    override var userId: String?
+    var userId: String?
         get() = settings.getStringOrNull(KEY_USER_ID)
         set(value) {
             if (!value.isNullOrEmpty()) settings.putString(KEY_USER_ID, value) else settings.remove(KEY_USER_ID)
@@ -55,8 +56,7 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
         get() {
             val currentId = settings.getStringOrNull(KEY_DEVICE_ID)
             if (currentId != null) return currentId
-
-            val newId = org.jellyplex.client.utils.generateUuid()
+            val newId = generateUuid()
             settings.putString(KEY_DEVICE_ID, newId)
             return newId
         }
@@ -65,13 +65,12 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
         get() {
             val currentName = settings.getStringOrNull(KEY_DEVICE_NAME)
             if (currentName != null) return currentName
-
-            val newName = org.jellyplex.client.getDeviceName()
+            val newName = getDeviceName()
             settings.putString(KEY_DEVICE_NAME, newName)
             return newName
         }
 
-    override fun clear() {
+    fun clear() {
         settings.remove(KEY_ACCESS_TOKEN)
         settings.remove(KEY_USER_ID)
         settings.remove(KEY_USER_NAME)
@@ -81,12 +80,10 @@ class SessionManager(private val settings: Settings = Settings()) : ISessionLoca
     }
 
     private fun updateAuthState() {
-        val authenticated = hasSession()
-        println("SessionManager: Auth state updated. Authenticated=$authenticated (URL=${baseUrl?.isNotEmpty()}, Token=${accessToken?.isNotEmpty()})")
-        _isAuthenticated.value = authenticated
+        _isAuthenticated.value = hasSession()
     }
 
-    override fun hasSession(): Boolean {
+    fun hasSession(): Boolean {
         val token = settings.getStringOrNull(KEY_ACCESS_TOKEN)
         val url = settings.getStringOrNull(KEY_BASE_URL)
         return !token.isNullOrEmpty() && !url.isNullOrEmpty()

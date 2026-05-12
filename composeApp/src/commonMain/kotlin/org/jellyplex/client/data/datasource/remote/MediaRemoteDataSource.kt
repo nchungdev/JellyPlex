@@ -1,7 +1,7 @@
 package org.jellyplex.client.data.datasource.remote
 
 import org.jellyplex.client.data.remote.JellyfinApi
-import org.jellyplex.client.data.remote.PlaybackInfoResponse
+import org.jellyplex.client.data.remote.models.PlaybackInfoResponse
 import org.jellyplex.client.domain.models.MediaItem
 import org.jellyplex.client.domain.models.Person
 
@@ -63,6 +63,6 @@ class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSour
     override suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) =
         api.reportPlaybackStopped(itemId, playSessionId, positionTicks)
 
-    override fun getBaseUrl(): String = api.getBaseUrl()
+    override fun getBaseUrl(): String = api.baseUrl
     override fun getAccessToken(): String? = api.accessToken
 }

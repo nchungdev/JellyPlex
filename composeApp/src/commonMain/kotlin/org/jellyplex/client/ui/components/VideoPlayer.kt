@@ -2,7 +2,7 @@ package org.jellyplex.client.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import org.jellyplex.client.data.remote.IntroMarker
+import org.jellyplex.client.domain.models.IntroMarker
 
 @Composable
 expect fun VideoPlayerImpl(

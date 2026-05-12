@@ -1,6 +1,6 @@
 package org.jellyplex.client.data.datasource.remote
 
-import org.jellyplex.client.data.remote.AuthenticateByNameRequest
+import org.jellyplex.client.data.remote.models.AuthenticateByNameRequest
 import org.jellyplex.client.data.remote.JellyfinApi
 import org.jellyplex.client.domain.models.AuthenticationResult
 import org.jellyplex.client.domain.models.UserDto
@@ -16,9 +16,7 @@ class AuthRemoteDataSource(private val api: JellyfinApi) : IAuthRemoteDataSource
 
     override suspend fun login(url: String, username: String, password: String): AuthenticationResult {
         api.updateBaseUrl(url)
-        val result = api.authenticateByName(AuthenticateByNameRequest(username, password))
-        api.accessToken = result.accessToken
-        return result
+        return api.authenticateByName(AuthenticateByNameRequest(username, password))
     }
 
     override suspend fun validateToken(): UserDto {
@@ -29,5 +27,5 @@ class AuthRemoteDataSource(private val api: JellyfinApi) : IAuthRemoteDataSource
         api.updateBaseUrl(url)
     }
 
-    override fun getBaseUrl(): String = api.getBaseUrl()
+    override fun getBaseUrl(): String = api.baseUrl
 }

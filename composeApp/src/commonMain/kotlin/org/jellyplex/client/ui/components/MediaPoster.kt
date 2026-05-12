@@ -40,7 +40,7 @@ fun MediaPoster(
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.1f else 1.0f)
+    val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
     val interactionSource = remember { MutableInteractionSource() }
 
     val shape = RoundedCornerShape(12.dp)
