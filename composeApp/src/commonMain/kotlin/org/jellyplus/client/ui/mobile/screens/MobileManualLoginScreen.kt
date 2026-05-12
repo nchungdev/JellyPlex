@@ -91,7 +91,7 @@ fun MobileManualLoginScreen(
         } else {
             Button(
                 onClick = { onLogin(url, username, password) },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
                 shape = RoundedCornerShape(8.dp),
             ) {
@@ -102,7 +102,7 @@ fun MobileManualLoginScreen(
 
             OutlinedButton(
                 onClick = onBack,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().height(48.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
                 shape = RoundedCornerShape(8.dp),
             ) {
