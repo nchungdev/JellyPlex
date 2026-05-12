@@ -85,15 +85,34 @@ kotlin {
 }
 
 android {
-    namespace = "org.jellyplex.client"
+    namespace = "org.jellyplus.client"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "org.jellyplex.client"
+        applicationId = "org.jellyplus.client"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+    }
+
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val keystoreProps = java.util.Properties().apply {
+        if (keystorePropsFile.exists()) load(keystorePropsFile.inputStream())
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = (keystoreProps["KEYSTORE_FILE"] as String?
+                ?: System.getenv("KEYSTORE_FILE"))
+                ?.let { file(it) }
+            storePassword = keystoreProps["KEYSTORE_PASSWORD"] as String?
+                ?: System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = keystoreProps["KEY_ALIAS"] as String?
+                ?: System.getenv("KEY_ALIAS")
+            keyPassword = keystoreProps["KEY_PASSWORD"] as String?
+                ?: System.getenv("KEY_PASSWORD")
+        }
     }
 
     packaging {
@@ -103,8 +122,23 @@ android {
     }
 
     buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
+        debug {
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = if (keystorePropsFile.exists() || System.getenv("KEYSTORE_FILE") != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
