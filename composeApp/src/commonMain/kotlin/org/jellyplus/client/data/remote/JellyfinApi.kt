@@ -275,28 +275,24 @@ class JellyfinApi(
     suspend fun reportPlaybackStart(itemId: String, playSessionId: String) {
         client.post {
             apiUrl("Sessions", "Playing")
-            parameter("ItemId", itemId)
-            parameter("PlaySessionId", playSessionId)
+            contentType(ContentType.Application.Json)
+            setBody(PlaybackStartInfo(itemId = itemId, playSessionId = playSessionId))
         }
     }
 
     suspend fun reportPlaybackProgress(itemId: String, playSessionId: String, positionTicks: Long, isPaused: Boolean, isMuted: Boolean = false) {
         client.post {
             apiUrl("Sessions", "Playing", "Progress")
-            parameter("ItemId", itemId)
-            parameter("PlaySessionId", playSessionId)
-            parameter("PositionTicks", positionTicks)
-            parameter("IsPaused", isPaused)
-            parameter("IsMuted", isMuted)
+            contentType(ContentType.Application.Json)
+            setBody(PlaybackProgressInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks, isPaused = isPaused, isMuted = isMuted))
         }
     }
 
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) {
         client.post {
             apiUrl("Sessions", "Playing", "Stopped")
-            parameter("ItemId", itemId)
-            parameter("PlaySessionId", playSessionId)
-            parameter("PositionTicks", positionTicks)
+            contentType(ContentType.Application.Json)
+            setBody(PlaybackStopInfo(itemId = itemId, playSessionId = playSessionId, positionTicks = positionTicks))
         }
     }
 

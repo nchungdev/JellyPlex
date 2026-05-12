@@ -92,3 +92,28 @@ data class ChapterInfo(
     @SerialName("StartPositionTicks") val startPositionTicks: Long,
     @SerialName("Name") val name: String,
 )
+
+@Serializable
+data class PlaybackStartInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("PlaySessionId") val playSessionId: String,
+    @SerialName("CanSeek") val canSeek: Boolean = true,
+    @SerialName("IsPaused") val isPaused: Boolean = false,
+    @SerialName("IsMuted") val isMuted: Boolean = false,
+)
+
+@Serializable
+data class PlaybackProgressInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("PlaySessionId") val playSessionId: String,
+    @SerialName("PositionTicks") val positionTicks: Long,
+    @SerialName("IsPaused") val isPaused: Boolean = false,
+    @SerialName("IsMuted") val isMuted: Boolean = false,
+)
+
+@Serializable
+data class PlaybackStopInfo(
+    @SerialName("ItemId") val itemId: String,
+    @SerialName("PlaySessionId") val playSessionId: String,
+    @SerialName("PositionTicks") val positionTicks: Long,
+)

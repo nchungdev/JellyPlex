@@ -140,7 +140,11 @@ class PlayerViewModel(
 
     fun reportStart(itemId: String, playSessionId: String) {
         viewModelScope.launch(dispatchers.io) {
-            try { reportPlaybackStartUseCase(itemId, playSessionId) } catch (_: Exception) {}
+            try {
+                reportPlaybackStartUseCase(itemId, playSessionId)
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "reportStart failed: ${e.message}", e)
+            }
         }
     }
 
@@ -154,13 +158,19 @@ class PlayerViewModel(
         viewModelScope.launch(dispatchers.io) {
             try {
                 reportPlaybackProgressUseCase(itemId, playSessionId, positionTicks, isPaused, isMuted)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "reportProgress failed: ${e.message}", e)
+            }
         }
     }
 
     fun reportStopped(itemId: String, playSessionId: String, positionTicks: Long) {
         viewModelScope.launch(dispatchers.io) {
-            try { reportPlaybackStoppedUseCase(itemId, playSessionId, positionTicks) } catch (_: Exception) {}
+            try {
+                reportPlaybackStoppedUseCase(itemId, playSessionId, positionTicks)
+            } catch (e: Exception) {
+                android.util.Log.e("PlayerViewModel", "reportStopped failed: ${e.message}", e)
+            }
         }
     }
 
