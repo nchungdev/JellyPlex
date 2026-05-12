@@ -51,7 +51,7 @@ internal fun MobilePlayerTracker(
     }
 
     // Auto-next countdown
-    LaunchedEffect(autoNext, duration, item.id) {
+    LaunchedEffect(autoNext, item.id) {
         if (!autoNext || item.type != MediaType.EPISODE || duration <= 0L) return@LaunchedEffect
         while (true) {
             val remaining = duration - exoPlayer.currentPosition

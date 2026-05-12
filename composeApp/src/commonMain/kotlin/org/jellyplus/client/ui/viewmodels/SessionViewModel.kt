@@ -50,6 +50,7 @@ class SessionViewModel(
     )
 
     fun getBaseUrl(): String = getBaseUrlUseCase()
+    fun getUserName(): String? = clearSessionUseCase.getUserName()
 
     init {
         validateStartupSession()

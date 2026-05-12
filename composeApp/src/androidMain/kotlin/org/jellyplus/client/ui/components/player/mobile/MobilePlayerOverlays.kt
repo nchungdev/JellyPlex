@@ -152,11 +152,11 @@ internal fun BoxScope.MobilePlayerOverlays(
         visible = showGestureIndicator && gestureType == "brightness",
         enter = fadeIn(),
         exit = fadeOut(),
-        modifier = Modifier.align(Alignment.Center),
+        modifier = Modifier.align(Alignment.CenterStart).padding(start = 32.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 64.dp).align(Alignment.CenterStart)
+            modifier = Modifier
         ) {
             Box(
                 modifier = Modifier.width(6.dp).height(120.dp)

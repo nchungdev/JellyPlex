@@ -58,6 +58,7 @@ class AuthenticationRepository(
     override fun getBaseUrl(): String? = sessionRepository.baseUrl
 
     override fun getUserId(): String? = sessionRepository.userId
+    override fun getUserName(): String? = sessionRepository.userName
 
     override fun setPersistDemo(enabled: Boolean) {
         sessionRepository.setPersistDemo(enabled)

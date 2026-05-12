@@ -1,6 +1,7 @@
 package org.jellyplus.client.ui.mobile.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,25 +22,34 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -56,163 +66,250 @@ fun MobileMovieDetailScreen(
     val state by viewModel.state.collectAsState()
     val fullItem = state.fullItem ?: item
     val baseUrl = state.baseUrl
+    var overviewExpanded by remember { mutableStateOf(false) }
+    var isFavorite by remember { mutableStateOf(fullItem.userData?.isFavorite == true) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
-        AsyncImage(
-            model = item.getBackdropUrl(baseUrl),
-            contentDescription = null,
-            modifier = Modifier.fillMaxWidth().height(300.dp),
-            contentScale = ContentScale.Crop
-        )
-
-        // Status Bar Overlay
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F1113))
+            .verticalScroll(rememberScrollState())
+    ) {
+        // ── Backdrop with play overlay ──────────────────────────────────────
+        Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+            AsyncImage(
+                model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Bottom fade to background color
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black.copy(alpha = 0.15f), Color(0xFF0F1113)),
+                            startY = 320f
+                        )
                     )
-                )
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color(0xFF0F1113)),
-                        startY = 100f
-                    )
-                )
-        )
-
-        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Spacer(modifier = Modifier.height(180.dp))
-
-            Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                AsyncImage(
-                    model = item.getImageUrl(baseUrl),
-                    contentDescription = null,
+            )
+            // Play button center
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(34.dp))
+            }
+            // X close button top-right
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(8.dp)
+            ) {
+                Box(
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
-                )
-
-                Column(modifier = Modifier.padding(start = 16.dp).weight(1f)) {
-                    Text(
-                        fullItem.title,
-                        color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 32.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text("${fullItem.year ?: ""} • TV-MA", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Color(0xFFFFB300), shape = RoundedCornerShape(4.dp)) {
-                            val ratingText = fullItem.rating?.let { (it * 10).toInt().toFloat() / 10 }.toString()
-                            Text(
-                                ratingText,
-                                color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { onPlay(fullItem) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF24D366)),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.weight(1f).height(48.dp)
+                        .size(30.dp)
+                        .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Play", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-
-                Surface(
-                    color = Color.White.copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    IconButton(onClick = {}) { Icon(Icons.Default.Add, null, tint = Color.White) }
+                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
-
-            if (!fullItem.overview.isNullOrBlank()) {
-                Text(
-                    "Overview",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Text(
-                    fullItem.overview,
-                    color = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(16.dp),
-                    lineHeight = 22.sp
-                )
-            }
-
-            if (state.cast.isNotEmpty()) {
-                Text(
-                    "Cast",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                LazyRow(contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.cast) { person ->
-                        MobileCastCard(person, baseUrl)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
 
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .statusBarsPadding()
-                .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+        // ── Title ───────────────────────────────────────────────────────────
+        Text(
+            text = fullItem.title,
+            color = Color.White,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.ExtraBold,
+            lineHeight = 28.sp,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
+        )
+
+        // ── Metadata row: year • genre • HD ─────────────────────────────────
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(Icons.AutoMirrored.Default.ArrowBack, "Back", tint = Color.White)
+            fullItem.year?.let {
+                Text("$it", color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
+                MetaDot()
+            }
+            fullItem.genres?.firstOrNull()?.let {
+                Text(it, color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
+                MetaDot()
+            }
+            Text(
+                "HD",
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(3.dp))
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            )
         }
+
+        // ── Rating ──────────────────────────────────────────────────────────
+        fullItem.rating?.let { rating ->
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
+                Text(
+                    "${(rating * 10).toInt() / 10f} / 10",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp
+                )
+            }
+        }
+
+        // ── Action icons ────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            DetailActionButton(
+                icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                label = "My List",
+                tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                onClick = { isFavorite = !isFavorite }
+            )
+            DetailActionButton(Icons.Default.Share, "Share")
+            DetailActionButton(Icons.Default.Download, "Download")
+        }
+
+        // ── Play button ─────────────────────────────────────────────────────
+        Button(
+            onClick = { onPlay(fullItem) },
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .height(52.dp)
+        ) {
+            Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+
+        // ── Overview ────────────────────────────────────────────────────────
+        if (!fullItem.overview.isNullOrBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = fullItem.overview,
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = 14.sp,
+                lineHeight = 21.sp,
+                maxLines = if (overviewExpanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Text(
+                text = if (overviewExpanded) "Less" else "More",
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(start = 16.dp, top = 2.dp)
+                    .clickable { overviewExpanded = !overviewExpanded }
+            )
+        }
+
+        // ── Cast ─────────────────────────────────────────────────────────────
+        if (state.cast.isNotEmpty()) {
+            Spacer(Modifier.height(20.dp))
+            DetailSectionHeader("Cast")
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(state.cast) { person ->
+                    MobileCastCard(person, baseUrl)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(40.dp))
+    }
+}
+
+// ── Shared detail-screen helpers ─────────────────────────────────────────────
+
+@Composable
+private fun MetaDot() {
+    Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+}
+
+@Composable
+internal fun DetailActionButton(
+    icon: ImageVector,
+    label: String,
+    tint: Color = Color.White,
+    onClick: () -> Unit = {},
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+            Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))
+        }
+        Text(label, color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp)
     }
 }
 
 @Composable
+fun DetailSectionHeader(title: String) {
+    Text(
+        text = title,
+        color = Color.White,
+        fontSize = 17.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+    )
+}
+
+@Composable
 fun MobileCastCard(person: org.jellyplus.client.domain.models.Person, baseUrl: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp)) {
-        AsyncImage(
-            model = person.getImageUrl(baseUrl),
-            contentDescription = null,
-            modifier = Modifier.size(80.dp).clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(Modifier.height(8.dp))
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(72.dp)) {
+        Box(
+            modifier = Modifier.size(72.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f))
+        ) {
+            AsyncImage(
+                model = person.getImageUrl(baseUrl),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Spacer(Modifier.height(6.dp))
         Text(
             person.name,
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            maxLines = 2
+            maxLines = 2,
+            lineHeight = 15.sp
         )
+        person.role?.takeIf { it.isNotBlank() }?.let {
+            Text(
+                it,
+                color = Color.White.copy(alpha = 0.45f),
+                fontSize = 10.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

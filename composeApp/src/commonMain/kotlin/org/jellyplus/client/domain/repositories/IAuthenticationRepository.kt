@@ -17,6 +17,7 @@ interface IAuthenticationRepository {
     fun updateBaseUrl(url: String)
     fun getBaseUrl(): String?
     fun getUserId(): String?
+    fun getUserName(): String?
     fun setPersistDemo(enabled: Boolean)
     fun getPersistDemo(): Boolean
     suspend fun validate(): Boolean

@@ -61,7 +61,7 @@ internal fun MobilePlayerBottomControls(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 32.dp, end = 32.dp, bottom = 32.dp),
+            .padding(start = 32.dp, end = 32.dp, bottom = 64.dp),
     ) {
         // Info row: time | spacer | captions | audio | mark (episodes)
         Row(

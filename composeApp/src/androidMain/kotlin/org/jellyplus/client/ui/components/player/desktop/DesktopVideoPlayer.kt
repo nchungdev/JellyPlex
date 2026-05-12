@@ -126,7 +126,7 @@ fun DesktopVideoPlayer(
         HlsMediaSource.Factory(httpDataSourceFactory).setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
     }
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(url, accessToken, mimeType) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory))
             .build().apply {
@@ -147,6 +147,16 @@ fun DesktopVideoPlayer(
         exoPlayer.prepare()
     }
 
+    LaunchedEffect(item.id) {
+        isPlaying = true
+        currentPosition = 0L
+        duration = 0L
+        seekValue = 0
+        showSeekIndicator = false
+        markerState = DesktopMarkerState.IDLE
+        markerStartMs = 0L
+        isControlsVisible = true
+    }
     LaunchedEffect(isControlsVisible) {
         if (isControlsVisible) {
             try { playFocusRequester.requestFocus() } catch (_: Exception) {}
@@ -166,9 +176,11 @@ fun DesktopVideoPlayer(
         onDispose {
             val sessionId = playSessionId
             if (sessionId != null) onPlaybackStopped(item.id, sessionId, exoPlayer.currentPosition * 10000L)
-            exoPlayer.release()
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+    DisposableEffect(exoPlayer) {
+        onDispose { exoPlayer.release() }
     }
 
     fun triggerSeek(delta: Int) {

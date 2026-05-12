@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Favorite
@@ -42,11 +43,12 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -86,6 +88,7 @@ fun MobileMainScreen(
     val sessionState by sessionViewModel.uiState.collectAsState()
     val homeViewModel: HomeViewModel = koinViewModel()
     var selectedTab by remember { mutableStateOf(0) }
+    var showSearch by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
         if (selectedTab == 0) homeViewModel.loadHomeContent()
@@ -132,14 +135,18 @@ fun MobileMainScreen(
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             when (selectedTab) {
-                0 -> HomeContent(viewModel, homeViewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues)
-                1 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onMediaClick)
-                2 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
+                0 -> HomeContent(viewModel, homeViewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues, onSearchClick = { showSearch = true })
+                1 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onMediaClick, onSearchClick = { showSearch = true })
+                2 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues, onSearchClick = { showSearch = true })
                 3 -> ProfileContent(
                     sessionViewModel = sessionViewModel,
                     onLogout = { sessionViewModel.logout() },
-                    paddingValues = paddingValues
+                    paddingValues = paddingValues,
+                    onSearchClick = { showSearch = true }
                 )
+            }
+            if (showSearch) {
+                SearchOverlay(onClose = { showSearch = false })
             }
         }
     }
@@ -153,7 +160,8 @@ private fun HomeContent(
     baseUrl: String,
     onMediaClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onSearchClick: () -> Unit,
 ) {
     val homeState by homeViewModel.state.collectAsState()
     LazyColumn(
@@ -233,6 +241,20 @@ private fun HomeContent(
                                 .fillMaxSize()
                                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
                         )
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .fillMaxWidth()
+                                .statusBarsPadding()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AppLogoText()
+                            IconButton(onClick = onSearchClick) {
+                                Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+                            }
+                        }
                         Column(
                             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -324,26 +346,57 @@ private fun HomeContent(
 }
 
 @Composable
-private fun SearchContent(paddingValues: PaddingValues) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp).statusBarsPadding()
+private fun AppLogoText() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Jelly", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+        Text("Plus", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+@Composable
+private fun SearchOverlay(onClose: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F1113))
     ) {
-        Text("Search", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        Surface(
-            color = Color.White.copy(alpha = 0.05f),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+        Column(
+            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
-                Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f))
-                Spacer(Modifier.width(12.dp))
-                Text("Search for movies, shows...", color = Color.White.copy(alpha = 0.3f))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Close", tint = Color.White)
+                }
+                Spacer(Modifier.width(8.dp))
+                TextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = { Text("Movies, shows, people...", color = Color.White.copy(alpha = 0.4f)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = MaterialTheme.colorScheme.primary,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f)) },
+                )
+            }
+            Spacer(Modifier.height(24.dp))
+            if (query.isEmpty()) {
+                Text("Search for movies and shows", color = Color.White.copy(alpha = 0.3f), fontSize = 14.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
-
-        Spacer(Modifier.height(32.dp))
-        Text("Popular Searches", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -352,20 +405,30 @@ private fun FavoritesContent(
     state: org.jellyplus.client.ui.viewmodels.MainState,
     baseUrl: String,
     onMediaClick: (MediaItem) -> Unit,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onSearchClick: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp).statusBarsPadding()
+        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp).statusBarsPadding()
     ) {
-        Text("Favorites", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(24.dp))
-        if (state.items.isEmpty()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Favorites", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+            }
+        }
+        val favoriteItems = state.items.filter { it.userData?.isFavorite == true }
+        if (favoriteItems.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No favorites yet", color = Color.White.copy(alpha = 0.5f))
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(state.items.take(3)) { item ->
+                items(favoriteItems) { item ->
                     FavoriteItemCard(item, baseUrl, onMediaClick)
                 }
             }
@@ -400,22 +463,26 @@ private fun FavoriteItemCard(item: MediaItem, baseUrl: String, onClick: (MediaIt
 private fun ProfileContent(
     sessionViewModel: SessionViewModel,
     onLogout: () -> Unit,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onSearchClick: () -> Unit,
 ) {
     val sessionState by sessionViewModel.uiState.collectAsState()
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp).statusBarsPadding(),
+        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "Profile",
-            color = Color.White,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        Spacer(Modifier.height(48.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Profile", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onSearchClick) {
+                Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
+            }
+        }
+        Spacer(Modifier.height(32.dp))
         Box(
             modifier = Modifier.size(120.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
@@ -423,7 +490,7 @@ private fun ProfileContent(
             Icon(Icons.Default.Person, null, tint = Color.Black, modifier = Modifier.size(64.dp))
         }
         Spacer(Modifier.height(24.dp))
-        Text("Jellyfin User", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(sessionViewModel.getUserName() ?: "Jellyfin User", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text(sessionViewModel.getBaseUrl(), color = Color.White.copy(alpha = 0.5f))
 
         Spacer(Modifier.height(48.dp))

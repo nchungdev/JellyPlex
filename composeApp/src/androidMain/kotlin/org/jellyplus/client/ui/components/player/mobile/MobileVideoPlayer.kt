@@ -188,7 +188,7 @@ fun MobileVideoPlayer(
     var isPrimaryActive by remember { mutableStateOf(true) }
     var secondaryExoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
-    val primaryExoPlayer = remember {
+    val primaryExoPlayer = remember(url, mimeType, accessToken) {
         buildExoPlayer(url, mimeType, startPlaying = true).apply {
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) { if (isPrimaryActive) isPlaying = playing }
@@ -237,6 +237,22 @@ fun MobileVideoPlayer(
     }
 
     val currentPlayer = if (isPrimaryActive) primaryExoPlayer else (secondaryExoPlayer ?: primaryExoPlayer)
+
+    LaunchedEffect(item.id) {
+        secondaryExoPlayer?.release()
+        secondaryExoPlayer = null
+        metaPreloaded = false
+        videoPreloaded = false
+        autoNextCountdown = 0
+        isPrimaryActive = true
+        isPlaying = true
+        isBuffering = true
+        isLongPressing = false
+        showGestureIndicator = false
+        gestureType = ""
+        currentPosition = 0L
+        duration = 0L
+    }
 
     LaunchedEffect(isControlsVisible, isPlaying) {
         if (isControlsVisible && isPlaying) {
@@ -347,10 +363,17 @@ fun MobileVideoPlayer(
         onDispose {
             val sessionId = playSessionId
             if (sessionId != null) onPlaybackStopped(item.id, sessionId, currentPlayer.currentPosition * 10_000L)
-            primaryExoPlayer.release(); secondaryExoPlayer?.release()
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    DisposableEffect(primaryExoPlayer) {
+        onDispose { primaryExoPlayer.release() }
+    }
+
+    DisposableEffect(secondaryExoPlayer) {
+        onDispose { secondaryExoPlayer?.release() }
     }
 
     Box(
