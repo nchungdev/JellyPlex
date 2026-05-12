@@ -214,7 +214,7 @@ private fun HomeContent(
                 ?: state.items.firstOrNull()
 
             item {
-                Box(modifier = Modifier.fillMaxWidth().height(500.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(320.dp)) {
                     heroItem?.let { item ->
                         AsyncImage(
                             model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
@@ -231,7 +231,7 @@ private fun HomeContent(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 600f))
+                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
                         )
                         Column(
                             modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
