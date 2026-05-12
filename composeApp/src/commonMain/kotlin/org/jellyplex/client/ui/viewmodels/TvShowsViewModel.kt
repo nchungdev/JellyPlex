@@ -2,7 +2,6 @@ package org.jellyplex.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,9 +46,12 @@ class TvShowsViewModel(
 
     fun loadTvShows() {
         if (!hasSessionUseCase()) return
-        viewModelScope.launch(dispatchers.io) {
+        
+        // Launch on Main thread
+        viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
-
+            
+            // Repo handles the threading
             val result = refreshTvShowsUseCase()
 
             result.onSuccess {

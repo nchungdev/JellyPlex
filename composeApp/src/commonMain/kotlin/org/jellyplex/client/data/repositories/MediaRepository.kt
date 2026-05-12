@@ -3,6 +3,7 @@ package org.jellyplex.client.data.repositories
 import io.ktor.http.appendPathSegments
 import io.ktor.http.takeFrom
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import org.jellyplex.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplex.client.data.datasource.remote.IMediaRemoteDataSource
 import org.jellyplex.client.domain.models.AppDispatchers
@@ -25,28 +26,36 @@ class MediaRepository(
     override val tvShows: StateFlow<List<MediaItem>?> = localDataSource.tvShows
     override val homeContent: StateFlow<HomeContent?> = localDataSource.homeContent
 
-    override suspend fun refreshMovies(): Result<Unit> = runCatching {
-        val movies = remoteDataSource.getMovies()
-        localDataSource.saveMoviesCache(movies)
+    override suspend fun refreshMovies(): Result<Unit> = withContext(dispatchers.io) {
+        runCatching {
+            val movies = remoteDataSource.getMovies()
+            localDataSource.saveMoviesCache(movies)
+        }
     }
 
-    override suspend fun refreshTvShows(): Result<Unit> = runCatching {
-        val shows = remoteDataSource.getTvShows()
-        localDataSource.saveTvShowsCache(shows)
+    override suspend fun refreshTvShows(): Result<Unit> = withContext(dispatchers.io) {
+        runCatching {
+            val shows = remoteDataSource.getTvShows()
+            localDataSource.saveTvShowsCache(shows)
+        }
     }
 
-    override suspend fun refreshHomeContent(userId: String): Result<Unit> = runCatching {
-        val resume = remoteDataSource.getHomeResume(userId)
-        val recentlyAdded = remoteDataSource.getHomeRecentlyAdded(userId)
-        localDataSource.saveHomeCache(HomeContent(resume, recentlyAdded))
+    override suspend fun refreshHomeContent(userId: String): Result<Unit> = withContext(dispatchers.io) {
+        runCatching {
+            val resume = remoteDataSource.getHomeResume(userId)
+            val recentlyAdded = remoteDataSource.getHomeRecentlyAdded(userId)
+            localDataSource.saveHomeCache(HomeContent(resume, recentlyAdded))
+        }
     }
 
-    override suspend fun searchItems(query: String): List<MediaItem> = remoteDataSource.searchItems(query)
+    override suspend fun searchItems(query: String): List<MediaItem> = withContext(dispatchers.io) {
+        remoteDataSource.searchItems(query)
+    }
 
-    override suspend fun resolveStreamConfig(item: MediaItem, userId: String, deviceId: String): PlaybackConfig? {
+    override suspend fun resolveStreamConfig(item: MediaItem, userId: String, deviceId: String): PlaybackConfig? = withContext(dispatchers.io) {
         val itemId = item.id
 
-        return try {
+        try {
             val info = remoteDataSource.getPlaybackInfo(itemId, userId)
             val source = info.mediaSources.firstOrNull()
             val playSessionId = info.playSessionId
@@ -100,13 +109,21 @@ class MediaRepository(
         }
     }
 
-    override suspend fun getItemDetails(itemId: String, userId: String): MediaItem = remoteDataSource.getItemDetails(itemId, userId)
+    override suspend fun getItemDetails(itemId: String, userId: String): MediaItem = withContext(dispatchers.io) {
+        remoteDataSource.getItemDetails(itemId, userId)
+    }
 
-    override suspend fun getPeople(itemId: String): List<Person> = remoteDataSource.getPeople(itemId)
+    override suspend fun getPeople(itemId: String): List<Person> = withContext(dispatchers.io) {
+        remoteDataSource.getPeople(itemId)
+    }
 
-    override suspend fun getSeasons(seriesId: String): List<MediaItem> = remoteDataSource.getSeasons(seriesId)
+    override suspend fun getSeasons(seriesId: String): List<MediaItem> = withContext(dispatchers.io) {
+        remoteDataSource.getSeasons(seriesId)
+    }
 
-    override suspend fun getEpisodes(seriesId: String, seasonId: String): List<MediaItem> = remoteDataSource.getEpisodes(seriesId, seasonId)
+    override suspend fun getEpisodes(seriesId: String, seasonId: String): List<MediaItem> = withContext(dispatchers.io) {
+        remoteDataSource.getEpisodes(seriesId, seasonId)
+    }
 
     override fun getBaseUrl(): String = remoteDataSource.getBaseUrl()
 
@@ -116,7 +133,7 @@ class MediaRepository(
         localDataSource.clear()
     }
 
-    override suspend fun reportPlaybackStart(itemId: String, playSessionId: String) {
+    override suspend fun reportPlaybackStart(itemId: String, playSessionId: String) = withContext(dispatchers.io) {
         remoteDataSource.reportPlaybackStart(itemId, playSessionId)
     }
 
@@ -126,11 +143,11 @@ class MediaRepository(
         positionTicks: Long,
         isPaused: Boolean,
         isMuted: Boolean
-    ) {
+    ) = withContext(dispatchers.io) {
         remoteDataSource.reportPlaybackProgress(itemId, playSessionId, positionTicks, isPaused, isMuted)
     }
 
-    override suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) {
+    override suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long) = withContext(dispatchers.io) {
         remoteDataSource.reportPlaybackStopped(itemId, playSessionId, positionTicks)
     }
 }

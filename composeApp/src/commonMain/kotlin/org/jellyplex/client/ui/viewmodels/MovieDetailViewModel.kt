@@ -2,7 +2,6 @@ package org.jellyplex.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +36,8 @@ class MovieDetailViewModel(
     fun loadMovieDetails(item: MediaItem) {
         if (_state.value.itemId == item.id && _state.value.fullItem != null) return
 
-        viewModelScope.launch(dispatchers.main) {
+        // Launch on Main thread
+        viewModelScope.launch {
             _state.value = MovieDetailState(
                 itemId = item.id,
                 fullItem = item,
@@ -46,6 +46,8 @@ class MovieDetailViewModel(
             )
 
             val userId = getUserIdUseCase() ?: ""
+            
+            // Repo handles the threading
             val itemDetailsResult = getItemDetailsUseCase(item.id, userId)
             val peopleResult = getPeopleUseCase(item.id)
 

@@ -3,7 +3,9 @@ package org.jellyplex.client.data.repositories
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import org.jellyplex.client.data.datasource.remote.IQuickConnectRemoteDataSource
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.QuickConnectResult
 import org.jellyplex.client.domain.repositories.IQuickConnectRepository
 import org.jellyplex.client.domain.repositories.ISessionRepository
@@ -11,13 +13,14 @@ import org.jellyplex.client.domain.repositories.ISessionRepository
 class QuickConnectRepository(
     private val remoteDataSource: IQuickConnectRemoteDataSource,
     private val sessionRepository: ISessionRepository,
+    private val dispatchers: AppDispatchers,
 ) : IQuickConnectRepository {
-    override suspend fun validateServer(url: String?): Boolean {
-        return remoteDataSource.validateServer(url)
+    override suspend fun validateServer(url: String?): Boolean = withContext(dispatchers.io) {
+        remoteDataSource.validateServer(url)
     }
 
-    override suspend fun initiate(): QuickConnectResult {
-        return remoteDataSource.initiate()
+    override suspend fun initiate(): QuickConnectResult = withContext(dispatchers.io) {
+        remoteDataSource.initiate()
     }
 
     override fun pollStatus(secret: String): Flow<QuickConnectResult> =
@@ -53,11 +56,12 @@ class QuickConnectRepository(
                         println("QuickConnect: Persisting -> URL: '$currentUrl', Token: '${result.authenticationToken.take(5)}...'")
 
                         if (currentUrl.isNotEmpty()) {
+                            // saveSession will handle the memory-first and persistent logic
                             sessionRepository.saveSession(
                                 url = currentUrl,
                                 token = result.authenticationToken,
                                 userId = result.userId,
-                                userName = null, // Will be fetched later or not needed
+                                userName = null,
                                 password = null
                             )
                             println("QuickConnect: Session saved. Auth state: ${sessionRepository.hasSession()}")

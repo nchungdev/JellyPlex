@@ -44,30 +44,33 @@ class QuickConnectViewModel(
 
     private fun initiate() {
         cancelPolling()
-        pollingJob = viewModelScope.launch(dispatchers.io) {
+        
+        // Launch on Main thread
+        viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null, isAuthenticated = false)
 
+            // Repo handles the threading
             val result = initiateQuickConnectUseCase()
 
             result.onSuccess { quickConnectResult ->
                 _state.value = _state.value.copy(isLoading = false, code = quickConnectResult.code)
 
                 quickConnectResult.secret?.let { secret ->
-                    pollQuickConnectStatusUseCase(secret).collect { status ->
-                        // Fix: Only mark as authenticated when we actually have a token
-                        if (status.authenticated && status.authenticationToken != null) {
-                            println("QuickConnectViewModel: Authentication confirmed with token.")
-                            viewModelScope.launch(dispatchers.main) {
+                    // Poll in a specific job, but collection logic should handle state updates on main
+                    pollingJob = viewModelScope.launch {
+                        pollQuickConnectStatusUseCase(secret).collect { status ->
+                            if (status.authenticated && status.authenticationToken != null) {
+                                println("QuickConnectViewModel: Authentication confirmed with token.")
                                 _state.value =
                                     _state.value.copy(
                                         isAuthenticated = true,
                                         accessToken = status.authenticationToken,
                                         userId = status.userId,
                                     )
-                                cancelPolling() // Stop once confirmed
+                                cancelPolling() 
+                            } else if (status.authenticated) {
+                                println("QuickConnectViewModel: User authorized, waiting for token...")
                             }
-                        } else if (status.authenticated) {
-                            println("QuickConnectViewModel: User authorized, waiting for token...")
                         }
                     }
                 }

@@ -54,14 +54,14 @@ class DiscoveryViewModel(
     }
 
     private fun validateServer(url: String, onSuccess: () -> Unit) {
-        viewModelScope.launch(dispatchers.io) {
+        // ViewModel stays on Main thread for UI safety
+        viewModelScope.launch {
             _state.value = _state.value.copy(isValidatingServer = true, error = null)
             try {
+                // Repo handles the IO switch internally
                 val isValid = validateServerUseCase(url)
                 if (isValid) {
-                    viewModelScope.launch(dispatchers.main) {
-                        onSuccess()
-                    }
+                    onSuccess()
                 } else {
                     _state.value = _state.value.copy(error = "Could not connect to server: $url")
                 }
@@ -76,7 +76,7 @@ class DiscoveryViewModel(
     private fun scan() {
         scanJob?.cancel()
         scanJob =
-            viewModelScope.launch(dispatchers.io) {
+            viewModelScope.launch {
                 val startTime: Long = Clock.System.now().toEpochMilliseconds()
                 _state.value = _state.value.copy(isScanning = true, error = null, discoveredServers = emptyList())
                 try {

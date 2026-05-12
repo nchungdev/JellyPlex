@@ -1,8 +1,10 @@
 package org.jellyplex.client.data.repositories
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import org.jellyplex.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplex.client.data.datasource.remote.IAuthRemoteDataSource
+import org.jellyplex.client.domain.models.AppDispatchers
 import org.jellyplex.client.domain.models.AuthenticationResult
 
 import org.jellyplex.client.domain.repositories.IAuthenticationRepository
@@ -12,6 +14,7 @@ class AuthenticationRepository(
     private val remoteDataSource: IAuthRemoteDataSource,
     private val localMediaDataSource: MediaLocalDataSource,
     private val sessionRepository: ISessionRepository,
+    private val dispatchers: AppDispatchers,
 ) : IAuthenticationRepository {
     override val isAuthenticated: Flow<Boolean> = sessionRepository.isAuthenticated
 
@@ -19,7 +22,7 @@ class AuthenticationRepository(
         url: String,
         username: String,
         password: String,
-    ): AuthenticationResult {
+    ): AuthenticationResult = withContext(dispatchers.io) {
         val result = remoteDataSource.login(url, username, password)
 
         // Persist session via SessionRepository (which handles Persistent vs Memory)
@@ -31,7 +34,7 @@ class AuthenticationRepository(
             password = password
         )
 
-        return result
+        result
     }
 
     override fun hasSession(): Boolean = sessionRepository.hasSession()
@@ -56,9 +59,9 @@ class AuthenticationRepository(
 
     override fun getUserId(): String? = sessionRepository.userId
 
-    override suspend fun validate(): Boolean {
-        if (!hasSession()) return false
-        return try {
+    override suspend fun validate(): Boolean = withContext(dispatchers.io) {
+        if (!hasSession()) return@withContext false
+        try {
             // Use an endpoint that REQUIRES authentication to verify the token
             val user = remoteDataSource.validateToken()
             println("Session check: Token is valid for user ${user.name}.")
@@ -68,7 +71,7 @@ class AuthenticationRepository(
             if (message.contains("401") || message.contains("Unauthorized")) {
                 println("Session check: Token is INVALID (401). Clearing session.")
                 clearSession() // CLEAR IT!
-                return false
+                return@withContext false
             }
 
             println("Session check: Network error or server unreachable ($message).")
@@ -76,7 +79,7 @@ class AuthenticationRepository(
             val hasCache = localMediaDataSource.movies.value != null || localMediaDataSource.tvShows.value != null
             if (!hasCache) {
                 println("Session check: Unreachable and no cache. Rejecting session.")
-                return false
+                return@withContext false
             }
             println("Session check: Unreachable but has cache. Allowing offline access.")
             true

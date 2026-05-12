@@ -2,7 +2,6 @@ package org.jellyplex.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +24,7 @@ sealed class LoginIntent {
 
 class LoginViewModel(
     private val loginUseCase: LoginUseCase,
-    private val dispatchers: AppDispatchers,
+    private val dispatchers: AppDispatchers, // Still keeping it for testability if needed elsewhere
 ) : ViewModel() {
     private val _state = MutableStateFlow(LoginState())
     val state: StateFlow<LoginState> = _state.asStateFlow()
@@ -41,8 +40,11 @@ class LoginViewModel(
         username: String,
         password: String,
     ) {
-        viewModelScope.launch(dispatchers.io) {
+        // ViewModel launches on Main (default)
+        viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
+            
+            // loginUseCase/Repo will handle the IO thread switch
             val result = loginUseCase(url, username, password)
 
             result.onSuccess { authResult ->

@@ -8,15 +8,15 @@ import org.jellyplex.client.data.remote.JellyfinApi
 import org.jellyplex.client.data.repositories.*
 import org.jellyplex.client.domain.discovery.IServerDiscovery
 import org.jellyplex.client.domain.models.AppDispatchers
-import org.jellyplex.client.domain.repositories.*
-import org.jellyplex.client.domain.usecases.*
-import org.jellyplex.client.ui.viewmodels.*
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 import kotlinx.serialization.json.Json
+import org.jellyplex.client.domain.repositories.*
+import org.jellyplex.client.domain.usecases.*
+import org.jellyplex.client.ui.viewmodels.*
 
 val dataModule = module {
     single { AppDispatchers() }
@@ -31,8 +31,8 @@ val dataModule = module {
     // 2. Strategy Repositories
     single<ISessionRepository> { 
         SessionRepository(
-            persistentDataSource = get<PersistentSessionLocalDataSource>(),
-            inMemoryDataSource = get<InMemorySessionLocalDataSource>()
+            persistentDataSource = get(),
+            inMemoryDataSource = get()
         ) 
     }
     
@@ -43,10 +43,10 @@ val dataModule = module {
     single<IMediaRemoteDataSource> { MediaRemoteDataSource(get()) }
     single<IQuickConnectRemoteDataSource> { QuickConnectRemoteDataSource(get()) }
 
-    // 4. Final Feature Repositories
-    single<IAuthenticationRepository> { AuthenticationRepository(get(), get(), get()) }
+    // 4. Repositories (Standardized)
+    single<IAuthenticationRepository> { AuthenticationRepository(get(), get(), get(), get()) }
     single<IMediaRepository> { MediaRepository(get(), get(), get(), get()) }
-    single<IQuickConnectRepository> { QuickConnectRepository(get(), get()) }
+    single<IQuickConnectRepository> { QuickConnectRepository(get(), get(), get()) }
     single<IServerDiscovery> { PlatformServerDiscovery() }
 }
 
