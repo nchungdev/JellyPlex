@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -52,7 +53,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaType
+import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
+
+private enum class DesktopMarkerState { IDLE, MARKING }
 
 @OptIn(UnstableApi::class)
 @SuppressLint("UnsafeOptInUsageError")
@@ -74,6 +78,14 @@ fun DesktopVideoPlayer(
     showNextPrev: Boolean = false,
     onNextEpisode: () -> Unit = {},
     onPrevEpisode: () -> Unit = {},
+    nextEpisodeConfig: PlaybackConfig? = null,
+    autoSkipIntro: Boolean = false,
+    customMarkers: List<Pair<Long, Long>> = emptyList(),
+    onPreloadNextMeta: () -> Unit = {},
+    onMarkCurrentAsPlayed: () -> Unit = {},
+    onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
+    onToggleAutoSkip: () -> Unit = {},
+    onSeamlessNextEpisode: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val playFocusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -87,6 +99,10 @@ fun DesktopVideoPlayer(
     var showSeekIndicator by remember { mutableStateOf(false) }
     var seekIndicatorJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
+
+    // Custom marker state
+    var markerState by remember { mutableStateOf(DesktopMarkerState.IDLE) }
+    var markerStartMs by remember { mutableStateOf(0L) }
 
     var resolvedUrl by remember { mutableStateOf(url) }
     var isResolving by remember { mutableStateOf(false) }
@@ -278,35 +294,37 @@ fun DesktopVideoPlayer(
             modifier = Modifier.fillMaxSize(),
         )
 
-        // Seek Indicator Overlay
+        // Seek Indicator Overlay — positioned at 3/4 (forward) or 1/4 (rewind) of screen width
         AnimatedVisibility(
             visible = showSeekIndicator,
             enter = fadeIn() + scaleIn(),
             exit = fadeOut() + scaleOut(),
-            modifier = Modifier.align(Alignment.Center)
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val boxSize = 100.dp
+                val xOffset = if (seekValue > 0) maxWidth * 0.75f - boxSize / 2 else maxWidth * 0.25f - boxSize / 2
+                val yOffset = maxHeight / 2 - boxSize / 2
                 Box(
                     modifier = Modifier
-                        .align(if (seekValue > 0) Alignment.CenterEnd else Alignment.CenterStart)
-                        .padding(horizontal = 150.dp)
-                        .size(100.dp)
+                        .size(boxSize)
+                        .offset(x = xOffset, y = yOffset)
                         .background(Color.Black.copy(alpha = 0.6f), CircleShape)
                         .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             if (seekValue > 0) Icons.Default.Forward10 else Icons.Default.Replay10,
                             null,
                             tint = Color.White,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(40.dp),
                         )
                         Text(
                             text = "${if (seekValue > 0) "+" else ""}$seekValue s",
                             color = Color.White,
                             fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -423,69 +441,86 @@ fun DesktopVideoPlayer(
                     }
                 }
 
-                // Bottom Controls
+                // Bottom Controls — info row above seekbar, edges align with header 48dp padding
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 64.dp, vertical = 64.dp),
+                        .padding(horizontal = 48.dp, vertical = 64.dp),
                 ) {
+                    // Info row: [time]  [spacer]  [captions] [mark?] [settings]
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        // Time: current / total
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(formatTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                            Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
-                            Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
+                        Text(formatTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                        Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
+                        Spacer(modifier = Modifier.weight(1f))
+                        DesktopPlayerIconButton(Icons.Default.Subtitles, size = 40.dp, iconSize = 22.dp) { /* Subtitles */ }
+                        if (item.type == MediaType.EPISODE) {
+                            DesktopPlayerIconButton(
+                                icon = Icons.Default.BookmarkAdd,
+                                size = 40.dp,
+                                iconSize = 22.dp,
+                                tint = if (markerState == DesktopMarkerState.MARKING) Color.Red else Color.White,
+                            ) {
+                                when (markerState) {
+                                    DesktopMarkerState.IDLE -> {
+                                        markerStartMs = currentPosition
+                                        markerState = DesktopMarkerState.MARKING
+                                    }
+                                    DesktopMarkerState.MARKING -> {
+                                        onSaveCustomMarker(markerStartMs, currentPosition)
+                                        markerState = DesktopMarkerState.IDLE
+                                    }
+                                }
+                            }
                         }
+                        DesktopPlayerIconButton(Icons.Default.Settings, size = 40.dp, iconSize = 22.dp) { /* Settings */ }
+                    }
 
-                        // Seekbar
-                        var isSeekbarFocused by remember { mutableStateOf(false) }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Seekbar row — full width
+                    var isSeekbarFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .onFocusChanged { isSeekbarFocused = it.isFocused }
+                            .focusable()
+                            .onKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    when (keyEvent.key) {
+                                        Key.DirectionLeft -> { exoPlayer.seekTo((currentPosition - 5000).coerceAtLeast(0)); true }
+                                        Key.DirectionRight -> { exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration)); true }
+                                        else -> false
+                                    }
+                                } else false
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Box(
                             modifier = Modifier
-                                .weight(1f)
-                                .height(40.dp)
-                                .onFocusChanged { isSeekbarFocused = it.isFocused }
-                                .focusable()
-                                .onKeyEvent { keyEvent ->
-                                    if (keyEvent.type == KeyEventType.KeyDown) {
-                                        when (keyEvent.key) {
-                                            Key.DirectionLeft -> { exoPlayer.seekTo((currentPosition - 5000).coerceAtLeast(0)); true }
-                                            Key.DirectionRight -> { exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration)); true }
-                                            else -> false
-                                        }
-                                    } else false
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
+                                .fillMaxWidth()
+                                .height(if (isSeekbarFocused) 10.dp else 6.dp)
+                                .background(
+                                    if (isSeekbarFocused) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f),
+                                    RoundedCornerShape(5.dp),
+                                ),
+                        )
+                        val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .fillMaxWidth(progress)
                                     .height(if (isSeekbarFocused) 10.dp else 6.dp)
                                     .background(
-                                        if (isSeekbarFocused) Color.White.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.2f),
+                                        if (isSeekbarFocused) Color.White else Color(0xFF24D366),
                                         RoundedCornerShape(5.dp),
                                     ),
                             )
-                            val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(progress)
-                                        .height(if (isSeekbarFocused) 10.dp else 6.dp)
-                                        .background(
-                                            if (isSeekbarFocused) Color.White else Color(0xFF24D366),
-                                            RoundedCornerShape(5.dp),
-                                        ),
-                                )
-                            }
                         }
-
-                        // Captions + Settings
-                        DesktopPlayerIconButton(Icons.Default.Subtitles, size = 40.dp, iconSize = 22.dp) { /* Subtitles */ }
-                        DesktopPlayerIconButton(Icons.Default.Settings, size = 40.dp, iconSize = 22.dp) { /* Settings */ }
                     }
                 }
             }
@@ -498,6 +533,7 @@ fun DesktopPlayerIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     size: Dp = 48.dp,
     iconSize: Dp = 24.dp,
+    tint: Color = Color.White,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
@@ -522,7 +558,7 @@ fun DesktopPlayerIconButton(
         Icon(
             icon,
             null,
-            tint = if (isFocused) Color.Black else Color.White,
+            tint = if (isFocused) Color.Black else tint,
             modifier = Modifier.size(iconSize)
         )
     }

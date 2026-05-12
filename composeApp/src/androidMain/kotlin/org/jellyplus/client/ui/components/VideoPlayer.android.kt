@@ -56,6 +56,14 @@ actual fun VideoPlayerImpl(
             showNextPrev = showNextPrev,
             onNextEpisode = onNextEpisode,
             onPrevEpisode = onPrevEpisode,
+            nextEpisodeConfig = nextEpisodeConfig,
+            autoSkipIntro = autoSkipIntro,
+            customMarkers = customMarkers,
+            onPreloadNextMeta = onPreloadNextMeta,
+            onMarkCurrentAsPlayed = onMarkCurrentAsPlayed,
+            onSaveCustomMarker = onSaveCustomMarker,
+            onToggleAutoSkip = onToggleAutoSkip,
+            onSeamlessNextEpisode = onSeamlessNextEpisode,
         )
     } else {
         org.jellyplus.client.ui.components.player.mobile.MobileVideoPlayer(

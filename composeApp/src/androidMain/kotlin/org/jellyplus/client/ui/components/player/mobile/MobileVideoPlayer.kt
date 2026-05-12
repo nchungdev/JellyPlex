@@ -423,14 +423,6 @@ fun MobileVideoPlayer(
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
 
-                    // Auto-skip toggle — uses Timer icon to avoid confusion with next-episode button
-                    IconButton(onClick = onToggleAutoSkip) {
-                        Icon(
-                            if (autoSkipIntro) Icons.Default.Timer else Icons.Default.TimerOff,
-                            contentDescription = "Auto-skip intro",
-                            tint = if (autoSkipIntro) Color(0xFF24D366) else Color.White.copy(alpha = 0.6f),
-                        )
-                    }
                 }
 
                 // ── Center Controls ──────────────────────────────────────────
@@ -489,7 +481,7 @@ fun MobileVideoPlayer(
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(start = 16.dp, end = 8.dp, bottom = 32.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
                 ) {
                     // Info row: [time]  [spacer]  [captions] [mark?] [settings]
                     Row(
@@ -536,9 +528,9 @@ fun MobileVideoPlayer(
                         }
                     }
 
-                    // Seekbar row — full width
+                    // Seekbar row — full width, edges align with header 16dp padding
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(20.dp).padding(end = 8.dp),
+                        modifier = Modifier.fillMaxWidth().height(20.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Box(
