@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "jellyplex-client"
+rootProject.name = "jellyplus-client"
 include(":composeApp")
