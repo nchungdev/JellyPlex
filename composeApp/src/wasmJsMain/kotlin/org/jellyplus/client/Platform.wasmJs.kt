@@ -15,3 +15,7 @@ actual fun provideSettings(): Settings {
 actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
     // No system back button in browser normally
 }
+
+actual fun getDeviceName(): String = "Web Browser"
+
+actual fun isDebug(): Boolean = false

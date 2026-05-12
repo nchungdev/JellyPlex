@@ -59,6 +59,12 @@ class AuthenticationRepository(
 
     override fun getUserId(): String? = sessionRepository.userId
 
+    override fun setPersistDemo(enabled: Boolean) {
+        sessionRepository.setPersistDemo(enabled)
+    }
+
+    override fun getPersistDemo(): Boolean = sessionRepository.persistDemo
+
     override suspend fun validate(): Boolean = withContext(dispatchers.io) {
         if (!hasSession()) return@withContext false
         try {

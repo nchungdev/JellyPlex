@@ -11,6 +11,7 @@ interface ISessionRepository {
     val password: String?
     val deviceId: String
     val deviceName: String
+    val persistDemo: Boolean
 
     fun saveSession(
         url: String,
@@ -20,6 +21,7 @@ interface ISessionRepository {
         password: String?
     )
     fun updateBaseUrl(url: String)
+    fun setPersistDemo(enabled: Boolean)
     fun updateToken(token: String)
     fun clear()
     fun hasSession(): Boolean

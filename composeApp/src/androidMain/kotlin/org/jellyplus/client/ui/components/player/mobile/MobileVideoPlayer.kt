@@ -4,41 +4,36 @@ package org.jellyplus.client.ui.components.player.mobile
 
 import android.annotation.SuppressLint
 import android.media.AudioManager
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -51,23 +46,24 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withTimeoutOrNull
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
-
-private enum class MarkerState { IDLE, MARKING }
+import org.jellyplus.client.ui.common.components.player.PlayerAudioDialog
+import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
+import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
 
 private fun PlayerView.applyTextureViewSurface() {
     try {
         val method = javaClass.getMethod("setSurfaceType", Int::class.javaPrimitiveType)
         method.isAccessible = true
-        method.invoke(this, 2) // PlayerView.SURFACE_TYPE_TEXTURE_VIEW
+        method.invoke(this, 2)
     } catch (_: Exception) {}
 }
+
 @SuppressLint("UnsafeOptInUsageError")
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MobileVideoPlayer(
     item: org.jellyplus.client.domain.models.MediaItem,
@@ -86,7 +82,6 @@ fun MobileVideoPlayer(
     showNextPrev: Boolean = false,
     onNextEpisode: () -> Unit = {},
     onPrevEpisode: () -> Unit = {},
-    // Seamless playback
     nextEpisodeConfig: PlaybackConfig? = null,
     autoSkipIntro: Boolean = false,
     customMarkers: List<Pair<Long, Long>> = emptyList(),
@@ -98,291 +93,285 @@ fun MobileVideoPlayer(
     autoNext: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
     onSpeedChange: (Float) -> Unit = {},
+    autoSkipOutro: Boolean = false,
+    onToggleAutoSkipOutro: () -> Unit = {},
+    autoSkipPreview: Boolean = false,
+    onToggleAutoSkipPreview: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val audioManager = remember { context.getSystemService(android.content.Context.AUDIO_SERVICE) as AudioManager }
 
+    // Playback state
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
     var isLongPressing by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
+    var currentSpeed by remember { mutableStateOf(playbackSpeed) }
 
-    // Gesture states
+    // Gesture state
     var brightness by remember { mutableStateOf(activity?.window?.attributes?.screenBrightness ?: 0.5f) }
     var volume by remember {
         mutableStateOf(
             audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() /
-                audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+                audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         )
     }
     var showGestureIndicator by remember { mutableStateOf(false) }
     var gestureType by remember { mutableStateOf("") }
 
-    // Seek feedback overlay (+10s / -5s)
+    // Seek feedback
     var seekFeedback by remember { mutableStateOf("") }
     var showSeekFeedback by remember { mutableStateOf(false) }
     var seekFeedbackIsRight by remember { mutableStateOf(true) }
 
-    // Skip intro state
+    // Marker state
     var isInMarkerRange by remember { mutableStateOf(false) }
     var currentMarkerEndMs by remember { mutableStateOf(0L) }
-
-    // Custom marker state machine
     var markerState by remember { mutableStateOf(MarkerState.IDLE) }
     var markerStartMs by remember { mutableStateOf(0L) }
     var stablePlaybackMs by remember { mutableStateOf(0L) }
 
-    // Dual player flags
-    var metaPreloaded by remember { mutableStateOf(false) }
-    var videoPreloaded by remember { mutableStateOf(false) }
-    var isPrimaryActive by remember { mutableStateOf(true) }
-
-    // Dialog / menu state
+    // Dialog state
     var showCaptionDialog by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var showMoreMenu by remember { mutableStateOf(false) }
+    var showAudioDialog by remember { mutableStateOf(false) }
+    var showSettingsPopup by remember { mutableStateOf(false) }
 
-    // Caption tracks
-    var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) } // index to label
-    var selectedTrackIndex by remember { mutableStateOf(-1) } // -1 = off
+    // Track selection
+    var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var selectedTextTrackIndex by remember { mutableStateOf(-1) }
+    var availableAudioTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var selectedAudioTrackIndex by remember { mutableStateOf(0) }
 
-    // Auto-next countdown
-    var autoNextCountdown by remember { mutableStateOf(0) } // seconds left; 0 = inactive
-
-    // Local playback speed (mirrors parent state, allows in-player change)
-    var currentSpeed by remember { mutableStateOf(playbackSpeed) }
+    var autoNextCountdown by remember { mutableStateOf(0) }
+    var isUserSeeking by remember { mutableStateOf(false) }
+    var playbackError by remember { mutableStateOf<String?>(null) }
 
     val trackSelector = remember { DefaultTrackSelector(context) }
-
     val httpDataSourceFactory = remember {
         DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0")
-            .setDefaultRequestProperties(
-                mapOf("X-Emby-Authorization" to "MediaBrowser Client=\"JellyPlus\", Token=\"$accessToken\""),
-            )
+            .setDefaultRequestProperties(mapOf("X-Emby-Authorization" to "MediaBrowser Client=\"JellyPlus\", Token=\"$accessToken\""))
     }
     val hlsMediaSourceFactory = remember {
-        HlsMediaSource.Factory(httpDataSourceFactory)
-            .setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
+        HlsMediaSource.Factory(httpDataSourceFactory).setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
     }
 
     fun buildExoPlayer(streamUrl: String, streamMimeType: String?, startPlaying: Boolean): ExoPlayer {
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory)
-        return ExoPlayer.Builder(context)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .setTrackSelector(trackSelector)
-            .build().apply {
-            val resolvedMimeType = when {
-                streamMimeType?.lowercase()?.contains("hls") == true -> MimeTypes.APPLICATION_M3U8
-                streamMimeType?.lowercase()?.contains("m3u8") == true -> MimeTypes.APPLICATION_M3U8
-                streamMimeType?.lowercase()?.contains("m3u") == true -> MimeTypes.APPLICATION_M3U8
+        return ExoPlayer.Builder(context).setMediaSourceFactory(mediaSourceFactory).setTrackSelector(trackSelector).build().apply {
+            val resolvedMime = when {
+                streamMimeType?.lowercase()?.contains("hls") == true ||
+                streamMimeType?.lowercase()?.contains("m3u8") == true ||
+                streamMimeType?.lowercase()?.contains("m3u") == true ||
                 streamUrl.contains(".m3u8") || streamUrl.contains(".m3u") || streamUrl.contains("hls") -> MimeTypes.APPLICATION_M3U8
                 else -> streamMimeType
             }
-            val mediaItem = MediaItem.Builder().setUri(streamUrl).setMimeType(resolvedMimeType).build()
-            if (resolvedMimeType == MimeTypes.APPLICATION_M3U8) {
-                setMediaSource(hlsMediaSourceFactory.createMediaSource(mediaItem))
-            } else {
-                setMediaItem(mediaItem)
-            }
+            val mi = MediaItem.Builder().setUri(streamUrl).setMimeType(resolvedMime).build()
+            if (resolvedMime == MimeTypes.APPLICATION_M3U8) setMediaSource(hlsMediaSourceFactory.createMediaSource(mi))
+            else setMediaItem(mi)
             setPlaybackSpeed(playbackSpeed)
             prepare()
             playWhenReady = startPlaying
         }
     }
 
-    val exoPlayer = remember {
+    // Dual player
+    var metaPreloaded by remember { mutableStateOf(false) }
+    var videoPreloaded by remember { mutableStateOf(false) }
+    var isPrimaryActive by remember { mutableStateOf(true) }
+    var secondaryExoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+
+    val primaryExoPlayer = remember {
         buildExoPlayer(url, mimeType, startPlaying = true).apply {
             addListener(object : Player.Listener {
-                override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+                override fun onIsPlayingChanged(playing: Boolean) { if (isPrimaryActive) isPlaying = playing }
                 override fun onPlaybackStateChanged(state: Int) {
-                    duration = this@apply.duration.coerceAtLeast(0L)
-                    isBuffering = state == Player.STATE_BUFFERING
+                    if (isPrimaryActive) {
+                        duration = this@apply.duration.coerceAtLeast(0L)
+                        isBuffering = state == Player.STATE_BUFFERING
+                        if (state == Player.STATE_READY) playbackError = null
+                    }
+                }
+                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                    if (isPrimaryActive) {
+                        playbackError = error.localizedMessage ?: "Playback Error"
+                        isPlaying = false
+                        // Circuit breaker: stop everything and reset states
+                        this@apply.stop()
+                        secondaryExoPlayer?.stop()
+                        secondaryExoPlayer?.release()
+                        secondaryExoPlayer = null
+                        videoPreloaded = false
+                        metaPreloaded = false
+                        autoNextCountdown = 0
+                    }
                 }
                 override fun onTracksChanged(tracks: Tracks) {
-                    val textTracks = mutableListOf<Pair<Int, String>>()
-                    var idx = 0
-                    for (group in tracks.groups) {
-                        if (group.type == C.TRACK_TYPE_TEXT) {
-                            for (i in 0 until group.length) {
-                                val format = group.getTrackFormat(i)
-                                val label = when {
-                                    !format.label.isNullOrBlank() -> format.label!!
-                                    !format.language.isNullOrBlank() -> format.language!!
-                                    else -> "Track ${idx + 1}"
+                    if (isPrimaryActive) {
+                        val textTracks = mutableListOf<Pair<Int, String>>(); var tIdx = 0
+                        val audioTracks = mutableListOf<Pair<Int, String>>(); var aIdx = 0
+                        for (group in tracks.groups) {
+                            when (group.type) {
+                                C.TRACK_TYPE_TEXT -> for (i in 0 until group.length) {
+                                    val f = group.getTrackFormat(i)
+                                    textTracks += tIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Sub $tIdx")
                                 }
-                                textTracks += idx to label
-                                idx++
+                                C.TRACK_TYPE_AUDIO -> for (i in 0 until group.length) {
+                                    val f = group.getTrackFormat(i)
+                                    audioTracks += aIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Audio $aIdx")
+                                }
                             }
                         }
+                        availableTextTracks = textTracks; availableAudioTracks = audioTracks
                     }
-                    availableTextTracks = textTracks
                 }
             })
         }
     }
 
-    var secondaryExoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
+    val currentPlayer = if (isPrimaryActive) primaryExoPlayer else (secondaryExoPlayer ?: primaryExoPlayer)
 
-    // Auto-hide controls
     LaunchedEffect(isControlsVisible, isPlaying) {
         if (isControlsVisible && isPlaying) {
             delay(5000)
             isControlsVisible = false
         }
     }
+    LaunchedEffect(showGestureIndicator) { if (showGestureIndicator) { delay(2000); showGestureIndicator = false } }
+    LaunchedEffect(showSeekFeedback) { if (showSeekFeedback) { delay(800); showSeekFeedback = false } }
+    LaunchedEffect(playbackSpeed) { currentSpeed = playbackSpeed; currentPlayer.setPlaybackSpeed(playbackSpeed) }
 
-    LaunchedEffect(showGestureIndicator) {
-        if (showGestureIndicator) { delay(2000); showGestureIndicator = false }
-    }
-
-    LaunchedEffect(showSeekFeedback) {
-        if (showSeekFeedback) { delay(800); showSeekFeedback = false }
-    }
-
-    // Sync speed when parent state changes
-    LaunchedEffect(playbackSpeed) {
-        currentSpeed = playbackSpeed
-        exoPlayer.setPlaybackSpeed(playbackSpeed)
-    }
-
-    // Auto-next countdown: starts at T-10s when autoNext=true and this is an episode
-    LaunchedEffect(autoNext, duration, item.id) {
-        if (!autoNext || item.type != MediaType.EPISODE || duration <= 0L) return@LaunchedEffect
-        while (true) {
-            val remaining = duration - exoPlayer.currentPosition
-            if (remaining in 1..10_000L && autoNextCountdown == 0) {
-                autoNextCountdown = (remaining / 1000).toInt().coerceAtLeast(1)
-            }
-            if (autoNextCountdown > 0) {
-                delay(1000)
-                autoNextCountdown = (autoNextCountdown - 1).coerceAtLeast(0)
-                if (autoNextCountdown == 0) {
-                    onNextEpisode()
-                    break
+    MobilePlayerTracker(
+        exoPlayer = currentPlayer,
+        item = item,
+        playSessionId = playSessionId,
+        isPlaying = isPlaying,
+        isBuffering = isBuffering,
+        isUserSeeking = isUserSeeking,
+        duration = duration,
+        markers = markers,
+        customMarkers = customMarkers,
+        autoSkipIntro = autoSkipIntro,
+        autoSkipOutro = autoSkipOutro,
+        autoSkipPreview = autoSkipPreview,
+        autoNext = autoNext,
+        autoNextCountdown = autoNextCountdown,
+        markerState = markerState,
+        markerStartMs = markerStartMs,
+        nextEpisodeConfig = nextEpisodeConfig,
+        metaPreloaded = metaPreloaded,
+        videoPreloaded = videoPreloaded,
+        buildSecondaryPlayer = { config ->
+            try { buildExoPlayer(config.url, config.mimeType, startPlaying = false) }
+            catch (_: Exception) { null }
+        },
+        onPositionUpdate = { pos, dur ->
+            currentPosition = pos
+            duration = dur
+        },
+        onMarkerUpdate = { inRange, endMs ->
+            isInMarkerRange = inRange
+            currentMarkerEndMs = endMs
+        },
+        onMetaPreloaded = { metaPreloaded = true; onPreloadNextMeta() },
+        onSecondaryReady = { secondary ->
+            secondary.addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(playing: Boolean) { if (!isPrimaryActive) isPlaying = playing }
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (!isPrimaryActive) {
+                        duration = secondary.duration.coerceAtLeast(0L)
+                        isBuffering = state == Player.STATE_BUFFERING
+                    }
                 }
-            } else {
-                delay(500)
-            }
-        }
-    }
-
-    // Playback reporting
-    LaunchedEffect(playSessionId, item.id) {
-        val sessionId = playSessionId ?: return@LaunchedEffect
-        onPlaybackStart(item.id, sessionId)
-        while (true) {
-            delay(10000)
-            onPlaybackProgress(item.id, sessionId, exoPlayer.currentPosition * 10_000L, !isPlaying)
-        }
-    }
-
-    // Main tracking loop (500ms)
-    LaunchedEffect(isPlaying) {
-        while (true) {
-            currentPosition = exoPlayer.currentPosition
-            duration = exoPlayer.duration.coerceAtLeast(0L)
-            val remaining = if (duration > 0) duration - currentPosition else Long.MAX_VALUE
-
-            val allMarkerRanges = markers.map { it.startTicks / 10_000L to it.endTicks / 10_000L } + customMarkers
-            val activeMarker = allMarkerRanges.firstOrNull { (start, end) -> currentPosition in start..end }
-            isInMarkerRange = activeMarker != null
-            currentMarkerEndMs = activeMarker?.second ?: 0L
-            if (autoSkipIntro && activeMarker != null) exoPlayer.seekTo(currentMarkerEndMs)
-
-            if (!metaPreloaded && remaining in 1..300_000L) {
-                metaPreloaded = true; onPreloadNextMeta()
-            }
-
-            if (!videoPreloaded && nextEpisodeConfig != null && remaining in 1..30_000L) {
-                videoPreloaded = true
-                try {
-                    val cfg = nextEpisodeConfig
-                    secondaryExoPlayer = buildExoPlayer(cfg.url, cfg.mimeType, startPlaying = false)
-                } catch (_: Exception) {
-                    secondaryExoPlayer?.release(); secondaryExoPlayer = null
+                override fun onTracksChanged(tracks: Tracks) {
+                    if (!isPrimaryActive) {
+                        val textTracks = mutableListOf<Pair<Int, String>>(); var tIdx = 0
+                        val audioTracks = mutableListOf<Pair<Int, String>>(); var aIdx = 0
+                        for (group in tracks.groups) {
+                            when (group.type) {
+                                C.TRACK_TYPE_TEXT -> for (i in 0 until group.length) {
+                                    val f = group.getTrackFormat(i)
+                                    textTracks += tIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Sub $tIdx")
+                                }
+                                C.TRACK_TYPE_AUDIO -> for (i in 0 until group.length) {
+                                    val f = group.getTrackFormat(i)
+                                    audioTracks += aIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Audio $aIdx")
+                                }
+                            }
+                        }
+                        availableTextTracks = textTracks; availableAudioTracks = audioTracks
+                    }
                 }
-            }
-
-            if (duration > 0 && currentPosition >= duration - 500L && secondaryExoPlayer != null) {
-                val secondary = secondaryExoPlayer!!
-                secondary.play()
+            })
+            secondaryExoPlayer = secondary
+            videoPreloaded = true
+        },
+        onSeamlessSwap = {
+            if (secondaryExoPlayer != null) {
+                secondaryExoPlayer!!.play()
                 isPrimaryActive = false
                 onMarkCurrentAsPlayed()
-                exoPlayer.stop(); exoPlayer.release()
-                metaPreloaded = false; videoPreloaded = false; secondaryExoPlayer = null
+                primaryExoPlayer.stop()
+                primaryExoPlayer.release()
+                metaPreloaded = false
+                videoPreloaded = false
                 onSeamlessNextEpisode()
-                break
             }
-
-            // Custom marker end detection (2s stable playback after seek)
-            if (markerState == MarkerState.MARKING && isPlaying && !isBuffering) {
-                if (stablePlaybackMs == 0L) stablePlaybackMs = currentPosition
-                if (currentPosition - stablePlaybackMs >= 2000L) {
-                    onSaveCustomMarker(markerStartMs, currentPosition)
-                    markerState = MarkerState.IDLE; stablePlaybackMs = 0L
-                }
-            } else if (markerState == MarkerState.IDLE) {
+        },
+        onMarkEnd = { start, pos ->
+            if (stablePlaybackMs == 0L) stablePlaybackMs = pos
+            if (pos - stablePlaybackMs >= 2000L) {
+                android.util.Log.d("MarkPreview", "END: itemId=${item.id} start=${start}ms end=${pos}ms")
+                onSaveCustomMarker(start, pos)
+                markerState = MarkerState.IDLE
                 stablePlaybackMs = 0L
             }
-
-            delay(500)
-        }
-    }
+        },
+        onMarkIdle = { stablePlaybackMs = 0L },
+        onAutoNextTick = { autoNextCountdown = it },
+        onAutoNextFire = { onNextEpisode() },
+        onPlaybackStart = onPlaybackStart,
+        onPlaybackProgress = onPlaybackProgress
+    )
 
     DisposableEffect(Unit) {
         activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             val sessionId = playSessionId
-            if (sessionId != null) onPlaybackStopped(item.id, sessionId, exoPlayer.currentPosition * 10_000L)
-            exoPlayer.release()
-            secondaryExoPlayer?.release()
+            if (sessionId != null) onPlaybackStopped(item.id, sessionId, currentPlayer.currentPosition * 10_000L)
+            primaryExoPlayer.release(); secondaryExoPlayer?.release()
             activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black)
+        modifier = modifier.fillMaxSize().background(Color.Black)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { if (!isLongPressing) isControlsVisible = !isControlsVisible },
                     onDoubleTap = { offset ->
                         if (!isLongPressing) {
                             val isRight = offset.x >= size.width / 2
-                            if (isRight) {
-                                exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(duration))
-                                seekFeedback = "+10"
-                            } else {
-                                exoPlayer.seekTo((exoPlayer.currentPosition - 5000).coerceAtLeast(0))
-                                seekFeedback = "-5"
-                            }
-                            seekFeedbackIsRight = isRight
-                            showSeekFeedback = true
-                            stablePlaybackMs = 0L
+                            if (isRight) { currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration)); seekFeedback = "+10" }
+                            else { currentPlayer.seekTo((currentPlayer.currentPosition - 5000).coerceAtLeast(0)); seekFeedback = "-5" }
+                            seekFeedbackIsRight = isRight; showSeekFeedback = true; stablePlaybackMs = 0L
                         }
                     },
                     onLongPress = {},
                 )
             }
             .pointerInput(isControlsVisible, playbackSpeed) {
-                if (!isControlsVisible) {
-                    val longPressTimeout = viewConfiguration.longPressTimeoutMillis
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        val up = withTimeoutOrNull(longPressTimeout) { waitForUpOrCancellation() }
-                        if (up == null) {
-                            isLongPressing = true
-                            exoPlayer.setPlaybackSpeed(2f)
-                            try { waitForUpOrCancellation() }
-                            finally { exoPlayer.setPlaybackSpeed(playbackSpeed); isLongPressing = false }
-                        }
+                if (!isControlsVisible) awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation() }
+                    if (up == null) {
+                        isLongPressing = true; currentPlayer.setPlaybackSpeed(2f)
+                        try { waitForUpOrCancellation() } finally { currentPlayer.setPlaybackSpeed(playbackSpeed); isLongPressing = false }
                     }
                 }
             }
@@ -395,19 +384,14 @@ fun MobileVideoPlayer(
                         if (isLeft) {
                             gestureType = "volume"
                             val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                            val delta = (dragAmount / size.height) * maxVol * -2f
-                            val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-                            val newVol = (currentVol + delta).toInt().coerceIn(0, maxVol)
-                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
-                            volume = newVol.toFloat() / maxVol
+                            val newVol = (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) + (dragAmount / size.height) * maxVol * -2f).toInt().coerceIn(0, maxVol)
+                            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0); volume = newVol.toFloat() / maxVol
                         } else {
                             gestureType = "brightness"
-                            activity?.let {
-                                val params = it.window.attributes
-                                val delta = (dragAmount / size.height) * -1f
-                                params.screenBrightness = (params.screenBrightness + delta).coerceIn(0.01f, 1.0f)
-                                it.window.attributes = params
-                                brightness = params.screenBrightness
+                            activity?.let { a ->
+                                val params = a.window.attributes
+                                params.screenBrightness = (params.screenBrightness + (dragAmount / size.height) * -1f).coerceIn(0.01f, 1.0f)
+                                a.window.attributes = params; brightness = params.screenBrightness
                             }
                         }
                         showGestureIndicator = true
@@ -415,516 +399,140 @@ fun MobileVideoPlayer(
                 )
             },
     ) {
-        // Secondary player (background) — SURFACE_TYPE_TEXTURE_VIEW=2 allows alpha-based swap without black flicker
-        val secondary = secondaryExoPlayer
-        if (secondary != null) {
+        secondaryExoPlayer?.let { secondary ->
             AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        player = secondary
-                        useController = false
-                        applyTextureViewSurface()
-                        layoutParams = android.view.ViewGroup.LayoutParams(
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
-                    }
-                },
+                factory = { ctx -> PlayerView(ctx).apply { player = secondary; useController = false; applyTextureViewSurface() } },
                 modifier = Modifier.fillMaxSize().alpha(if (isPrimaryActive) 0f else 1f),
             )
         }
-
-        // Primary player — TextureView (SURFACE_TYPE_TEXTURE_VIEW=2)
         AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = false
-                    applyTextureViewSurface()
-                    layoutParams = android.view.ViewGroup.LayoutParams(
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                }
-            },
+            factory = { ctx -> PlayerView(ctx).apply { player = primaryExoPlayer; useController = false; applyTextureViewSurface() } },
             modifier = Modifier.fillMaxSize().alpha(if (isPrimaryActive) 1f else 0f),
         )
 
-        // x2 speed indicator — fades in on hold, fades out on release
-        AnimatedVisibility(
-            visible = isLongPressing,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center),
+        androidx.compose.animation.AnimatedVisibility(
+            visible = isControlsVisible,
+            enter = androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.fadeOut()
         ) {
-            Box(
-                modifier = Modifier
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
-            ) {
-                Text("▶▶ 2×", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // Controls overlay
-        if (isControlsVisible) {
             Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
-
-                // ── Top Bar ──────────────────────────────────────────────────
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    val titleText = remember(item, parentItem) {
-                        if (item.type == MediaType.EPISODE) {
-                            val seriesName = parentItem?.title ?: "Series"
-                            val seasonStr = item.parentIndexNumber?.let { "S${it.toString().padStart(2, '0')}" } ?: ""
-                            val episodeStr = item.index?.let { "E${it.toString().padStart(2, '0')}" } ?: ""
-                            val sep = if (seasonStr.isNotEmpty() && episodeStr.isNotEmpty()) " " else ""
-                            "$seriesName - $seasonStr$sep$episodeStr - ${item.title}"
-                        } else item.title
-                    }
-                    Text(
-                        text = titleText,
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.weight(1f),
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    )
-
-                    // Auto-next toggle (series/episodes only)
-                    if (item.type == MediaType.EPISODE) {
-                        IconButton(onClick = onToggleAutoNext) {
-                            Icon(
-                                if (autoNext) Icons.Default.SkipNext else Icons.Default.SkipNext,
-                                contentDescription = "Auto-next",
-                                tint = if (autoNext) Color(0xFF24D366) else Color.White.copy(alpha = 0.5f),
-                            )
-                        }
-                    }
-
-                    // More menu
-                    Box {
-                        IconButton(onClick = { showMoreMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
-                        }
-                        DropdownMenu(
-                            expanded = showMoreMenu,
-                            onDismissRequest = { showMoreMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Auto-skip intro: ${if (autoSkipIntro) "ON" else "OFF"}") },
-                                onClick = { onToggleAutoSkip(); showMoreMenu = false },
-                            )
-                            if (item.type == MediaType.EPISODE) {
-                                DropdownMenuItem(
-                                    text = { Text("Auto-next: ${if (autoNext) "ON" else "OFF"}") },
-                                    onClick = { onToggleAutoNext(); showMoreMenu = false },
-                                )
-                            }
-                            DropdownMenuItem(
-                                text = { Text("Playback speed: ${currentSpeed}×") },
-                                onClick = { showSettingsDialog = true; showMoreMenu = false },
-                            )
-                        }
-                    }
-
-                }
-
-                // ── Center Controls ──────────────────────────────────────────
-                Row(
+                MobilePlayerTopBar(item = item, parentItem = parentItem, onBack = onBack, onMoreClick = { showSettingsPopup = true })
+                MobilePlayerCenterControls(
+                    isPlaying = isPlaying, isBuffering = isBuffering, showNextPrev = showNextPrev,
+                    onPlayPause = { if (isPlaying) currentPlayer.pause() else currentPlayer.play() },
+                    onRewind = { currentPlayer.seekTo((currentPlayer.currentPosition - 10000).coerceAtLeast(0)) },
+                    onForward = { currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration)) },
+                    onPrevEpisode = onPrevEpisode, onNextEpisode = onNextEpisode,
                     modifier = Modifier.align(Alignment.Center),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                ) {
-                    // Prev episode
-                    if (showNextPrev) {
-                        IconButton(onClick = onPrevEpisode, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Default.SkipPrevious, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(36.dp))
+                )
+                MobilePlayerBottomControls(
+                    item = item, currentPosition = currentPosition, duration = duration,
+                    markerState = markerState, selectedTextTrackIndex = selectedTextTrackIndex,
+                    onSeek = { currentPlayer.seekTo(it); stablePlaybackMs = 0L },
+                    onSeekStarted = { isUserSeeking = true },
+                    onSeekFinished = { pos ->
+                        currentPlayer.seekTo(pos)
+                        isUserSeeking = false
+                        stablePlaybackMs = 0L
+                    },
+                    onShowCaptionDialog = { showCaptionDialog = true },
+                    onShowAudioDialog = { showAudioDialog = true },
+                    onMarkToggle = {
+                        if (markerState == MarkerState.IDLE) {
+                            markerStartMs = currentPosition; markerState = MarkerState.MARKING; stablePlaybackMs = 0L
+                            android.util.Log.d("MarkPreview", "START: itemId=${item.id} pos=${currentPosition}ms")
+                        } else {
+                            android.util.Log.d("MarkPreview", "CANCELLED by user at pos=${currentPosition}ms")
+                            markerState = MarkerState.IDLE; stablePlaybackMs = 0L
                         }
-                    }
-
-                    // Rewind 10s
-                    IconButton(onClick = {
-                        exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0))
-                    }, modifier = Modifier.size(64.dp)) {
-                        Icon(Icons.Default.Replay10, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(48.dp))
-                    }
-
-                    // Play / Pause / Buffer
-                    if (isBuffering) {
-                        CircularProgressIndicator(modifier = Modifier.size(72.dp), color = Color.White, strokeWidth = 3.dp)
-                    } else {
-                        IconButton(
-                            onClick = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
-                            modifier = Modifier.size(80.dp),
-                        ) {
-                            Icon(
-                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                null,
-                                tint = Color.White,
-                                modifier = Modifier.size(72.dp),
-                            )
-                        }
-                    }
-
-                    // Forward 10s
-                    IconButton(onClick = {
-                        exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(duration))
-                    }, modifier = Modifier.size(64.dp)) {
-                        Icon(Icons.Default.Forward10, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(48.dp))
-                    }
-
-                    // Next episode
-                    if (showNextPrev) {
-                        IconButton(onClick = onNextEpisode, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Default.SkipNext, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(36.dp))
-                        }
-                    }
-                }
-
-                // ── Bottom Controls ──────────────────────────────────────────
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(start = 16.dp, end = 16.dp, bottom = 32.dp),
-                ) {
-                    // Info row: [time]  [spacer]  [captions] [mark?] [settings]
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(formatTime(currentPosition), color = Color.White, fontSize = 12.sp)
-                        Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-                        Text(formatTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                        Spacer(modifier = Modifier.weight(1f))
-                        // Captions button
-                        IconButton(onClick = { showCaptionDialog = true }, modifier = Modifier.size(36.dp)) {
-                            Icon(
-                                Icons.Default.Subtitles,
-                                null,
-                                tint = if (selectedTrackIndex >= 0) Color(0xFF24D366) else Color.White,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        // Mark preview button — shown next to captions for episodes
-                        if (item.type == MediaType.EPISODE) {
-                            IconButton(
-                                onClick = {
-                                    when (markerState) {
-                                        MarkerState.IDLE -> {
-                                            markerStartMs = currentPosition
-                                            markerState = MarkerState.MARKING
-                                            stablePlaybackMs = 0L
-                                        }
-                                        MarkerState.MARKING -> {
-                                            markerState = MarkerState.IDLE
-                                            stablePlaybackMs = 0L
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.size(36.dp),
-                            ) {
-                                Icon(
-                                    Icons.Default.BookmarkAdd,
-                                    contentDescription = "Mark preview",
-                                    tint = if (markerState == MarkerState.MARKING) Color.Red else Color.White,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                        }
-                        // Settings button
-                        IconButton(onClick = { showSettingsDialog = true }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Default.Settings, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                        }
-                    }
-
-                    // Seekbar row — full width, edges align with header 16dp padding
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(20.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
-                        )
-                        val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(progress)
-                                .height(4.dp)
-                                .background(Color(0xFF24D366), RoundedCornerShape(2.dp)),
-                        )
-                        if (duration > 0) {
-                            Slider(
-                                value = currentPosition.toFloat(),
-                                onValueChange = {
-                                    currentPosition = it.toLong()
-                                    exoPlayer.seekTo(it.toLong())
-                                    stablePlaybackMs = 0L
-                                },
-                                valueRange = 0f..duration.toFloat(),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = Color.White,
-                                    activeTrackColor = Color.Transparent,
-                                    inactiveTrackColor = Color.Transparent,
-                                ),
-                                thumb = {
-                                    Box(modifier = Modifier.size(14.dp).background(Color.White, CircleShape))
-                                },
-                            )
-                        }
-                    }
-                }
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                )
             }
         }
 
-        // Skip Intro button
-        if (isInMarkerRange) {
-            Button(
-                onClick = { exoPlayer.seekTo(currentMarkerEndMs) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = if (isControlsVisible) 110.dp else 24.dp, end = 24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Black.copy(alpha = 0.7f),
-                    contentColor = Color.White,
-                ),
-                shape = RoundedCornerShape(4.dp),
-            ) {
-                Text("Skip Intro", fontWeight = FontWeight.SemiBold)
-            }
-        }
-
-        // Marking indicator
-        if (markerState == MarkerState.MARKING) {
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 56.dp)
-                    .background(Color.Red.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Box(modifier = Modifier.size(8.dp).background(Color.White, CircleShape))
-                Text("Marking preview…", color = Color.White, fontSize = 13.sp)
-            }
-        }
-
-        // Double-tap seek feedback overlay — left at 1/4 width, right at 3/4 width
-        AnimatedVisibility(
-            visible = showSeekFeedback,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val boxSize = 80.dp
-                val xOffset = if (seekFeedbackIsRight) maxWidth * 0.75f - boxSize / 2 else maxWidth * 0.25f - boxSize / 2
-                val yOffset = maxHeight / 2 - boxSize / 2
-                Box(
-                    modifier = Modifier
-                        .size(boxSize)
-                        .offset(x = xOffset, y = yOffset)
-                        .background(Color.White.copy(alpha = 0.15f), CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = seekFeedback + "s",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-
-        // Gesture Overlay (Brightness / Volume)
-        AnimatedVisibility(
-            visible = showGestureIndicator,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 64.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.alpha(if (gestureType == "volume") 1f else 0f),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(6.dp).height(120.dp)
-                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth().fillMaxHeight(volume)
-                                .align(Alignment.BottomCenter)
-                                .background(Color.White, RoundedCornerShape(3.dp)),
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.alpha(if (gestureType == "brightness") 1f else 0f),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(6.dp).height(120.dp)
-                            .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(3.dp)),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth().fillMaxHeight(brightness)
-                                .align(Alignment.BottomCenter)
-                                .background(Color.White, RoundedCornerShape(3.dp)),
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Icon(Icons.Default.WbSunny, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                }
-            }
-        }
-        // Auto-next countdown overlay
-        if (autoNextCountdown > 0 && item.type == MediaType.EPISODE) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 100.dp)
-                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Next episode in ${autoNextCountdown}s", color = Color.White, fontSize = 14.sp)
-                    TextButton(onClick = { autoNextCountdown = 0 }) {
-                        Text("Cancel", color = Color(0xFF24D366), fontSize = 13.sp)
-                    }
-                }
-            }
-        }
-    }
-
-    // Caption dialog
-    if (showCaptionDialog) {
-        AlertDialog(
-            onDismissRequest = { showCaptionDialog = false },
-            title = { Text("Subtitles") },
-            text = {
-                Column {
-                    // "Off" option
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedTrackIndex = -1
-                                trackSelector.setParameters(
-                                    trackSelector.buildUponParameters()
-                                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-                                        .build()
-                                )
-                                showCaptionDialog = false
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text("Off")
-                        if (selectedTrackIndex == -1) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
-                    }
-                    if (availableTextTracks.isEmpty()) {
-                        Text("No subtitles available", color = Color.Gray, fontSize = 13.sp)
-                    } else {
-                        availableTextTracks.forEach { (idx, label) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedTrackIndex = idx
-                                        trackSelector.setParameters(
-                                            trackSelector.buildUponParameters()
-                                                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
-                                                .setPreferredTextLanguageAndRoleFlagsToCaptioningManagerSettings(context)
-                                                .build()
-                                        )
-                                        showCaptionDialog = false
-                                    }
-                                    .padding(vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(label)
-                                if (selectedTrackIndex == idx) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    }
-                }
+        MobilePlayerOverlays(
+            item = item, isLongPressing = isLongPressing,
+            showSeekFeedback = showSeekFeedback, seekFeedback = seekFeedback, seekFeedbackIsRight = seekFeedbackIsRight,
+            showGestureIndicator = showGestureIndicator, gestureType = gestureType,
+            volume = volume, brightness = brightness,
+            isInMarkerRange = isInMarkerRange, currentMarkerEndMs = currentMarkerEndMs,
+            markerState = markerState, autoNextCountdown = autoNextCountdown,
+            isControlsVisible = isControlsVisible,
+            onSkipMarker = { currentPlayer.seekTo(currentMarkerEndMs) },
+            onCancelAutoNext = { autoNextCountdown = 0 },
+            onCancelMarking = {
+                android.util.Log.d("MarkPreview", "CANCELLED by user at pos=${currentPosition}ms")
+                markerState = MarkerState.IDLE; stablePlaybackMs = 0L
             },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { showCaptionDialog = false }) { Text("Close") } },
         )
-    }
 
-    // Settings dialog (playback speed)
-    if (showSettingsDialog) {
-        val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-        AlertDialog(
-            onDismissRequest = { showSettingsDialog = false },
-            title = { Text("Playback Speed") },
-            text = {
-                Column {
-                    speedOptions.forEach { speed ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    currentSpeed = speed
-                                    exoPlayer.setPlaybackSpeed(speed)
-                                    onSpeedChange(speed)
-                                    showSettingsDialog = false
-                                }
-                                .padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Text("${speed}×")
-                            if (currentSpeed == speed) Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
-                        }
-                    }
+        playbackError?.let { error ->
+            Column(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.9f))
+                    .pointerInput(Unit) { detectTapGestures { } },
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Rounded.ErrorOutline,
+                    contentDescription = null,
+                    tint = Color.Red,
+                    modifier = Modifier.size(64.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "Playback failed", color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
+                Text(text = error, color = Color.White.copy(alpha = 0.7f), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(24.dp))
+                androidx.compose.material3.Button(
+                    onClick = {
+                        playbackError = null
+                        currentPlayer.prepare()
+                        currentPlayer.play()
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+                ) {
+                    Text("Try Again")
                 }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { showSettingsDialog = false }) { Text("Close") } },
-        )
+                androidx.compose.material3.TextButton(onClick = onBack) {
+                    Text("Go Back", color = Color.White)
+                }
+            }
+        }
     }
-}
 
-private fun formatTime(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) "%d:%02d:%02d".format(hours, minutes, seconds)
-    else "%02d:%02d".format(minutes, seconds)
+    if (showCaptionDialog) PlayerCaptionDialog(
+        availableTextTracks = availableTextTracks, selectedTextTrackIndex = selectedTextTrackIndex,
+        onSelectOff = {
+            selectedTextTrackIndex = -1
+            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build())
+            showCaptionDialog = false
+        },
+        onSelectTrack = { idx ->
+            selectedTextTrackIndex = idx
+            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).build())
+            showCaptionDialog = false
+        },
+        onDismiss = { showCaptionDialog = false },
+    )
+
+    if (showAudioDialog) PlayerAudioDialog(
+        availableAudioTracks = availableAudioTracks, selectedAudioTrackIndex = selectedAudioTrackIndex,
+        onSelectTrack = { idx ->
+            selectedAudioTrackIndex = idx
+            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build())
+            showAudioDialog = false
+        },
+        onDismiss = { showAudioDialog = false },
+    )
+
+    if (showSettingsPopup) PlayerSettingsPopup(
+        autoSkipIntro = autoSkipIntro, autoSkipOutro = autoSkipOutro, autoSkipPreview = autoSkipPreview,
+        autoNext = autoNext, isEpisode = item.type == MediaType.EPISODE,
+        currentSpeed = currentSpeed,
+        onToggleAutoSkip = onToggleAutoSkip, onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+        onToggleAutoSkipPreview = onToggleAutoSkipPreview, onToggleAutoNext = onToggleAutoNext,
+        onSpeedChange = { speed -> currentSpeed = speed; currentPlayer.setPlaybackSpeed(speed); onSpeedChange(speed) },
+        onDismiss = { showSettingsPopup = false },
+    )
 }

@@ -44,6 +44,10 @@ actual fun VideoPlayerImpl(
     onSeamlessNextEpisode: () -> Unit,
     autoNext: Boolean,
     onToggleAutoNext: () -> Unit,
+    autoSkipOutro: Boolean,
+    onToggleAutoSkipOutro: () -> Unit,
+    autoSkipPreview: Boolean,
+    onToggleAutoSkipPreview: () -> Unit,
 ) {
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),

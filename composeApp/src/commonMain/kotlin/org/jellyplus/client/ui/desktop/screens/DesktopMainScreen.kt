@@ -67,6 +67,7 @@ import org.jellyplus.client.ui.common.navigation.rememberDpadSectionNavigator
 import org.jellyplus.client.ui.common.navigation.sectionItemDpadHandler
 import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.viewmodels.MainViewModel
+import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import androidx.compose.foundation.lazy.itemsIndexed as lazyListItemsIndexed
 
 private enum class NavDestination { Home, Movies, TvShows, Favorites, Search }
@@ -74,6 +75,7 @@ private enum class NavDestination { Home, Movies, TvShows, Favorites, Search }
 @Composable
 fun DesktopMainScreen(
     viewModel: MainViewModel,
+    sessionViewModel: SessionViewModel? = null,
     onMediaClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit,
 ) {

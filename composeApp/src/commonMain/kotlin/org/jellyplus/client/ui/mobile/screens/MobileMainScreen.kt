@@ -42,6 +42,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,19 +62,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import org.jellyplus.client.isDebug
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.components.MediaRowPlaceholder
 import org.jellyplus.client.ui.viewmodels.MainViewModel
+import org.jellyplus.client.ui.viewmodels.SessionViewModel
 
 @Composable
 fun MobileMainScreen(
     viewModel: MainViewModel,
+    sessionViewModel: SessionViewModel,
     onMediaClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
+    val sessionState by sessionViewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(0) }
 
     Scaffold(
@@ -119,7 +125,11 @@ fun MobileMainScreen(
                 0 -> HomeContent(viewModel, state, state.baseUrl, onMediaClick, onViewAll, paddingValues)
                 1 -> SearchContent(paddingValues)
                 2 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
-                3 -> ProfileContent(paddingValues)
+                3 -> ProfileContent(
+                    sessionViewModel = sessionViewModel,
+                    onLogout = { sessionViewModel.logout() },
+                    paddingValues = paddingValues
+                )
             }
         }
     }
@@ -355,7 +365,13 @@ private fun FavoriteItemCard(item: MediaItem, baseUrl: String, onClick: (MediaIt
 }
 
 @Composable
-private fun ProfileContent(paddingValues: PaddingValues) {
+private fun ProfileContent(
+    sessionViewModel: SessionViewModel,
+    onLogout: () -> Unit,
+    paddingValues: PaddingValues
+) {
+    val sessionState by sessionViewModel.uiState.collectAsState()
+
     Column(
         modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -376,14 +392,39 @@ private fun ProfileContent(paddingValues: PaddingValues) {
         }
         Spacer(Modifier.height(24.dp))
         Text("Jellyfin User", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("user@jellyplus.local", color = Color.White.copy(alpha = 0.5f))
+        Text(sessionViewModel.getBaseUrl(), color = Color.White.copy(alpha = 0.5f))
 
         Spacer(Modifier.height(48.dp))
         ProfileOption("Account Settings", Icons.Default.Settings)
         ProfileOption("Playback Preferences", Icons.Default.PlayArrow)
+
+        // Persist Demo Option - Only for Debug builds
+        if (isDebug()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Info, null, tint = Color.White.copy(alpha = 0.7f))
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text("Keep trying demo", color = Color.White, fontSize = 16.sp)
+                    Text("Persist demo session across restarts", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                Switch(
+                    checked = sessionState.persistDemo,
+                    onCheckedChange = { sessionViewModel.togglePersistDemo(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        }
+
         ProfileOption("Help & Support", Icons.Default.Info)
         Spacer(Modifier.height(32.dp))
-        TextButton(onClick = { }) {
+        TextButton(onClick = onLogout) {
             Text("Sign Out", color = Color.Red, fontWeight = FontWeight.Bold)
         }
     }

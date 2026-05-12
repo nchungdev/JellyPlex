@@ -6,4 +6,7 @@ class ClearSessionUseCase(private val repository: IAuthenticationRepository) {
     operator fun invoke() {
         repository.clearSession()
     }
+
+    fun setPersistDemo(enabled: Boolean) = repository.setPersistDemo(enabled)
+    fun getPersistDemo(): Boolean = repository.getPersistDemo()
 }

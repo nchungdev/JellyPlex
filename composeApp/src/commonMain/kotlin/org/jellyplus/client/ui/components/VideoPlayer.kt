@@ -37,6 +37,10 @@ expect fun VideoPlayerImpl(
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
+    autoSkipOutro: Boolean = false,
+    onToggleAutoSkipOutro: () -> Unit = {},
+    autoSkipPreview: Boolean = false,
+    onToggleAutoSkipPreview: () -> Unit = {},
 )
 
 @Composable
@@ -71,6 +75,10 @@ fun VideoPlayer(
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
+    autoSkipOutro: Boolean = false,
+    onToggleAutoSkipOutro: () -> Unit = {},
+    autoSkipPreview: Boolean = false,
+    onToggleAutoSkipPreview: () -> Unit = {},
 ) {
     VideoPlayerImpl(
         item, parentItem, url, accessToken, playSessionId, mimeType, markers, modifier,
@@ -80,5 +88,6 @@ fun VideoPlayer(
         nextEpisodeConfig, autoSkipIntro, customMarkers,
         onPreloadNextMeta, onMarkCurrentAsPlayed, onSaveCustomMarker,
         onToggleAutoSkip, onSeamlessNextEpisode, autoNext, onToggleAutoNext,
+        autoSkipOutro, onToggleAutoSkipOutro, autoSkipPreview, onToggleAutoSkipPreview,
     )
 }

@@ -21,3 +21,5 @@ expect fun provideSettings(): Settings
 expect fun AppBackHandler(enabled: Boolean = true, onBack: () -> Unit)
 
 expect fun getDeviceName(): String
+
+expect fun isDebug(): Boolean

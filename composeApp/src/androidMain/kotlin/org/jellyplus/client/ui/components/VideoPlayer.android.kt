@@ -39,6 +39,10 @@ actual fun VideoPlayerImpl(
     onSeamlessNextEpisode: () -> Unit,
     autoNext: Boolean,
     onToggleAutoNext: () -> Unit,
+    autoSkipOutro: Boolean,
+    onToggleAutoSkipOutro: () -> Unit,
+    autoSkipPreview: Boolean,
+    onToggleAutoSkipPreview: () -> Unit,
 ) {
     if (uiType == UiType.Desktop) {
         org.jellyplus.client.ui.components.player.desktop.DesktopVideoPlayer(
@@ -68,6 +72,10 @@ actual fun VideoPlayerImpl(
             onSeamlessNextEpisode = onSeamlessNextEpisode,
             autoNext = autoNext,
             onToggleAutoNext = onToggleAutoNext,
+            autoSkipOutro = autoSkipOutro,
+            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+            autoSkipPreview = autoSkipPreview,
+            onToggleAutoSkipPreview = onToggleAutoSkipPreview,
         )
     } else {
         org.jellyplus.client.ui.components.player.mobile.MobileVideoPlayer(
@@ -98,6 +106,10 @@ actual fun VideoPlayerImpl(
             autoNext = autoNext,
             onToggleAutoNext = onToggleAutoNext,
             onSpeedChange = onSpeedChange,
+            autoSkipOutro = autoSkipOutro,
+            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+            autoSkipPreview = autoSkipPreview,
+            onToggleAutoSkipPreview = onToggleAutoSkipPreview,
         )
     }
 }

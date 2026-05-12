@@ -11,6 +11,8 @@ import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
 import org.jellyplus.client.domain.usecases.GetAutoNextUseCase
+import org.jellyplus.client.domain.usecases.GetAutoSkipOutroUseCase
+import org.jellyplus.client.domain.usecases.GetAutoSkipPreviewUseCase
 import org.jellyplus.client.domain.usecases.GetAutoSkipUseCase
 import org.jellyplus.client.domain.usecases.GetPlaybackSpeedUseCase
 import org.jellyplus.client.domain.usecases.GetUserIdUseCase
@@ -21,6 +23,8 @@ import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
 import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
 import org.jellyplus.client.domain.usecases.SaveCustomMarkerUseCase
 import org.jellyplus.client.domain.usecases.SetAutoNextUseCase
+import org.jellyplus.client.domain.usecases.SetAutoSkipOutroUseCase
+import org.jellyplus.client.domain.usecases.SetAutoSkipPreviewUseCase
 import org.jellyplus.client.domain.usecases.SetAutoSkipUseCase
 import org.jellyplus.client.domain.usecases.SetPlaybackSpeedUseCase
 
@@ -39,6 +43,8 @@ data class PlayerState(
     val isPreloadingNextMeta: Boolean = false,
     // Player preferences
     val autoSkipIntro: Boolean = false,
+    val autoSkipOutro: Boolean = false,
+    val autoSkipPreview: Boolean = false,
     val autoNext: Boolean = false,
     val playbackSpeed: Float = 1.0f,
     // Custom markers in RAM: list of (startMs, endMs)
@@ -56,6 +62,10 @@ class PlayerViewModel(
     private val saveCustomMarkerUseCase: SaveCustomMarkerUseCase,
     private val getAutoSkipUseCase: GetAutoSkipUseCase,
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
+    private val getAutoSkipOutroUseCase: GetAutoSkipOutroUseCase,
+    private val setAutoSkipOutroUseCase: SetAutoSkipOutroUseCase,
+    private val getAutoSkipPreviewUseCase: GetAutoSkipPreviewUseCase,
+    private val setAutoSkipPreviewUseCase: SetAutoSkipPreviewUseCase,
     private val getAutoNextUseCase: GetAutoNextUseCase,
     private val setAutoNextUseCase: SetAutoNextUseCase,
     private val getPlaybackSpeedUseCase: GetPlaybackSpeedUseCase,
@@ -148,6 +158,18 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoSkipIntro = next)
     }
 
+    fun toggleAutoSkipOutro() {
+        val next = !_state.value.autoSkipOutro
+        setAutoSkipOutroUseCase(next)
+        _state.value = _state.value.copy(autoSkipOutro = next)
+    }
+
+    fun toggleAutoSkipPreview() {
+        val next = !_state.value.autoSkipPreview
+        setAutoSkipPreviewUseCase(next)
+        _state.value = _state.value.copy(autoSkipPreview = next)
+    }
+
     fun toggleAutoNext() {
         val next = !_state.value.autoNext
         setAutoNextUseCase(next)
@@ -188,6 +210,8 @@ class PlayerViewModel(
     private fun loadPreferences() {
         _state.value = _state.value.copy(
             autoSkipIntro = getAutoSkipUseCase(),
+            autoSkipOutro = getAutoSkipOutroUseCase(),
+            autoSkipPreview = getAutoSkipPreviewUseCase(),
             autoNext = getAutoNextUseCase(),
             playbackSpeed = getPlaybackSpeedUseCase(),
         )

@@ -138,7 +138,7 @@ class JellyfinApi(
         if (formattedUrl.isEmpty()) return ""
 
         if (!formattedUrl.startsWith("http")) {
-            formattedUrl = if (formattedUrl.contains("demo.jellyfin.org")) {
+            formattedUrl = if (formattedUrl.contains(Constants.DEMO_SERVER_HOST)) {
                 "https://$formattedUrl"
             } else {
                 "http://$formattedUrl"
@@ -154,7 +154,7 @@ class JellyfinApi(
             formattedUrl
         }
 
-        val isDemo = urlWithoutProtocol.contains("demo.jellyfin.org")
+        val isDemo = urlWithoutProtocol.contains(Constants.DEMO_SERVER_HOST)
         val hasPath = urlWithoutProtocol.contains("/")
         val hasPort = urlWithoutProtocol.contains(":")
 

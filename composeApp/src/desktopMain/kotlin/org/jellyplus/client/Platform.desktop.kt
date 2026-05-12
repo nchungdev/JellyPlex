@@ -21,3 +21,5 @@ actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
 actual fun getDeviceName(): String {
     return System.getProperty("os.name") + " (" + System.getProperty("user.name") + ")"
 }
+
+actual fun isDebug(): Boolean = System.getProperty("jellyplus.debug") == "true"

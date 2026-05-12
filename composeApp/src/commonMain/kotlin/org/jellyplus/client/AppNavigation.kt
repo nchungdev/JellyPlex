@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jellyplus.client.domain.models.Constants
 import org.jellyplus.client.ui.screens.AuthHomeScreen
 import org.jellyplus.client.ui.screens.MainScreen
 import org.jellyplus.client.ui.screens.ManualLoginScreen
@@ -22,16 +23,16 @@ import org.jellyplus.client.ui.screens.ManualServerEntryScreen
 import org.jellyplus.client.ui.screens.QuickConnectScreen
 import org.jellyplus.client.ui.screens.ServerSelectionScreen
 import org.jellyplus.client.ui.viewmodels.DiscoveryIntent
+import org.jellyplus.client.ui.viewmodels.DiscoveryState
 import org.jellyplus.client.ui.viewmodels.DiscoveryViewModel
 import org.jellyplus.client.ui.viewmodels.LoginIntent
+import org.jellyplus.client.ui.viewmodels.LoginState
 import org.jellyplus.client.ui.viewmodels.LoginViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.QuickConnectIntent
+import org.jellyplus.client.ui.viewmodels.QuickConnectState
 import org.jellyplus.client.ui.viewmodels.QuickConnectViewModel
 import org.jellyplus.client.ui.viewmodels.SessionViewModel
-import org.jellyplus.client.ui.viewmodels.DiscoveryState
-import org.jellyplus.client.ui.viewmodels.QuickConnectState
-import org.jellyplus.client.ui.viewmodels.LoginState
 
 @Composable
 fun AppMainContent(
@@ -51,7 +52,7 @@ fun AppMainContent(
     if (isValidating) {
         LoadingScreen()
     } else if (isAuthenticated) {
-        MainScreen(mainViewModel = mainViewModel)
+        MainScreen(mainViewModel = mainViewModel, sessionViewModel = sessionViewModel)
     } else {
         AuthNavigation(
             loginMode = loginMode,
@@ -120,7 +121,7 @@ fun AuthNavigation(
                     }
                 },
                 onTryDemo = {
-                    val demoUrl = "https://demo.jellyfin.org/stable"
+                    val demoUrl = Constants.DEMO_SERVER_URL
                     discoveryViewModel.handleIntent(
                         DiscoveryIntent.ValidateAndConnect(demoUrl) {
                             sessionViewModel.updateServerUrl(demoUrl)

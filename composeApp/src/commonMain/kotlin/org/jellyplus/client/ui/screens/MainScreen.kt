@@ -20,6 +20,7 @@ import org.jellyplus.client.ui.mobile.screens.MobileMainScreen
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.MainState
 import org.jellyplus.client.ui.viewmodels.PlayerViewModel
+import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 // Custom Saver to persist MutableState<Screen> across activity recreation
@@ -38,7 +39,8 @@ private val ScreenStateSaver = Saver<MutableState<Screen>, String>(
 
 @Composable
 fun MainScreen(
-    mainViewModel: MainViewModel
+    mainViewModel: MainViewModel,
+    sessionViewModel: SessionViewModel
 ) {
     // Persist current screen state using rememberSaveable
     val currentScreenState = rememberSaveable(saver = ScreenStateSaver) {
@@ -69,6 +71,7 @@ fun MainScreen(
             if (uiType == UiType.Desktop) {
                 DesktopMainScreen(
                     viewModel = mainViewModel,
+                    sessionViewModel = sessionViewModel,
                     onMediaClick = { currentScreen = Screen.Details(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
@@ -77,6 +80,7 @@ fun MainScreen(
             } else {
                 MobileMainScreen(
                     viewModel = mainViewModel,
+                    sessionViewModel = sessionViewModel,
                     onMediaClick = { currentScreen = Screen.Details(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
@@ -176,6 +180,10 @@ fun MainScreen(
                     onToggleAutoNext = { playerViewModel.toggleAutoNext() },
                     playbackSpeed = playerState.playbackSpeed,
                     onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
+                    autoSkipOutro = playerState.autoSkipOutro,
+                    onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
+                    autoSkipPreview = playerState.autoSkipPreview,
+                    onToggleAutoSkipPreview = { playerViewModel.toggleAutoSkipPreview() },
                 )
             }
         }

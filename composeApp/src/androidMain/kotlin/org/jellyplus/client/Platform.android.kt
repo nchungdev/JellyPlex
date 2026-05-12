@@ -45,3 +45,5 @@ actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
 actual fun getDeviceName(): String {
     return "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
 }
+
+actual fun isDebug(): Boolean = BuildConfig.DEBUG

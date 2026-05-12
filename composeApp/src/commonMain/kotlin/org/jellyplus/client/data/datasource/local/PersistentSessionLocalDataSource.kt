@@ -15,10 +15,15 @@ class PersistentSessionLocalDataSource(private val settings: Settings = Settings
         private const val KEY_USER_ID = "user_id"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_DEVICE_NAME = "device_name"
+        private const val KEY_PERSIST_DEMO = "persist_demo"
     }
 
     private val _isAuthenticated = MutableStateFlow(hasSession())
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
+
+    var persistDemo: Boolean
+        get() = settings.getBoolean(KEY_PERSIST_DEMO, false)
+        set(value) = settings.putBoolean(KEY_PERSIST_DEMO, value)
 
     var baseUrl: String?
         get() = settings.getStringOrNull(KEY_BASE_URL)

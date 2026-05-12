@@ -49,6 +49,10 @@ actual fun VideoPlayerImpl(
     onSeamlessNextEpisode: () -> Unit,
     autoNext: Boolean,
     onToggleAutoNext: () -> Unit,
+    autoSkipOutro: Boolean,
+    onToggleAutoSkipOutro: () -> Unit,
+    autoSkipPreview: Boolean,
+    onToggleAutoSkipPreview: () -> Unit,
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }

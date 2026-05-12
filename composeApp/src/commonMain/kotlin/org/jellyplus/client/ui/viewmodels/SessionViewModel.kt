@@ -2,14 +2,25 @@ package org.jellyplus.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.AppDispatchers
-import org.jellyplus.client.domain.usecases.*
+import org.jellyplus.client.domain.models.Constants
+import org.jellyplus.client.domain.usecases.ClearSessionUseCase
+import org.jellyplus.client.domain.usecases.GetBaseUrlUseCase
+import org.jellyplus.client.domain.usecases.GetIsAuthenticatedUseCase
+import org.jellyplus.client.domain.usecases.UpdateBaseUrlUseCase
+import org.jellyplus.client.domain.usecases.ValidateSessionUseCase
 
 data class SessionState(
     val isAuthenticated: Boolean = false,
-    val isValidating: Boolean = false
+    val isValidating: Boolean = false,
+    val persistDemo: Boolean = false
 )
 
 class SessionViewModel(
@@ -22,12 +33,16 @@ class SessionViewModel(
 ) : ViewModel() {
 
     private val _isValidating = MutableStateFlow(false)
-    
+
     val uiState: StateFlow<SessionState> = combine(
         getIsAuthenticatedUseCase(),
         _isValidating
     ) { authenticated, validating ->
-        SessionState(authenticated, validating)
+        SessionState(
+            isAuthenticated = authenticated,
+            isValidating = validating,
+            persistDemo = clearSessionUseCase.getPersistDemo()
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -73,5 +88,15 @@ class SessionViewModel(
 
     fun updateServerUrl(url: String) {
         updateBaseUrlUseCase(url)
+    }
+
+    fun togglePersistDemo(enabled: Boolean) {
+        viewModelScope.launch {
+            clearSessionUseCase.setPersistDemo(enabled)
+            // If we are currently on demo and disabled persistence, it might have cleared session
+            if (!enabled && getBaseUrl().contains(Constants.DEMO_SERVER_HOST)) {
+                logout()
+            }
+        }
     }
 }
