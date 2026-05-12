@@ -1,5 +1,6 @@
 package org.jellyplus.client.ui.mobile.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,12 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
@@ -59,6 +59,7 @@ import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.ui.viewmodels.SeriesDetailViewModel
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MobileSeriesDetailScreen(
     item: MediaItem,
@@ -72,213 +73,244 @@ fun MobileSeriesDetailScreen(
     var overviewExpanded by remember { mutableStateOf(false) }
     var isFavorite by remember { mutableStateOf(item.userData?.isFavorite == true) }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0F1113))
-            .verticalScroll(rememberScrollState())
     ) {
         // ── Backdrop ────────────────────────────────────────────────────────
-        Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
-            AsyncImage(
-                model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // Top gradient — darkens status bar area
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.35f)
-                    .align(Alignment.TopCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)
-                        )
-                    )
-            )
-            // Bottom gradient — fades into background
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.45f)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFF0F1113))
-                        )
-                    )
-            )
-            // X close button
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(8.dp)
-            ) {
+        item {
+            Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
+                AsyncImage(
+                    model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
                 Box(
                     modifier = Modifier
-                        .size(30.dp)
-                        .background(Color.Black.copy(alpha = 0.55f), CircleShape),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.35f)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)
+                            )
+                        )
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.45f)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color(0xFF0F1113))
+                            )
+                        )
+                )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(8.dp)
                 ) {
-                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
 
         // ── Title ───────────────────────────────────────────────────────────
-        Text(
-            text = item.title,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.ExtraBold,
-            lineHeight = 28.sp,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
-        )
+        item {
+            Text(
+                text = item.title,
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 28.sp,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)
+            )
+        }
 
         // ── Metadata row ─────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            if (state.seasons.isNotEmpty()) {
+        item {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (state.seasons.isNotEmpty()) {
+                    Text(
+                        "${state.seasons.size} Season${if (state.seasons.size > 1) "s" else ""}",
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontSize = 13.sp
+                    )
+                    Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+                }
+                item.year?.let {
+                    Text("$it", color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
+                    Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+                }
                 Text(
-                    "${state.seasons.size} Season${if (state.seasons.size > 1) "s" else ""}",
-                    color = Color.White.copy(alpha = 0.55f),
-                    fontSize = 13.sp
+                    "HD",
+                    color = Color.White.copy(alpha = 0.75f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
                 )
-                Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
             }
-            item.year?.let {
-                Text("$it", color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp)
-                Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
-            }
-            Text(
-                "HD",
-                color = Color.White.copy(alpha = 0.75f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(3.dp))
-                    .padding(horizontal = 5.dp, vertical = 2.dp)
-            )
         }
 
         // ── Rating ──────────────────────────────────────────────────────────
         item.rating?.let { rating ->
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
-                Text(
-                    "${(rating * 10).toInt() / 10f} / 10",
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 13.sp
-                )
-            }
-        }
-
-        // ── Action icons ────────────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(28.dp)
-        ) {
-            DetailActionButton(
-                icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                label = "My List",
-                tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
-                onClick = { isFavorite = !isFavorite }
-            )
-            DetailActionButton(Icons.Default.Share, "Share")
-            DetailActionButton(Icons.Default.Download, "Download")
-        }
-
-        // ── Play button ─────────────────────────────────────────────────────
-        Button(
-            onClick = {
-                val firstEpisode = state.episodes.firstOrNull()
-                if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .height(52.dp)
-        ) {
-            Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Play ${state.selectedSeason?.title ?: "Season 1"}",
-                color = Color.Black,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-        }
-
-        // ── Overview ────────────────────────────────────────────────────────
-        val overview = item.overview
-        if (!overview.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = overview,
-                color = Color.White.copy(alpha = 0.72f),
-                fontSize = 14.sp,
-                lineHeight = 21.sp,
-                maxLines = if (overviewExpanded) Int.MAX_VALUE else 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Text(
-                text = if (overviewExpanded) "Less" else "More",
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .padding(start = 16.dp, top = 2.dp)
-                    .clickable { overviewExpanded = !overviewExpanded }
-            )
-        }
-
-        // ── Season tabs ─────────────────────────────────────────────────────
-        if (state.seasons.isNotEmpty()) {
-            Spacer(Modifier.height(20.dp))
-            DetailSectionHeader("Episodes")
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(state.seasons) { season ->
-                    MobileSeasonTab(
-                        season = season,
-                        isSelected = season.id == state.selectedSeason?.id,
-                        onClick = { viewModel.selectSeason(season) }
+            item {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(15.dp))
+                    Text(
+                        "${(rating * 10).toInt() / 10f} / 10",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 13.sp
                     )
                 }
             }
         }
 
-        // ── Episodes ─────────────────────────────────────────────────────────
-        Spacer(Modifier.height(16.dp))
-        if (state.isLoadingEpisodes) {
-            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        // ── Action icons ────────────────────────────────────────────────────
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp)
+            ) {
+                DetailActionButton(
+                    icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    label = "My List",
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+                    onClick = { isFavorite = !isFavorite }
+                )
+                DetailActionButton(Icons.Default.Share, "Share")
+                DetailActionButton(Icons.Default.Download, "Download")
             }
-        } else {
-            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                state.episodes.forEach { episode ->
-                    MobileEpisodeItem(episode, baseUrl) { onPlayEpisode(episode, item, state.episodes) }
+        }
+
+        // ── Play button ─────────────────────────────────────────────────────
+        item {
+            Button(
+                onClick = {
+                    val firstEpisode = state.episodes.firstOrNull()
+                    if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .height(52.dp)
+            ) {
+                Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Play ${state.selectedSeason?.title ?: "Season 1"}",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        // ── Overview ────────────────────────────────────────────────────────
+        if (!item.overview.isNullOrBlank()) {
+            item {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = item.overview,
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp,
+                    maxLines = if (overviewExpanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Text(
+                    text = if (overviewExpanded) "Less" else "More",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .padding(start = 16.dp, top = 2.dp)
+                        .clickable { overviewExpanded = !overviewExpanded }
+                )
+            }
+        }
+
+        // ── Season tabs — sticky header ──────────────────────────────────────
+        if (state.seasons.isNotEmpty()) {
+            stickyHeader {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0F1113))
+                        .padding(top = 20.dp, bottom = 8.dp)
+                ) {
+                    Text(
+                        "Episodes",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, bottom = 10.dp)
+                    )
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(state.seasons) { season ->
+                            MobileSeasonTab(
+                                season = season,
+                                isSelected = season.id == state.selectedSeason?.id,
+                                onClick = { viewModel.selectSeason(season) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
                 }
             }
         }
 
-        Spacer(Modifier.height(40.dp))
+        // ── Episodes ─────────────────────────────────────────────────────────
+        if (state.isLoadingEpisodes) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        } else {
+            items(state.episodes) { episode ->
+                MobileEpisodeItem(
+                    episode = episode,
+                    baseUrl = baseUrl,
+                    onClick = { onPlayEpisode(episode, item, state.episodes) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+
+        item { Spacer(Modifier.height(40.dp)) }
     }
 }
 
@@ -314,9 +346,14 @@ fun MobileSeasonCard(season: MediaItem, baseUrl: String, isSelected: Boolean, on
 }
 
 @Composable
-fun MobileEpisodeItem(episode: MediaItem, baseUrl: String, onClick: () -> Unit) {
+fun MobileEpisodeItem(
+    episode: MediaItem,
+    baseUrl: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = modifier.fillMaxWidth().clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.width(140.dp).height(80.dp).clip(RoundedCornerShape(8.dp))) {
@@ -332,11 +369,12 @@ fun MobileEpisodeItem(episode: MediaItem, baseUrl: String, onClick: () -> Unit) 
             ) {
                 Icon(Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(24.dp))
             }
-            // Progress bar
             if (episode.playbackPositionTicks > 0 && episode.runTimeTicks != null && episode.runTimeTicks > 0) {
                 val progress = episode.playbackPositionTicks.toFloat() / episode.runTimeTicks.toFloat()
                 Box(
-                    modifier = Modifier.fillMaxWidth().height(4.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
                         .background(Color.White.copy(alpha = 0.25f))
                         .align(Alignment.BottomCenter)
                 ) {
