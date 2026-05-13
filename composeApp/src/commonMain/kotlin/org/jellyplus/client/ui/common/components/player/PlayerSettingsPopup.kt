@@ -120,7 +120,7 @@ fun PlayerSettingsPopup(
                                     color = if (isSelected) Color.Black else Color.White,
                                     fontSize = 13.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                                 )
                             }
                         }
@@ -187,7 +187,7 @@ fun PlayerSettingsChipToggle(label: String, checked: Boolean, onToggle: () -> Un
             .clickable { onToggle() },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
