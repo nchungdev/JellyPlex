@@ -12,6 +12,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun SeriesDetailScreen(
     item: MediaItem,
+    focusSeasonId: String? = null,
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
@@ -19,8 +20,8 @@ fun SeriesDetailScreen(
     val uiType = LocalUiType.current
     val viewModel: SeriesDetailViewModel = koinViewModel()
 
-    LaunchedEffect(item.id) {
-        viewModel.loadSeriesDetails(item.id)
+    LaunchedEffect(item.id, focusSeasonId) {
+        viewModel.loadSeriesDetails(item.id, focusSeasonId)
     }
 
     if (uiType == UiType.Desktop) {

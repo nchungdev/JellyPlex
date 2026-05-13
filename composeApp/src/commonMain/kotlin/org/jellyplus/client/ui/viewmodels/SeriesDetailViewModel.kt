@@ -42,14 +42,23 @@ class SeriesDetailViewModel(
     private var loadSeriesJob: Job? = null
     private var loadEpisodesJob: Job? = null
 
-    fun loadSeriesDetails(seriesId: String) {
+    fun loadSeriesDetails(seriesId: String, focusSeasonId: String? = null) {
         // Luôn cập nhật baseUrl mới nhất từ session
         val currentBaseUrl = getBaseUrlUseCase()
         if (_state.value.baseUrl != currentBaseUrl) {
             _state.value = _state.value.copy(baseUrl = currentBaseUrl)
         }
 
-        if (_state.value.seriesId == seriesId && _state.value.seasons.isNotEmpty()) return
+        if (_state.value.seriesId == seriesId && _state.value.seasons.isNotEmpty()) {
+            // Series already loaded — still honour focusSeasonId if provided
+            if (focusSeasonId != null) {
+                val target = _state.value.seasons.find { it.id == focusSeasonId }
+                if (target != null && target.id != _state.value.selectedSeason?.id) {
+                    selectSeason(target)
+                }
+            }
+            return
+        }
 
         loadSeriesJob?.cancel()
         loadSeriesJob = viewModelScope.launch(dispatchers.io) {
@@ -60,9 +69,10 @@ class SeriesDetailViewModel(
             val result = getSeasonsUseCase(seriesId)
 
             result.onSuccess { seasons ->
-                // Ưu tiên chọn season chưa xem xong hoặc season đầu tiên
                 val lastSelectedSeasonId = _state.value.selectedSeason?.id
-                val seasonToSelect = seasons.find { it.id == lastSelectedSeasonId }
+                // focusSeasonId takes highest priority (opened from episode context)
+                val seasonToSelect = seasons.find { it.id == focusSeasonId }
+                    ?: seasons.find { it.id == lastSelectedSeasonId }
                     ?: seasons.find { !it.isPlayed }
                     ?: seasons.firstOrNull()
 

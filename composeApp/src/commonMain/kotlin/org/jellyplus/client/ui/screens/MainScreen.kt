@@ -15,6 +15,7 @@ import org.jellyplus.client.LocalUiType
 import org.jellyplus.client.OrientationEffect
 import org.jellyplus.client.ScreenOrientation
 import org.jellyplus.client.UiType
+import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.Screen
 import org.jellyplus.client.ui.desktop.screens.DesktopMainScreen
@@ -56,6 +57,22 @@ fun MainScreen(
 
     OrientationEffect(if (isPlayerScreen) ScreenOrientation.Landscape else ScreenOrientation.Portrait)
 
+    // Redirect episode clicks to their parent series with the correct season pre-selected
+    fun navigateTo(item: MediaItem) {
+        if (item.type == MediaType.EPISODE && item.seriesId != null) {
+            val seriesStub = MediaItem(
+                id = item.seriesId,
+                title = item.seriesName ?: "",
+                type = MediaType.SERIES,
+                backdropImageTags = item.parentBackdropImageTags,
+                imageTags = null,
+            )
+            currentScreen = Screen.Details(seriesStub, focusSeasonId = item.seasonId)
+        } else {
+            currentScreen = Screen.Details(item)
+        }
+    }
+
     org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Details) {
         currentScreen = Screen.Home
     }
@@ -66,9 +83,7 @@ fun MainScreen(
 
     val playerScreen = currentScreen as? Screen.Player
     org.jellyplus.client.AppBackHandler(enabled = playerScreen != null) {
-        playerScreen?.let {
-            currentScreen = Screen.Details(it.parentItem ?: it.item)
-        }
+        playerScreen?.let { navigateTo(it.parentItem ?: it.item) }
     }
 
     when (val screen = currentScreen) {
@@ -76,7 +91,7 @@ fun MainScreen(
             if (uiType == UiType.Desktop) {
                 DesktopMainScreen(
                     viewModel = mainViewModel,
-                    onMediaClick = { currentScreen = Screen.Details(it) },
+                    onMediaClick = { navigateTo(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
                     }
@@ -85,7 +100,7 @@ fun MainScreen(
                 MobileMainScreen(
                     viewModel = mainViewModel,
                     sessionViewModel = sessionViewModel,
-                    onMediaClick = { currentScreen = Screen.Details(it) },
+                    onMediaClick = { navigateTo(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
                     }
@@ -97,6 +112,7 @@ fun MainScreen(
             if (screen.item.type == MediaType.SERIES) {
                 SeriesDetailScreen(
                     item = screen.item,
+                    focusSeasonId = screen.focusSeasonId,
                     onBack = { currentScreen = Screen.Home },
                     onPlay = { },
                     onPlayEpisode = { episode, parent, playlist ->
@@ -120,7 +136,7 @@ fun MainScreen(
                 items = if (screen.type == MediaType.MOVIE) mainState.movies else mainState.tvShows,
                 baseUrl = mainState.baseUrl,
                 onBack = { currentScreen = Screen.Home },
-                onMediaClick = { currentScreen = Screen.Details(it) }
+                onMediaClick = { navigateTo(it) }
             )
         }
 
@@ -152,7 +168,7 @@ fun MainScreen(
                     mimeType = playerState.mimeType,
                     accessToken = playerState.accessToken,
                     playSessionId = playerState.playSessionId,
-                    onBack = { currentScreen = Screen.Details(screen.parentItem ?: screen.item) },
+                    onBack = { navigateTo(screen.parentItem ?: screen.item) },
                     showNextPrev = playlist.size > 1,
                     onPlaybackStart = { itemId, sessionId ->
                         playerViewModel.reportStart(itemId, sessionId)
@@ -175,17 +191,11 @@ fun MainScreen(
                     nextEpisodeConfig = playerState.nextEpisodeConfig,
                     autoSkipIntro = playerState.autoSkipIntro,
                     autoSkipOutro = playerState.autoSkipOutro,
-                    autoSkipPreview = playerState.autoSkipPreview,
                     autoNext = playerState.autoNext,
-                    customMarkers = playerState.customMarkers,
                     onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
                     onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(screen.item.id) },
-                    onSaveCustomMarker = { startMs, endMs ->
-                        playerViewModel.addCustomMarker(startMs, endMs, screen.item.id)
-                    },
                     onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
                     onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
-                    onToggleAutoSkipPreview = { playerViewModel.toggleAutoSkipPreview() },
                     onToggleAutoNext = { playerViewModel.toggleAutoNext() },
                     onSeamlessNextEpisode = { goToNext() },
                 )

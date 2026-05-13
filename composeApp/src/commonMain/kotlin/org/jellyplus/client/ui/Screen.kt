@@ -10,7 +10,7 @@ sealed class Screen {
     object Home : Screen()
 
     @Serializable
-    data class Details(val item: MediaItem) : Screen()
+    data class Details(val item: MediaItem, val focusSeasonId: String? = null) : Screen()
 
     @Serializable
     data class Listing(val type: MediaType, val title: String) : Screen()
