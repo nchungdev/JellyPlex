@@ -85,10 +85,8 @@ fun MobileVideoPlayer(
     onPrevEpisode: () -> Unit = {},
     nextEpisodeConfig: PlaybackConfig? = null,
     autoSkipIntro: Boolean = false,
-    customMarkers: List<Pair<Long, Long>> = emptyList(),
     onPreloadNextMeta: () -> Unit = {},
     onMarkCurrentAsPlayed: () -> Unit = {},
-    onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
@@ -96,8 +94,6 @@ fun MobileVideoPlayer(
     onSpeedChange: (Float) -> Unit = {},
     autoSkipOutro: Boolean = false,
     onToggleAutoSkipOutro: () -> Unit = {},
-    autoSkipPreview: Boolean = false,
-    onToggleAutoSkipPreview: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -135,8 +131,6 @@ fun MobileVideoPlayer(
     var isInMarkerRange by remember { mutableStateOf(false) }
     var currentMarkerEndMs by remember { mutableStateOf(0L) }
     var currentMarkerType by remember { mutableStateOf<String?>(null) }
-    var markerState by remember { mutableStateOf(MarkerState.IDLE) }
-    var markerStartMs by remember { mutableStateOf(0L) }
     var stablePlaybackMs by remember { mutableStateOf(0L) }
 
     // Dialog state
@@ -284,14 +278,10 @@ fun MobileVideoPlayer(
         isUserSeeking = isUserSeeking,
         duration = duration,
         markers = markers,
-        customMarkers = customMarkers,
         autoSkipIntro = autoSkipIntro,
         autoSkipOutro = autoSkipOutro,
-        autoSkipPreview = autoSkipPreview,
         autoNext = autoNext,
         autoNextCountdown = autoNextCountdown,
-        markerState = markerState,
-        markerStartMs = markerStartMs,
         nextEpisodeConfig = nextEpisodeConfig,
         metaPreloaded = metaPreloaded,
         videoPreloaded = videoPreloaded,
@@ -353,16 +343,6 @@ fun MobileVideoPlayer(
                 onSeamlessNextEpisode()
             }
         },
-        onMarkEnd = { start, pos ->
-            if (stablePlaybackMs == 0L) stablePlaybackMs = pos
-            if (pos - stablePlaybackMs >= 2000L) {
-                android.util.Log.d("MarkPreview", "END: itemId=${item.id} start=${start}ms end=${pos}ms")
-                onSaveCustomMarker(start, pos)
-                markerState = MarkerState.IDLE
-                stablePlaybackMs = 0L
-            }
-        },
-        onMarkIdle = { stablePlaybackMs = 0L },
         onAutoNextTick = { autoNextCountdown = it },
         onAutoNextFire = { onNextEpisode() },
         onPlaybackStart = onPlaybackStart,
@@ -506,7 +486,6 @@ fun MobileVideoPlayer(
                 )
                 MobilePlayerBottomControls(
                     item = item, currentPosition = currentPosition, duration = duration,
-                    markerState = markerState, markerStartMs = markerStartMs,
                     selectedTextTrackIndex = selectedTextTrackIndex,
                     onSeek = { currentPlayer.seekTo(it); stablePlaybackMs = 0L },
                     onSeekStarted = { isUserSeeking = true },
@@ -517,15 +496,6 @@ fun MobileVideoPlayer(
                     },
                     onShowCaptionDialog = { showCaptionDialog = true },
                     onShowAudioDialog = { showAudioDialog = true },
-                    onMarkToggle = {
-                        if (markerState == MarkerState.IDLE) {
-                            markerStartMs = currentPosition; markerState = MarkerState.MARKING; stablePlaybackMs = 0L
-                            android.util.Log.d("MarkPreview", "START: itemId=${item.id} pos=${currentPosition}ms")
-                        } else {
-                            android.util.Log.d("MarkPreview", "CANCELLED by user at pos=${currentPosition}ms")
-                            markerState = MarkerState.IDLE; stablePlaybackMs = 0L
-                        }
-                    },
                     modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
                 )
             }
@@ -539,14 +509,10 @@ fun MobileVideoPlayer(
             isInMarkerRange = isInMarkerRange, currentMarkerEndMs = currentMarkerEndMs,
             currentMarkerType = currentMarkerType,
             autoSkipIntro = autoSkipIntro, autoSkipOutro = autoSkipOutro,
-            markerState = markerState, autoNextCountdown = autoNextCountdown,
+            autoNextCountdown = autoNextCountdown,
             isControlsVisible = isControlsVisible,
             onSkipMarker = { currentPlayer.seekTo(currentMarkerEndMs) },
             onCancelAutoNext = { autoNextCountdown = 0 },
-            onCancelMarking = {
-                android.util.Log.d("MarkPreview", "CANCELLED by user at pos=${currentPosition}ms")
-                markerState = MarkerState.IDLE; stablePlaybackMs = 0L
-            },
         )
 
         playbackError?.let { error ->
@@ -609,11 +575,14 @@ fun MobileVideoPlayer(
     )
 
     if (showSettingsPopup) PlayerSettingsPopup(
-        autoSkipIntro = autoSkipIntro, autoSkipOutro = autoSkipOutro, autoSkipPreview = autoSkipPreview,
-        autoNext = autoNext, isEpisode = item.type == MediaType.EPISODE,
+        autoSkipIntro = autoSkipIntro,
+        autoSkipOutro = autoSkipOutro,
+        autoNext = autoNext,
+        isEpisode = item.type == MediaType.EPISODE,
         currentSpeed = currentSpeed,
-        onToggleAutoSkip = onToggleAutoSkip, onToggleAutoSkipOutro = onToggleAutoSkipOutro,
-        onToggleAutoSkipPreview = onToggleAutoSkipPreview, onToggleAutoNext = onToggleAutoNext,
+        onToggleAutoSkip = onToggleAutoSkip,
+        onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+        onToggleAutoNext = onToggleAutoNext,
         onSpeedChange = { speed -> currentSpeed = speed; currentPlayer.setPlaybackSpeed(speed); onSpeedChange(speed) },
         onDismiss = { showSettingsPopup = false },
     )
