@@ -31,10 +31,10 @@ data class PlayerState(
     // Player preferences
     val autoSkipIntro: Boolean = false,
     val autoSkipOutro: Boolean = false,
+    val autoSkipRecap: Boolean = false,
     val autoSkipPreview: Boolean = false,
     val autoNext: Boolean = false,
-    // Custom markers in RAM: list of (startMs, endMs)
-    val customMarkers: List<Pair<Long, Long>> = emptyList(),
+    val seamlessTransition: Boolean = false,
 )
 
 class PlayerViewModel(
@@ -45,16 +45,14 @@ class PlayerViewModel(
     private val reportPlaybackProgressUseCase: ReportPlaybackProgressUseCase,
     private val reportPlaybackStoppedUseCase: ReportPlaybackStoppedUseCase,
     private val markItemAsPlayedUseCase: MarkItemAsPlayedUseCase,
-    private val saveCustomMarkerUseCase: SaveCustomMarkerUseCase,
     private val getAutoSkipUseCase: GetAutoSkipUseCase,
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
     private val getAutoNextUseCase: GetAutoNextUseCase,
     private val setAutoNextUseCase: SetAutoNextUseCase,
     private val getAutoSkipOutroUseCase: GetAutoSkipOutroUseCase,
     private val setAutoSkipOutroUseCase: SetAutoSkipOutroUseCase,
-    private val getAutoSkipPreviewUseCase: GetAutoSkipPreviewUseCase,
-    private val setAutoSkipPreviewUseCase: SetAutoSkipPreviewUseCase,
     private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
+    private val getEpisodesUseCase: GetEpisodesUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PlayerState())
@@ -114,6 +112,17 @@ class PlayerViewModel(
         )
     }
 
+    fun loadEpisodePlaylist(episode: MediaItem) {
+        val seriesId = episode.seriesId ?: return
+        val seasonId = episode.seasonId ?: return
+        viewModelScope.launch(dispatchers.io) {
+            getEpisodesUseCase(seriesId, seasonId).onSuccess { episodes ->
+                val idx = episodes.indexOfFirst { it.id == episode.id }
+                if (idx >= 0) setEpisodeContext(episodes, idx)
+            }
+        }
+    }
+
     fun preloadNextEpisodeMeta() {
         val nextItem = _state.value.nextEpisodeItem ?: return
         if (_state.value.isPreloadingNextMeta || _state.value.nextEpisodeConfig != null) return
@@ -136,15 +145,6 @@ class PlayerViewModel(
         }
     }
 
-    fun addCustomMarker(startMs: Long, endMs: Long, itemId: String) {
-        _state.value = _state.value.copy(
-            customMarkers = _state.value.customMarkers + (startMs to endMs)
-        )
-        viewModelScope.launch(dispatchers.io) {
-            try { saveCustomMarkerUseCase(itemId, startMs, endMs) } catch (_: Exception) {}
-        }
-    }
-
     fun toggleAutoSkip() {
         val next = !_state.value.autoSkipIntro
         setAutoSkipUseCase(next)
@@ -157,16 +157,25 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoSkipOutro = next)
     }
 
-    fun toggleAutoSkipPreview() {
-        val next = !_state.value.autoSkipPreview
-        setAutoSkipPreviewUseCase(next)
-        _state.value = _state.value.copy(autoSkipPreview = next)
-    }
-
     fun toggleAutoNext() {
         val next = !_state.value.autoNext
         setAutoNextUseCase(next)
         _state.value = _state.value.copy(autoNext = next)
+    }
+
+    fun toggleAutoSkipRecap() {
+        val next = !_state.value.autoSkipRecap
+        _state.value = _state.value.copy(autoSkipRecap = next)
+    }
+
+    fun toggleAutoSkipPreview() {
+        val next = !_state.value.autoSkipPreview
+        _state.value = _state.value.copy(autoSkipPreview = next)
+    }
+
+    fun toggleSeamlessTransition() {
+        val next = !_state.value.seamlessTransition
+        _state.value = _state.value.copy(seamlessTransition = next)
     }
 
     fun loadMarkers(itemId: String) {
@@ -218,7 +227,6 @@ class PlayerViewModel(
         _state.value = _state.value.copy(
             autoSkipIntro = getAutoSkipUseCase(),
             autoSkipOutro = getAutoSkipOutroUseCase(),
-            autoSkipPreview = getAutoSkipPreviewUseCase(),
             autoNext = getAutoNextUseCase(),
         )
     }

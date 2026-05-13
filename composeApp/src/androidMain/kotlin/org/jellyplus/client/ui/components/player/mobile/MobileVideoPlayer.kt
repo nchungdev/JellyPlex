@@ -180,6 +180,8 @@ fun MobileVideoPlayer(
             if (resolvedMime == MimeTypes.APPLICATION_M3U8) setMediaSource(hlsMediaSourceFactory.createMediaSource(mi))
             else setMediaItem(mi)
             setPlaybackSpeed(playbackSpeed)
+            val resumeMs = item.playbackPositionTicks / 10_000L
+            if (resumeMs > 0L) seekTo(resumeMs)
             prepare()
             playWhenReady = startPlaying
         }

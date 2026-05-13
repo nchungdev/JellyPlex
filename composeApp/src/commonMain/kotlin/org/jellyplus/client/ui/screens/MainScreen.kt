@@ -57,7 +57,8 @@ fun MainScreen(
 
     OrientationEffect(if (isPlayerScreen) ScreenOrientation.Landscape else ScreenOrientation.Portrait)
 
-    // Redirect episode clicks to their parent series with the correct season pre-selected
+    // Episodes clicked outside of series detail play immediately; the full playlist
+    // is loaded in the background by PlayerViewModel so next/prev still works.
     fun navigateTo(item: MediaItem) {
         if (item.type == MediaType.EPISODE && item.seriesId != null) {
             val seriesStub = MediaItem(
@@ -67,7 +68,7 @@ fun MainScreen(
                 backdropImageTags = item.parentBackdropImageTags,
                 imageTags = null,
             )
-            currentScreen = Screen.Details(seriesStub, focusSeasonId = item.seasonId)
+            currentScreen = Screen.Player(item, listOf(item), parentItem = seriesStub)
         } else {
             currentScreen = Screen.Details(item)
         }
@@ -151,6 +152,10 @@ fun MainScreen(
                 playerViewModel.loadStreamUrl(screen.item)
                 playerViewModel.setEpisodeContext(playlist, currentIndex)
                 playerViewModel.loadMarkers(screen.item.id)
+                // Opened directly (not from series detail): load full season playlist
+                if (screen.item.type == MediaType.EPISODE && playlist.size == 1) {
+                    playerViewModel.loadEpisodePlaylist(screen.item)
+                }
             }
 
             fun goToNext() {
