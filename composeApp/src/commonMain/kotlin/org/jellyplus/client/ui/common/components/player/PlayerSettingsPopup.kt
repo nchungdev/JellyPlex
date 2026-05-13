@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 
@@ -66,7 +68,7 @@ fun PlayerSettingsPopup(
             shape = RoundedCornerShape(14.dp),
             color = Color(0xFF1E1E1E),
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth(0.6f).fillMaxHeight(0.95f),
+            modifier = Modifier.fillMaxWidth(0.6f).heightIn(max = LocalConfiguration.current.screenHeightDp.times(0.8f).dp),
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Row(
