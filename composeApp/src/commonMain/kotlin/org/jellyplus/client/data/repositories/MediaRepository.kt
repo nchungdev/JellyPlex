@@ -171,13 +171,20 @@ class MediaRepository(
 
     override suspend fun getIntroMarkers(itemId: String): List<IntroMarker> = withContext(dispatchers.io) {
         try {
-            val response = remoteDataSource.getIntroTimestamps(itemId)
+            val response = remoteDataSource.getEpisodeChapters(itemId)
+            val chapters = response.chapters
+            val runTimeTicks = response.runTimeTicks ?: 0L
             buildList {
-                response.introduction?.takeIf { it.valid }?.let {
-                    add(IntroMarker(startTicks = (it.start * 10_000_000).toLong(), endTicks = (it.end * 10_000_000).toLong(), type = null))
-                }
-                response.credits?.takeIf { it.valid }?.let {
-                    add(IntroMarker(startTicks = (it.start * 10_000_000).toLong(), endTicks = (it.end * 10_000_000).toLong(), type = "Credits"))
+                chapters.forEachIndexed { index, chapter ->
+                    val name = chapter.name.trim().lowercase()
+                    val nextStart = chapters.getOrNull(index + 1)?.startPositionTicks ?: runTimeTicks
+                    if (nextStart <= chapter.startPositionTicks) return@forEachIndexed
+                    when {
+                        name == "op" || name == "opening" || name == "intro" ->
+                            add(IntroMarker(startTicks = chapter.startPositionTicks, endTicks = nextStart, type = null))
+                        name == "ed" || name == "ending" || name == "outro" || name == "credits" ->
+                            add(IntroMarker(startTicks = chapter.startPositionTicks, endTicks = runTimeTicks.coerceAtLeast(nextStart), type = "Credits"))
+                    }
                 }
             }
         } catch (_: Exception) { emptyList() }

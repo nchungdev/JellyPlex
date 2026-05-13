@@ -32,7 +32,7 @@ internal fun MobilePlayerTracker(
     videoPreloaded: Boolean,
     buildSecondaryPlayer: (PlaybackConfig) -> ExoPlayer?,
     onPositionUpdate: (position: Long, duration: Long) -> Unit,
-    onMarkerUpdate: (inRange: Boolean, endMs: Long) -> Unit,
+    onMarkerUpdate: (inRange: Boolean, endMs: Long, type: String?) -> Unit,
     onMetaPreloaded: () -> Unit,
     onSecondaryReady: (ExoPlayer) -> Unit,
     onSeamlessSwap: () -> Unit,
@@ -77,12 +77,17 @@ internal fun MobilePlayerTracker(
             val introRanges = markers.filter { it.type == null || it.type == "Intro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
             val outroRanges = markers.filter { it.type == "Credits" || it.type == "Outro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
             val allRanges = introRanges + outroRanges + customMarkers
-            val activeMarker = allRanges.firstOrNull { (s, e) -> pos in s..e }
-            onMarkerUpdate(activeMarker != null, activeMarker?.second ?: 0L)
-
             val activeIntro = introRanges.firstOrNull { (s, e) -> pos in s..e }
             val activeOutro = outroRanges.firstOrNull { (s, e) -> pos in s..e }
             val activePreview = customMarkers.firstOrNull { (s, e) -> pos in s..e }
+            val activeMarker = activeIntro ?: activeOutro ?: activePreview?.let { it }
+            val activeType = when {
+                activeIntro != null -> null  // type == null means Intro in IntroMarker
+                activeOutro != null -> "Credits"
+                activePreview != null -> "Preview"
+                else -> null
+            }
+            onMarkerUpdate(activeMarker != null, activeMarker?.second ?: 0L, activeType)
             when {
                 autoSkipIntro && activeIntro != null -> exoPlayer.seekTo(activeIntro.second)
                 autoSkipOutro && activeOutro != null -> exoPlayer.seekTo(activeOutro.second)

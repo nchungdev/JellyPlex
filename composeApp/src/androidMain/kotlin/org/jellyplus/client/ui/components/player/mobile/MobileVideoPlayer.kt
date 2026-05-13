@@ -134,6 +134,7 @@ fun MobileVideoPlayer(
     // Marker state
     var isInMarkerRange by remember { mutableStateOf(false) }
     var currentMarkerEndMs by remember { mutableStateOf(0L) }
+    var currentMarkerType by remember { mutableStateOf<String?>(null) }
     var markerState by remember { mutableStateOf(MarkerState.IDLE) }
     var markerStartMs by remember { mutableStateOf(0L) }
     var stablePlaybackMs by remember { mutableStateOf(0L) }
@@ -302,9 +303,10 @@ fun MobileVideoPlayer(
             currentPosition = pos
             duration = dur
         },
-        onMarkerUpdate = { inRange, endMs ->
+        onMarkerUpdate = { inRange, endMs, type ->
             isInMarkerRange = inRange
             currentMarkerEndMs = endMs
+            currentMarkerType = type
         },
         onMetaPreloaded = { metaPreloaded = true; onPreloadNextMeta() },
         onSecondaryReady = { secondary ->
@@ -533,6 +535,8 @@ fun MobileVideoPlayer(
             showGestureIndicator = showGestureIndicator, gestureType = gestureType,
             volume = volume, brightness = brightness,
             isInMarkerRange = isInMarkerRange, currentMarkerEndMs = currentMarkerEndMs,
+            currentMarkerType = currentMarkerType,
+            autoSkipIntro = autoSkipIntro, autoSkipOutro = autoSkipOutro,
             markerState = markerState, autoNextCountdown = autoNextCountdown,
             isControlsVisible = isControlsVisible,
             onSkipMarker = { currentPlayer.seekTo(currentMarkerEndMs) },

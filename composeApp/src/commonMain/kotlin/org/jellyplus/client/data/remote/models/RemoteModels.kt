@@ -94,16 +94,9 @@ data class ChapterInfo(
 )
 
 @Serializable
-data class IntroSkipperTimestamp(
-    @SerialName("Start") val start: Double = 0.0,
-    @SerialName("End") val end: Double = 0.0,
-    @SerialName("Valid") val valid: Boolean = false,
-)
-
-@Serializable
-data class IntroSkipperResponse(
-    @SerialName("Introduction") val introduction: IntroSkipperTimestamp? = null,
-    @SerialName("Credits") val credits: IntroSkipperTimestamp? = null,
+data class EpisodeChapterResponse(
+    @SerialName("Chapters") val chapters: List<ChapterInfo> = emptyList(),
+    @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
 )
 
 @Serializable

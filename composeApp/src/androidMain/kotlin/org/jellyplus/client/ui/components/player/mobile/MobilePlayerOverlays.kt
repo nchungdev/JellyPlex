@@ -54,6 +54,9 @@ internal fun BoxScope.MobilePlayerOverlays(
     brightness: Float,
     isInMarkerRange: Boolean,
     currentMarkerEndMs: Long,
+    currentMarkerType: String?,
+    autoSkipIntro: Boolean,
+    autoSkipOutro: Boolean,
     markerState: MarkerState,
     autoNextCountdown: Int,
     isControlsVisible: Boolean,
@@ -61,6 +64,14 @@ internal fun BoxScope.MobilePlayerOverlays(
     onCancelAutoNext: () -> Unit,
     onCancelMarking: () -> Unit,
 ) {
+    val isAutoSkipping = when (currentMarkerType) {
+        "Credits" -> autoSkipOutro
+        else -> autoSkipIntro  // null = Intro
+    }
+    val skipLabel = when (currentMarkerType) {
+        "Credits" -> "Skip Credits"
+        else -> "Skip Intro"
+    }
     // x2 speed indicator
     AnimatedVisibility(
         visible = isLongPressing,
@@ -77,8 +88,8 @@ internal fun BoxScope.MobilePlayerOverlays(
         }
     }
 
-    // Skip marker button
-    if (isInMarkerRange) {
+    // Skip button — only shown when not auto-skipping
+    if (isInMarkerRange && !isAutoSkipping) {
         Button(
             onClick = onSkipMarker,
             modifier = Modifier
@@ -87,7 +98,7 @@ internal fun BoxScope.MobilePlayerOverlays(
             colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.7f), contentColor = Color.White),
             shape = RoundedCornerShape(4.dp),
         ) {
-            Text("Skip Intro", fontWeight = FontWeight.SemiBold)
+            Text(skipLabel, fontWeight = FontWeight.SemiBold)
         }
     }
 

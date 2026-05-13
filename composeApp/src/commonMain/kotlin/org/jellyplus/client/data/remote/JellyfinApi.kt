@@ -395,9 +395,11 @@ class JellyfinApi(
         client.post { apiUrl("Users", userId, "PlayedItems", itemId) }
     }
 
-    suspend fun getIntroTimestamps(itemId: String): IntroSkipperResponse {
+    suspend fun getEpisodeChapters(itemId: String): EpisodeChapterResponse {
+        val userId = sessionRepository.userId ?: return EpisodeChapterResponse()
         return client.get {
-            apiUrl("api", "v1", "Timestamps", itemId)
+            apiUrl("Users", userId, "Items", itemId)
+            parameter("Fields", "Chapters,RunTimeTicks")
         }.body()
     }
 
