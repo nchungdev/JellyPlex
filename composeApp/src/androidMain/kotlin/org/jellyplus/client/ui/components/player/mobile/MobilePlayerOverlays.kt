@@ -57,12 +57,12 @@ internal fun BoxScope.MobilePlayerOverlays(
     currentMarkerType: String?,
     autoSkipIntro: Boolean,
     autoSkipOutro: Boolean,
-    markerState: MarkerState,
     autoNextCountdown: Int,
     isControlsVisible: Boolean,
+    showSkipToast: Boolean,
+    skipToastLabel: String,
     onSkipMarker: () -> Unit,
     onCancelAutoNext: () -> Unit,
-    onCancelMarking: () -> Unit,
 ) {
     val isAutoSkipping = when (currentMarkerType) {
         "Credits" -> autoSkipOutro
@@ -99,37 +99,6 @@ internal fun BoxScope.MobilePlayerOverlays(
             shape = RoundedCornerShape(4.dp),
         ) {
             Text(skipLabel, fontWeight = FontWeight.SemiBold)
-        }
-    }
-
-    // Marking indicator banner
-    if (markerState == MarkerState.MARKING) {
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 56.dp)
-                .background(Color.Red.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Box(modifier = Modifier.size(8.dp).background(Color.White, CircleShape))
-            Text("Marking preview…", color = Color.White, fontSize = 13.sp)
-        }
-    }
-
-    // Persistent mark cancel button when controls hidden
-    if (item.type == MediaType.EPISODE && markerState == MarkerState.MARKING && !isControlsVisible) {
-        androidx.compose.material3.IconButton(
-            onClick = onCancelMarking,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 32.dp)
-                .size(40.dp)
-                .background(Color.Red.copy(alpha = 0.85f), CircleShape),
-        ) {
-            Icon(Icons.Default.BookmarkAdd, contentDescription = "Cancel mark", tint = Color.White, modifier = Modifier.size(20.dp))
         }
     }
 
@@ -181,6 +150,24 @@ internal fun BoxScope.MobilePlayerOverlays(
             }
             Spacer(modifier = Modifier.height(12.dp))
             Icon(Icons.Default.WbSunny, null, tint = Color.White, modifier = Modifier.size(24.dp))
+        }
+    }
+
+    // Auto-skip toast — center-bottom, above seekbar when controls visible
+    AnimatedVisibility(
+        visible = showSkipToast,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = if (isControlsVisible) 120.dp else 32.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(20.dp))
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+        ) {
+            Text(skipToastLabel, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 

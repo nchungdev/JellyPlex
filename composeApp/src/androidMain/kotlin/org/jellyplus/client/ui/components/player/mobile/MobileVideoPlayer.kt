@@ -147,6 +147,14 @@ fun MobileVideoPlayer(
     var autoNextCountdown by remember { mutableStateOf(0) }
     var isUserSeeking by remember { mutableStateOf(false) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+
+    // Auto-skip toast — show on ep 1 and every 5th episode
+    var showSkipToast by remember { mutableStateOf(false) }
+    var skipToastLabel by remember { mutableStateOf("") }
+    val shouldShowSkipToast = run {
+        val ep = item.index ?: 0
+        ep == 1 || ep % 5 == 0
+    }
     var showBufferingIndicator by remember { mutableStateOf(false) }
 
     val trackSelector = remember { DefaultTrackSelector(context) }
@@ -267,6 +275,7 @@ fun MobileVideoPlayer(
     }
     LaunchedEffect(showGestureIndicator) { if (showGestureIndicator) { delay(2000); showGestureIndicator = false } }
     LaunchedEffect(showSeekFeedback) { if (showSeekFeedback) { delay(800); showSeekFeedback = false } }
+    LaunchedEffect(showSkipToast) { if (showSkipToast) { delay(2500); showSkipToast = false } }
     LaunchedEffect(playbackSpeed) { currentSpeed = playbackSpeed; currentPlayer.setPlaybackSpeed(playbackSpeed) }
 
     MobilePlayerTracker(
@@ -330,6 +339,15 @@ fun MobileVideoPlayer(
             })
             secondaryExoPlayer = secondary
             videoPreloaded = true
+        },
+        onAutoSkipped = { type ->
+            if (shouldShowSkipToast) {
+                skipToastLabel = when (type) {
+                    "Credits" -> "Auto-skipped Outro / Credits"
+                    else -> "Auto-skipped Intro"
+                }
+                showSkipToast = true
+            }
         },
         onSeamlessSwap = {
             if (secondaryExoPlayer != null) {
@@ -511,6 +529,8 @@ fun MobileVideoPlayer(
             autoSkipIntro = autoSkipIntro, autoSkipOutro = autoSkipOutro,
             autoNextCountdown = autoNextCountdown,
             isControlsVisible = isControlsVisible,
+            showSkipToast = showSkipToast,
+            skipToastLabel = skipToastLabel,
             onSkipMarker = { currentPlayer.seekTo(currentMarkerEndMs) },
             onCancelAutoNext = { autoNextCountdown = 0 },
         )

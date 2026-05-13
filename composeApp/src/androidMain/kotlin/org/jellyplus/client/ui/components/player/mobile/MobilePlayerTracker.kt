@@ -19,14 +19,10 @@ internal fun MobilePlayerTracker(
     isUserSeeking: Boolean,
     duration: Long,
     markers: List<IntroMarker>,
-    customMarkers: List<Pair<Long, Long>>,
     autoSkipIntro: Boolean,
     autoSkipOutro: Boolean,
-    autoSkipPreview: Boolean,
     autoNext: Boolean,
     autoNextCountdown: Int,
-    markerState: MarkerState,
-    markerStartMs: Long,
     nextEpisodeConfig: PlaybackConfig?,
     metaPreloaded: Boolean,
     videoPreloaded: Boolean,
@@ -36,8 +32,7 @@ internal fun MobilePlayerTracker(
     onMetaPreloaded: () -> Unit,
     onSecondaryReady: (ExoPlayer) -> Unit,
     onSeamlessSwap: () -> Unit,
-    onMarkEnd: (startMs: Long, endMs: Long) -> Unit,
-    onMarkIdle: () -> Unit,
+    onAutoSkipped: (type: String?) -> Unit,
     onAutoNextTick: (countdown: Int) -> Unit,
     onAutoNextFire: () -> Unit,
     onPlaybackStart: (String, String) -> Unit,
@@ -65,9 +60,10 @@ internal fun MobilePlayerTracker(
         }
     }
 
-    // Main tracking loop: position, auto-skip, dual-player preload, seamless swap, custom marker end detection
+    // Main tracking loop: position, auto-skip, dual-player preload, seamless swap
     LaunchedEffect(isPlaying, isUserSeeking) {
         if (isUserSeeking) return@LaunchedEffect
+        var lastSkippedEnd = -1L
         while (true) {
             val pos = exoPlayer.currentPosition
             val dur = exoPlayer.duration.coerceAtLeast(0L)
@@ -76,23 +72,26 @@ internal fun MobilePlayerTracker(
 
             val introRanges = markers.filter { it.type == null || it.type == "Intro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
             val outroRanges = markers.filter { it.type == "Credits" || it.type == "Outro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
-            // Preview ranges: server-supplied "Preview" markers + user-defined custom markers
-            val previewRanges = markers.filter { it.type == "Preview" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L } + customMarkers
             val activeIntro = introRanges.firstOrNull { (s, e) -> pos in s..e }
             val activeOutro = outroRanges.firstOrNull { (s, e) -> pos in s..e }
-            val activePreview = previewRanges.firstOrNull { (s, e) -> pos in s..e }
-            val activeMarker = activeIntro ?: activeOutro ?: activePreview
-            val activeType = when {
-                activeIntro != null -> null
-                activeOutro != null -> "Credits"
-                activePreview != null -> "Preview"
-                else -> null
-            }
+            val activeMarker = activeIntro ?: activeOutro
+            val activeType = if (activeOutro != null) "Credits" else null
             onMarkerUpdate(activeMarker != null, activeMarker?.second ?: 0L, activeType)
             when {
-                autoSkipIntro && activeIntro != null -> exoPlayer.seekTo(activeIntro.second)
-                autoSkipOutro && activeOutro != null -> exoPlayer.seekTo(activeOutro.second)
-                autoSkipPreview && activePreview != null -> exoPlayer.seekTo(activePreview.second)
+                autoSkipIntro && activeIntro != null -> {
+                    if (lastSkippedEnd != activeIntro.second) {
+                        lastSkippedEnd = activeIntro.second
+                        onAutoSkipped(null)
+                    }
+                    exoPlayer.seekTo(activeIntro.second)
+                }
+                autoSkipOutro && activeOutro != null -> {
+                    if (lastSkippedEnd != activeOutro.second) {
+                        lastSkippedEnd = activeOutro.second
+                        onAutoSkipped("Credits")
+                    }
+                    exoPlayer.seekTo(activeOutro.second)
+                }
             }
 
             if (!metaPreloaded && remaining in 1..300_000L) onMetaPreloaded()
@@ -101,11 +100,6 @@ internal fun MobilePlayerTracker(
                 if (secondary != null) onSecondaryReady(secondary)
             }
             if (dur > 0 && pos >= dur - 500L) { onSeamlessSwap(); break }
-
-            if (markerState == MarkerState.MARKING && isPlaying && !isBuffering) {
-                onMarkEnd(markerStartMs, pos)
-            } else if (markerState == MarkerState.IDLE) onMarkIdle()
-
             delay(500)
         }
     }
