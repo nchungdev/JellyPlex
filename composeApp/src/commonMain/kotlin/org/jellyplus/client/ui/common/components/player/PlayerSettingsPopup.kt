@@ -3,6 +3,7 @@ package org.jellyplus.client.ui.common.components.player
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,72 +41,95 @@ import androidx.compose.ui.window.Dialog
 fun PlayerSettingsPopup(
     autoSkipIntro: Boolean,
     autoSkipOutro: Boolean,
-    autoSkipPreview: Boolean,
+    autoSkipRecap: Boolean = false,
+    autoSkipPreview: Boolean = false,
     autoNext: Boolean = false,
+    seamlessTransition: Boolean = false,
     isEpisode: Boolean = false,
     currentSpeed: Float,
     onToggleAutoSkip: () -> Unit,
     onToggleAutoSkipOutro: () -> Unit,
-    onToggleAutoSkipPreview: () -> Unit,
+    onToggleAutoSkipRecap: () -> Unit = {},
+    onToggleAutoSkipPreview: () -> Unit = {},
     onToggleAutoNext: () -> Unit = {},
+    onToggleSeamlessTransition: () -> Unit = {},
     onSpeedChange: (Float) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             color = Color(0xFF1E1E1E),
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.75f),
+            modifier = Modifier.fillMaxWidth(1f).fillMaxHeight(0.95f),
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Settings", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Settings", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     TextButton(onClick = onDismiss) {
-                        Text("Close", color = Color(0xFF24D366), fontSize = 13.sp)
+                        Text("Close", color = Color(0xFF24D366), fontSize = 12.sp)
                     }
                 }
                 HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
                 Column(
                     modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState),
                 ) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    PlayerSettingsToggleRow("Auto-skip intro", autoSkipIntro, onToggleAutoSkip)
-                    PlayerSettingsToggleRow("Auto-skip outro", autoSkipOutro, onToggleAutoSkipOutro)
-                    PlayerSettingsToggleRow("Auto-skip preview", autoSkipPreview, onToggleAutoSkipPreview)
-                    if (isEpisode) PlayerSettingsToggleRow("Auto-next episode", autoNext, onToggleAutoNext)
-                    Text(
-                        "Playback Speed",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
-                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SectionHeader("Auto skip")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        PlayerSettingsChipToggle("Intro", autoSkipIntro, onToggleAutoSkip)
+                        PlayerSettingsChipToggle("Outro / Credits", autoSkipOutro, onToggleAutoSkipOutro)
+                        PlayerSettingsChipToggle("Recap", autoSkipRecap, onToggleAutoSkipRecap)
+                        PlayerSettingsChipToggle("Preview", autoSkipPreview, onToggleAutoSkipPreview)
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    if (isEpisode) {
+                        SectionHeader("Transition")
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            PlayerSettingsChipToggle("Auto Next", autoNext, onToggleAutoNext)
+                            PlayerSettingsChipToggle("Seamless transition", seamlessTransition, onToggleSeamlessTransition)
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                    }
+                    SectionHeader("Speedup")
                     val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         speedOptions.forEach { speed ->
                             val isSelected = currentSpeed == speed
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
-                                modifier = Modifier.weight(1f).clickable { onSpeedChange(speed) },
+                                modifier = Modifier
+                                    .height(40.dp)
+                                    .padding(vertical = 2.dp)
+                                    .clickable { onSpeedChange(speed) },
                             ) {
                                 Text(
                                     "${speed}×",
                                     color = if (isSelected) Color.Black else Color.White,
-                                    fontSize = 11.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth(),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                                     textAlign = TextAlign.Center,
                                 )
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
         }
@@ -144,4 +168,50 @@ fun PlayerSettingsToggleRow(label: String, checked: Boolean, onToggle: () -> Uni
         )
     }
     HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+}
+
+@Composable
+fun SectionHeader(title: String) {
+    Text(
+        title,
+        color = Color.White,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(bottom = 10.dp),
+    )
+}
+
+@Composable
+fun PlayerSettingsChipToggle(label: String, checked: Boolean, onToggle: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (checked) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
+        modifier = Modifier
+            .padding(vertical = 2.dp)
+            .clickable { onToggle() },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                label,
+                color = if (checked) Color.Black else Color.White,
+                fontSize = 12.sp,
+                fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal,
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = { onToggle() },
+                modifier = Modifier.scale(0.65f),
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF24D366),
+                    uncheckedThumbColor = Color.Gray,
+                    uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
+                ),
+            )
+        }
+    }
 }
