@@ -76,12 +76,14 @@ internal fun MobilePlayerTracker(
 
             val introRanges = markers.filter { it.type == null || it.type == "Intro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
             val outroRanges = markers.filter { it.type == "Credits" || it.type == "Outro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
+            // Preview ranges: server-supplied "Preview" markers + user-defined custom markers
+            val previewRanges = markers.filter { it.type == "Preview" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L } + customMarkers
             val activeIntro = introRanges.firstOrNull { (s, e) -> pos in s..e }
             val activeOutro = outroRanges.firstOrNull { (s, e) -> pos in s..e }
-            val activePreview = customMarkers.firstOrNull { (s, e) -> pos in s..e }
-            val activeMarker = activeIntro ?: activeOutro ?: activePreview?.let { it }
+            val activePreview = previewRanges.firstOrNull { (s, e) -> pos in s..e }
+            val activeMarker = activeIntro ?: activeOutro ?: activePreview
             val activeType = when {
-                activeIntro != null -> null  // type == null means Intro in IntroMarker
+                activeIntro != null -> null
                 activeOutro != null -> "Credits"
                 activePreview != null -> "Preview"
                 else -> null

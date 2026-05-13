@@ -180,9 +180,8 @@ class MediaRepository(
                     val type = when (seg.type) {
                         "Intro" -> null
                         "Outro", "Credits" -> "Credits"
-                        "Recap" -> null
-                        "Preview" -> "Preview"
-                        else -> return@mapNotNull null
+                        "Preview", "Commercial" -> "Preview"
+                        else -> return@mapNotNull null  // Recap, Unknown — not auto-skipped
                     }
                     IntroMarker(startTicks = seg.startTicks, endTicks = seg.endTicks, type = type)
                 }
@@ -204,7 +203,7 @@ class MediaRepository(
                 add(ts.credits, "Credits")
                 add(ts.recap, null)
                 add(ts.preview, "Preview")
-                add(ts.commercial, "Credits")
+                add(ts.commercial, "Preview")
             }
             if (markers.isNotEmpty()) return@withContext markers
         } catch (_: Exception) {}

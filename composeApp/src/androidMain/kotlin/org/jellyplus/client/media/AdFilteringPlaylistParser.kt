@@ -24,15 +24,17 @@ class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
         val lines = manifest.split("\n")
         val skip = BooleanArray(lines.size)
 
-        // Derive content URL prefix from segments before the first DISCONTINUITY
         val baseline = extractBaselinePrefix(lines)
 
-        // Pass 1: mark EXTINF+URL pairs as ads (hardcoded patterns OR baseline mismatch)
+        // Pass 1: mark EXTINF+URL pairs that are clearly ad URLs (hardcoded SSAI patterns).
+        // We no longer use the baseline mismatch heuristic here — Jellyfin can legitimately
+        // emit #EXT-X-DISCONTINUITY (codec/bitrate change, seek restart) and the new segment
+        // URLs may differ from the pre-discontinuity prefix, causing false positives.
         var i = 0
         while (i < lines.size) {
             if (lines[i].startsWith("#EXTINF:") && i + 1 < lines.size) {
                 val url = lines[i + 1].trim()
-                if (isAdUrl(url) || (baseline != null && !url.startsWith(baseline))) {
+                if (isAdUrl(url)) {
                     skip[i] = true
                     skip[i + 1] = true
                 }
@@ -40,9 +42,41 @@ class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
             i++
         }
 
-        // Pass 2: remove DISCONTINUITY / KEY:METHOD=NONE adjacent to skipped segments.
-        // Both tags were injected by the SSAI server alongside the ad; removing them lets
-        // the surrounding content timestamps flow naturally (no artificial gap for the player).
+        // Pass 2: mark segments inside an ad pod — a DISCONTINUITY-bounded block whose URLs
+        // don't match the content baseline (classic SSAI injection pattern). We require BOTH
+        // a surrounding DISCONTINUITY pair AND a URL mismatch, so a Jellyfin-internal
+        // DISCONTINUITY (with same-origin URLs) is never misidentified as an ad pod.
+        if (baseline != null) {
+            var inDiscontinuity = false
+            var podStart = -1
+            var j = 0
+            while (j < lines.size) {
+                val line = lines[j].trim()
+                when {
+                    line == "#EXT-X-DISCONTINUITY" -> {
+                        if (!inDiscontinuity) {
+                            inDiscontinuity = true
+                            podStart = j
+                        } else {
+                            // Second DISCONTINUITY closes the pod — check if it was an ad pod
+                            // (i.e., at least one segment in the block had a mismatched URL).
+                            val podIsAd = (podStart + 1 until j).any { k ->
+                                lines[k].startsWith("#EXTINF:") && k + 1 < lines.size &&
+                                    !lines[k + 1].trim().startsWith(baseline)
+                            }
+                            if (podIsAd) {
+                                for (k in podStart..j) skip[k] = true
+                            }
+                            inDiscontinuity = false
+                            podStart = -1
+                        }
+                    }
+                }
+                j++
+            }
+        }
+
+        // Pass 3: remove DISCONTINUITY / KEY:METHOD=NONE adjacent to skipped segments.
         for (j in lines.indices) {
             val line = lines[j].trim()
             if (line == "#EXT-X-DISCONTINUITY" || line == "#EXT-X-KEY:METHOD=NONE") {
@@ -56,9 +90,8 @@ class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
     }
 
     /**
-     * Collect segment URLs that appear before the first #EXT-X-DISCONTINUITY and derive a
-     * common prefix. Segments whose URL doesn't share this prefix after a discontinuity boundary
-     * are treated as ad insertions.
+     * Derives a content URL prefix from segments before the first #EXT-X-DISCONTINUITY.
+     * Used only for ad-pod detection (Pass 2), not for individual segment checks.
      */
     private fun extractBaselinePrefix(lines: List<String>): String? {
         val segmentUrls = mutableListOf<String>()
@@ -75,21 +108,21 @@ class AdFilteringPlaylistParser : ParsingLoadable.Parser<HlsPlaylist> {
 
         val first = segmentUrls.first()
         return if (first.startsWith("http://") || first.startsWith("https://")) {
-            // Absolute URL — use scheme + host as baseline
             val schemeEnd = first.indexOf("//") + 2
             val hostEnd = first.indexOf('/', schemeEnd).takeIf { it > 0 } ?: first.length
             first.substring(0, hostEnd)
         } else {
-            // Relative URL — use directory path as baseline
             val lastSlash = first.lastIndexOf('/')
             if (lastSlash > 0) first.substring(0, lastSlash + 1) else null
         }
     }
 
+    // Patterns that unambiguously identify SSAI ad segment URLs.
+    // Intentionally conservative — false negatives (missing an ad) are better than
+    // false positives (dropping real content from a Jellyfin stream).
     private fun isAdUrl(url: String): Boolean {
         val u = url.trim()
-        return u.contains("ads") ||
-            u.contains("doubleclick") ||
+        return u.contains("doubleclick") ||
             u.contains("dai.google.com") ||
             u.startsWith("convertv7/") ||
             Regex("^/v[0-9]+/[a-f0-9]+/").containsMatchIn(u)
