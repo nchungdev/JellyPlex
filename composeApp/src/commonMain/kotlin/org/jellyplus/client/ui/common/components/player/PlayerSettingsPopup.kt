@@ -189,7 +189,7 @@ fun PlayerSettingsChipToggle(label: String, checked: Boolean, onToggle: () -> Un
         shape = RoundedCornerShape(10.dp),
         color = if (checked) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
         modifier = Modifier
-            .padding(vertical = 2.dp)
+            .height(36.dp)
             .clickable { onToggle() },
     ) {
         Row(
