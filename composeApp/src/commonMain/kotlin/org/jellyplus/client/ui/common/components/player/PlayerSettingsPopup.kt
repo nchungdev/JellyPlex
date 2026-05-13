@@ -66,7 +66,7 @@ fun PlayerSettingsPopup(
             shape = RoundedCornerShape(14.dp),
             color = Color(0xFF1E1E1E),
             tonalElevation = 8.dp,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).fillMaxHeight(0.95f),
+            modifier = Modifier.fillMaxWidth(0.6f).fillMaxHeight(0.95f),
         ) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Row(
