@@ -170,11 +170,50 @@ class MediaRepository(
     }
 
     override suspend fun getIntroMarkers(itemId: String): List<IntroMarker> = withContext(dispatchers.io) {
+        // 1. Native Jellyfin MediaSegments API (plugin-agnostic, preferred)
+        try {
+            val segments = remoteDataSource.getMediaSegments(itemId).items
+                .filter { it.startTicks < it.endTicks }
+            if (segments.isNotEmpty()) {
+                return@withContext segments.mapNotNull { seg ->
+                    val type = when (seg.type) {
+                        "Intro" -> null
+                        "Outro", "Credits" -> "Credits"
+                        "Recap" -> null
+                        "Preview" -> "Preview"
+                        else -> return@mapNotNull null
+                    }
+                    IntroMarker(startTicks = seg.startTicks, endTicks = seg.endTicks, type = type)
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Intro Skipper proprietary endpoint (/Episode/{id}/Timestamps)
+        try {
+            val ts = remoteDataSource.getIntroSkipperTimestamps(itemId)
+            val markers = buildList {
+                fun add(seg: org.jellyplus.client.data.remote.models.IntroSkipperSegment?, type: String?) {
+                    if (seg?.valid == true && seg.end > seg.start) {
+                        val startTicks = (seg.start * 10_000_000).toLong()
+                        val endTicks = (seg.end * 10_000_000).toLong()
+                        add(IntroMarker(startTicks = startTicks, endTicks = endTicks, type = type))
+                    }
+                }
+                add(ts.introduction, null)
+                add(ts.credits, "Credits")
+                add(ts.recap, null)
+                add(ts.preview, "Preview")
+                add(ts.commercial, "Credits")
+            }
+            if (markers.isNotEmpty()) return@withContext markers
+        } catch (_: Exception) {}
+
+        // 3. Chapters fallback (SkipMe.db and manual chapter tagging)
         try {
             val response = remoteDataSource.getEpisodeChapters(itemId)
             val chapters = response.chapters
             val runTimeTicks = response.runTimeTicks ?: 0L
-            buildList {
+            return@withContext buildList {
                 chapters.forEachIndexed { index, chapter ->
                     val name = chapter.name.trim().lowercase()
                     val nextStart = chapters.getOrNull(index + 1)?.startPositionTicks ?: runTimeTicks
@@ -187,6 +226,8 @@ class MediaRepository(
                     }
                 }
             }
-        } catch (_: Exception) { emptyList() }
+        } catch (_: Exception) {}
+
+        emptyList()
     }
 }

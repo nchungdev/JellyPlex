@@ -99,6 +99,38 @@ data class EpisodeChapterResponse(
     @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
 )
 
+// Native Jellyfin MediaSegments API (v10.9+)
+@Serializable
+data class MediaSegmentDto(
+    @SerialName("ItemId") val itemId: String = "",
+    @SerialName("Type") val type: String = "Unknown",   // Intro | Outro | Recap | Preview | Commercial | Unknown
+    @SerialName("StartTicks") val startTicks: Long = 0L,
+    @SerialName("EndTicks") val endTicks: Long = 0L,
+)
+
+@Serializable
+data class MediaSegmentQueryResult(
+    @SerialName("Items") val items: List<MediaSegmentDto> = emptyList(),
+    @SerialName("TotalRecordCount") val totalRecordCount: Int = 0,
+)
+
+// Intro Skipper plugin proprietary API
+@Serializable
+data class IntroSkipperSegment(
+    @SerialName("Start") val start: Double = 0.0,
+    @SerialName("End") val end: Double = 0.0,
+    @SerialName("Valid") val valid: Boolean = false,
+)
+
+@Serializable
+data class IntroSkipperTimestamps(
+    @SerialName("Introduction") val introduction: IntroSkipperSegment? = null,
+    @SerialName("Credits") val credits: IntroSkipperSegment? = null,
+    @SerialName("Recap") val recap: IntroSkipperSegment? = null,
+    @SerialName("Preview") val preview: IntroSkipperSegment? = null,
+    @SerialName("Commercial") val commercial: IntroSkipperSegment? = null,
+)
+
 @Serializable
 data class PlaybackStartInfo(
     @SerialName("ItemId") val itemId: String,

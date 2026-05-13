@@ -395,6 +395,21 @@ class JellyfinApi(
         client.post { apiUrl("Users", userId, "PlayedItems", itemId) }
     }
 
+    // Native Jellyfin MediaSegments API (plugin-agnostic)
+    suspend fun getMediaSegments(itemId: String): MediaSegmentQueryResult {
+        return client.get {
+            apiUrl("MediaSegments", itemId)
+        }.body()
+    }
+
+    // Intro Skipper plugin proprietary endpoint
+    suspend fun getIntroSkipperTimestamps(itemId: String): IntroSkipperTimestamps {
+        return client.get {
+            apiUrl("Episode", itemId, "Timestamps")
+        }.body()
+    }
+
+    // Chapters fallback (used by SkipMe.db and manual chapter tagging)
     suspend fun getEpisodeChapters(itemId: String): EpisodeChapterResponse {
         val userId = sessionRepository.userId ?: return EpisodeChapterResponse()
         return client.get {
