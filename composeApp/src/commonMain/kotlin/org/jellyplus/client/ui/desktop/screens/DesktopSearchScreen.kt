@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.ui.components.MediaPoster
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import org.jellyplus.client.ui.viewmodels.SearchState
 
 @Composable
@@ -38,7 +40,7 @@ fun DesktopSearchScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(48.dp),
+                .padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp),
     ) {
         OutlinedTextField(
             value = state.query,

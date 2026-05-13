@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import org.jellyplus.client.ui.viewmodels.DownloadsState
 
 @Composable
@@ -28,7 +30,7 @@ fun DesktopDownloadsScreen(state: DownloadsState) {
         modifier =
             Modifier
                 .fillMaxSize()
-                .padding(48.dp),
+                .padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp),
     ) {
         Text("Downloads", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(modifier = Modifier.height(48.dp))

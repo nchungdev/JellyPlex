@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import org.jellyplus.client.ui.mobile.screens.MobileAuthLogo
 
 @Composable
@@ -24,20 +26,20 @@ internal fun DesktopAuthScaffold(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 48.dp, vertical = 36.dp),
+            .padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp),
     ) {
         MobileAuthLogo(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.TopStart)
                 .size(logoSize),
         )
 
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.TopStart)
                 .fillMaxWidth()
                 .widthIn(max = maxContentWidth),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
             content = content,
         )
     }

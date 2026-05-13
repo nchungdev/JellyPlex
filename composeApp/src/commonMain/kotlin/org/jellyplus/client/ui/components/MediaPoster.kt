@@ -43,6 +43,7 @@ fun MediaPoster(
     baseUrl: String,
     onClick: () -> Unit,
     onFocus: () -> Unit = {},
+    aspectRatio: Float = 2f / 3f,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -60,7 +61,7 @@ fun MediaPoster(
         shape = shape,
         color = Color.Transparent,
         modifier = modifier
-            .aspectRatio(2f / 3f)
+            .aspectRatio(aspectRatio)
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) onFocus()

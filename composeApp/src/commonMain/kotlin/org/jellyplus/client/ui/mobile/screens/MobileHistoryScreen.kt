@@ -129,7 +129,7 @@ private fun HistoryItemRow(item: MediaItem, baseUrl: String, onClick: () -> Unit
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.width(80.dp).height(54.dp).clip(RoundedCornerShape(6.dp))
+            modifier = Modifier.width(96.dp).height(54.dp).clip(RoundedCornerShape(6.dp))
                 .background(Color.White.copy(alpha = 0.05f))
         ) {
             AsyncImage(

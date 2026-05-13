@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +37,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,7 +59,11 @@ fun DesktopSeriesDetailScreen(
     val scope = rememberCoroutineScope()
     val seasonListState = rememberLazyListState()
     val episodeListState = rememberLazyListState()
-    val episodeRowHeight = 218.dp
+    val episodeRowHeight = 166.dp
+    val episodePosterWidth = 132.dp
+    val episodeItemSpacing = 14.dp
+    val episodeWideItemWidth = episodePosterWidth * 2 + episodeItemSpacing
+    val episodeCardWidthPx = with(LocalDensity.current) { episodeWideItemWidth.roundToPx() }
 
     LaunchedEffect(state.seasons) {
         if (state.selectedSeason == null && state.seasons.isNotEmpty()) {
@@ -127,10 +133,13 @@ fun DesktopSeriesDetailScreen(
                                         baseUrl = baseUrl,
                                         onClick = { onPlayEpisode(episode, item, state.episodes) },
                                         onFocus = {
-                                            scope.launch { episodeListState.animateScrollToItem(index) }
+                                            scope.launch {
+                                                episodeListState.animateScrollToCenteredItem(index, episodeCardWidthPx)
+                                            }
                                         },
+                                        aspectRatio = 16f / 9f,
                                         modifier = Modifier
-                                            .width(132.dp)
+                                            .width(episodeWideItemWidth)
                                             .onKeyEvent { event ->
                                                 event.type == KeyEventType.KeyDown &&
                                                     event.key == Key.DirectionRight &&
@@ -146,6 +155,16 @@ fun DesktopSeriesDetailScreen(
             }
         }
     }
+}
+
+private suspend fun LazyListState.animateScrollToCenteredItem(
+    index: Int,
+    fallbackItemWidthPx: Int,
+) {
+    val viewportWidth = layoutInfo.viewportSize.width
+    val itemWidth = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.size ?: fallbackItemWidthPx
+    val centerOffset = ((viewportWidth - itemWidth) / 2).coerceAtLeast(0)
+    animateScrollToItem(index, scrollOffset = -centerOffset)
 }
 
 @Composable

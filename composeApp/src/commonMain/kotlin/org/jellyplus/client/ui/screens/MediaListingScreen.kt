@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -55,12 +57,18 @@ fun MediaListingScreen(
     }
     val uiType = LocalUiType.current
     val columns = if (uiType == UiType.Desktop) 6 else 3
+    val horizontalPadding = if (uiType == UiType.Desktop) {
+        PaddingValues(start = DesktopContentLeftPadding, end = DesktopContentRightPadding)
+    } else {
+        PaddingValues(horizontal = 16.dp)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0F1113))
             .statusBarsPadding()
+            .padding(horizontalPadding)
     ) {
         // Header
         Row(

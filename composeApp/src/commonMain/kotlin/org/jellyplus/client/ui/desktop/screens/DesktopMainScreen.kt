@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,12 +30,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +71,7 @@ import org.jellyplus.client.ui.common.navigation.rememberDpadGridNavigator
 import org.jellyplus.client.ui.common.navigation.rememberDpadSectionNavigator
 import org.jellyplus.client.ui.common.navigation.sectionItemDpadHandler
 import org.jellyplus.client.ui.components.MediaPoster
+import org.jellyplus.client.ui.mobile.screens.MobileAuthLogo
 import org.jellyplus.client.ui.viewmodels.HomeState
 import org.jellyplus.client.ui.viewmodels.HomeViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
@@ -78,7 +79,7 @@ import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.lazy.itemsIndexed as lazyListItemsIndexed
 
-private enum class NavDestination { Home, Movies, TvShows, Favorites, Search }
+private enum class NavDestination { Home, Search, History, Favorites, Profile }
 
 private enum class DashboardSectionClickMode { Detail, Play }
 
@@ -87,7 +88,13 @@ private data class DashboardSectionSpec(
     val items: List<MediaItem>,
     val viewAllType: MediaType?,
     val clickMode: DashboardSectionClickMode,
+    val itemAspectRatio: Float = 2f / 3f,
+    val itemWidth: androidx.compose.ui.unit.Dp = 110.dp,
 )
+
+private val DashboardPosterWidth = 110.dp
+private val DashboardItemSpacing = 12.dp
+private val DashboardWideItemWidth = DashboardPosterWidth * 2 + DashboardItemSpacing
 
 @Composable
 fun DesktopMainScreen(
@@ -107,30 +114,17 @@ fun DesktopMainScreen(
         if (selectedNav == NavDestination.Home) homeViewModel.loadHomeContent()
     }
 
-    Row(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
-        // Vertical Navigation Sidebar (Slimmer)
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(64.dp)
-                .background(Color.Black.copy(alpha = 0.4f))
-                .padding(vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            Icon(Icons.Default.Movie, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(16.dp))
-            NavIcon(Icons.Default.Home, selectedNav == NavDestination.Home, sidebarFocusRequester) { selectedNav = NavDestination.Home }
-            NavIcon(Icons.Default.Movie, selectedNav == NavDestination.Movies, sidebarFocusRequester) { selectedNav = NavDestination.Movies }
-            NavIcon(Icons.Default.Tv, selectedNav == NavDestination.TvShows, sidebarFocusRequester) { selectedNav = NavDestination.TvShows }
-            NavIcon(Icons.Default.Favorite, selectedNav == NavDestination.Favorites, sidebarFocusRequester) { selectedNav = NavDestination.Favorites }
-            NavIcon(Icons.Default.Search, selectedNav == NavDestination.Search, sidebarFocusRequester) { selectedNav = NavDestination.Search }
-            Spacer(Modifier.weight(1f))
-            NavIcon(Icons.Default.Settings, false, sidebarFocusRequester) { }
-        }
+    val historyItems = remember(homeState.resumeItems, state.items) {
+        (homeState.resumeItems + state.items).distinctBy { it.id }
+    }
+    val favoriteItems = remember(state.movies, state.tvShows, state.items) {
+        (state.movies + state.tvShows + state.items)
+            .filter { it.userData?.isFavorite == true }
+            .distinctBy { it.id }
+    }
 
-        // Main Content
-        Box(modifier = Modifier.weight(1f)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+        Box(modifier = Modifier.fillMaxSize()) {
             when (selectedNav) {
                 NavDestination.Home -> MainDashboard(
                     viewModel = viewModel,
@@ -143,11 +137,34 @@ fun DesktopMainScreen(
                         try { sidebarFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
                     },
                 )
-                NavDestination.Movies -> MediaGrid("Movies", state.movies, state.baseUrl, onMediaClick)
-                NavDestination.TvShows -> MediaGrid("TV Series", state.tvShows, state.baseUrl, onMediaClick)
-                NavDestination.Favorites -> MediaGrid("Favorites", state.items.take(3), state.baseUrl, onMediaClick)
                 NavDestination.Search -> SearchPlaceholder()
+                NavDestination.History -> MediaGrid("History", historyItems, state.baseUrl, onContinueWatchingClick)
+                NavDestination.Favorites -> MediaGrid("Favorites", favoriteItems, state.baseUrl, onMediaClick)
+                NavDestination.Profile -> DesktopProfilePlaceholder()
             }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(64.dp)
+                .background(Color.Black.copy(alpha = 0.22f))
+                .padding(vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            MobileAuthLogo(modifier = Modifier.size(34.dp))
+            Spacer(Modifier.weight(1f))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                NavIcon(Icons.Default.Home, selectedNav == NavDestination.Home, sidebarFocusRequester) { selectedNav = NavDestination.Home }
+                NavIcon(Icons.Default.Search, selectedNav == NavDestination.Search, sidebarFocusRequester) { selectedNav = NavDestination.Search }
+                NavIcon(Icons.Default.History, selectedNav == NavDestination.History, sidebarFocusRequester) { selectedNav = NavDestination.History }
+                NavIcon(Icons.Default.Favorite, selectedNav == NavDestination.Favorites, sidebarFocusRequester) { selectedNav = NavDestination.Favorites }
+            }
+            Spacer(Modifier.weight(1f))
+            NavIcon(Icons.Default.Person, selectedNav == NavDestination.Profile, sidebarFocusRequester) { selectedNav = NavDestination.Profile }
         }
     }
 }
@@ -162,6 +179,10 @@ private fun MainDashboard(
     onViewAll: (MediaType, String) -> Unit,
     onFocusExit: () -> Unit,
 ) {
+    val contentHorizontalPadding = 88.dp
+    val heroBottomPadding = 360.dp
+    val focusedSectionBottomPadding = 86.dp
+    val nextSectionPeekOffset = 164.dp
     val dashboardSections = remember(
         homeState.resumeItems,
         homeState.recentlyAddedItems,
@@ -170,7 +191,16 @@ private fun MainDashboard(
     ) {
         buildList {
             if (homeState.resumeItems.isNotEmpty()) {
-                add(DashboardSectionSpec("Continue Watching", homeState.resumeItems, null, DashboardSectionClickMode.Play))
+                add(
+                    DashboardSectionSpec(
+                        title = "Continue Watching",
+                        items = homeState.resumeItems,
+                        viewAllType = null,
+                        clickMode = DashboardSectionClickMode.Play,
+                        itemAspectRatio = 16f / 9f,
+                        itemWidth = DashboardWideItemWidth,
+                    )
+                )
             }
             if (homeState.recentlyAddedItems.isNotEmpty()) {
                 add(DashboardSectionSpec("Recently Added", homeState.recentlyAddedItems, null, DashboardSectionClickMode.Detail))
@@ -211,57 +241,84 @@ private fun MainDashboard(
             heroItem?.let { item ->
                 var titleFontSize by remember(item.id) { mutableStateOf(32.sp) }
 
-                AsyncImage(
-                    model = item.getBackdropUrl(state.baseUrl) ?: item.getImageUrl(state.baseUrl),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Black.copy(alpha = 0.2f),
-                                    0.4f to Color.Black.copy(alpha = 0.5f),
-                                    1.0f to Color(0xFF0F1113),
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = item.getBackdropUrl(state.baseUrl) ?: item.getImageUrl(state.baseUrl),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Black.copy(alpha = 0.18f),
+                                        0.52f to Color.Black.copy(alpha = 0.46f),
+                                        1.0f to Color(0xFF0F1113),
+                                    )
                                 )
                             )
-                        )
-                )
-                Column(
-                    modifier = Modifier
-                        .padding(start = 48.dp, top = 48.dp)
-                        .fillMaxWidth(0.6f),
-                ) {
-                    val metadata = buildDesktopHeroMetadata(item)
-                    if (metadata.isNotBlank()) {
-                        Text(
-                            text = metadata,
-                            color = Color.White.copy(alpha = 0.72f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                    }
-                    Text(
-                        text = item.title.uppercase(),
-                        color = Color.White,
-                        fontSize = titleFontSize,
-                        fontWeight = FontWeight.ExtraBold,
-                        lineHeight = titleFontSize * 1.3f,
-                        maxLines = 2,
-                        overflow = TextOverflow.Visible,
-                        onTextLayout = { result ->
-                            if (result.hasVisualOverflow && titleFontSize > 18.sp) {
-                                titleFontSize *= 0.85f
-                            }
-                        },
                     )
-                    DesktopHeroInfoRow(item)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth(0.68f)
+                            .height(340.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0.00f to Color.Black.copy(alpha = 0.72f),
+                                        0.58f to Color.Black.copy(alpha = 0.44f),
+                                        1.00f to Color.Transparent,
+                                    )
+                                )
+                            )
+                            .background(
+                                Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.00f to Color.Transparent,
+                                        0.36f to Color.Black.copy(alpha = 0.18f),
+                                        1.00f to Color.Black.copy(alpha = 0.62f),
+                                    )
+                                )
+                            )
+                    )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = contentHorizontalPadding, bottom = heroBottomPadding)
+                            .fillMaxWidth(0.62f),
+                    ) {
+                        val metadata = buildDesktopHeroMetadata(item)
+                        if (metadata.isNotBlank()) {
+                            Text(
+                                text = metadata,
+                                color = Color.White.copy(alpha = 0.72f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                        }
+                        Text(
+                            text = item.title.uppercase(),
+                            color = Color.White,
+                            fontSize = titleFontSize,
+                            fontWeight = FontWeight.ExtraBold,
+                            lineHeight = titleFontSize * 1.3f,
+                            maxLines = 2,
+                            overflow = TextOverflow.Visible,
+                            onTextLayout = { result ->
+                                if (result.hasVisualOverflow && titleFontSize > 18.sp) {
+                                    titleFontSize *= 0.85f
+                                }
+                            },
+                        )
+                        DesktopHeroInfoRow(item)
+                    }
                 }
             }
         }
@@ -280,6 +337,7 @@ private fun MainDashboard(
                     onItemFocus = {},
                     onItemClick = {},
                     onViewAll = {},
+                    horizontalPadding = contentHorizontalPadding,
                     sectionIndex = 0,
                     focusedSectionIndex = focusedSectionIndex,
                     navigator = navigator,
@@ -314,6 +372,7 @@ private fun MainDashboard(
                 }
             } else {
                 dashboardSections.forEachIndexed { index, section ->
+                    if (index > focusedSectionIndex + 1) return@forEachIndexed
                     DashboardSection(
                         title = section.title,
                         items = section.items,
@@ -327,11 +386,22 @@ private fun MainDashboard(
                             if (section.clickMode == DashboardSectionClickMode.Play) onContinueWatchingClick(item) else onMediaClick(item)
                         },
                         onViewAll = section.viewAllType?.let { type -> { onViewAll(type, section.title) } },
+                        itemAspectRatio = section.itemAspectRatio,
+                        itemWidth = section.itemWidth,
+                        horizontalPadding = contentHorizontalPadding,
                         sectionIndex = index,
                         focusedSectionIndex = focusedSectionIndex,
                         navigator = navigator,
                         onExitLeft = onFocusExit,
-                        modifier = Modifier.align(Alignment.BottomStart),
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .then(
+                                if (index == focusedSectionIndex + 1) {
+                                    Modifier.offset(y = nextSectionPeekOffset)
+                                } else {
+                                    Modifier.padding(bottom = focusedSectionBottomPadding)
+                                }
+                            ),
                     )
                 }
             }
@@ -348,6 +418,9 @@ private fun DashboardSection(
     onItemFocus: (MediaItem) -> Unit,
     onItemClick: (MediaItem) -> Unit,
     onViewAll: (() -> Unit)?,
+    itemAspectRatio: Float = 2f / 3f,
+    itemWidth: androidx.compose.ui.unit.Dp = 110.dp,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 28.dp,
     sectionIndex: Int,
     focusedSectionIndex: Int,
     navigator: DpadSectionNavigator,
@@ -355,7 +428,7 @@ private fun DashboardSection(
     modifier: Modifier = Modifier,
 ) {
     val sectionAlpha by animateFloatAsState(
-        targetValue = if (sectionIndex == focusedSectionIndex) 1f else 0f,
+        targetValue = if (sectionIndex < focusedSectionIndex) 0f else 1f,
         animationSpec = tween(durationMillis = 180),
         label = "desktopSectionFocusAlpha",
     )
@@ -363,16 +436,16 @@ private fun DashboardSection(
         modifier = modifier
             .fillMaxWidth()
             .alpha(sectionAlpha)
-            .zIndex(if (sectionIndex == focusedSectionIndex) 1f else 0f),
+            .zIndex(if (sectionIndex == focusedSectionIndex) 2f else 1f),
     ) {
-        SectionHeader(title = title, onViewAll = onViewAll)
+        SectionHeader(title = title, onViewAll = onViewAll, horizontalPadding = horizontalPadding)
         if (isLoading && items.isEmpty()) {
-            org.jellyplus.client.ui.components.MediaRowPlaceholder(padding = PaddingValues(horizontal = 48.dp))
+            org.jellyplus.client.ui.components.MediaRowPlaceholder(padding = PaddingValues(horizontal = horizontalPadding))
         } else {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(start = 0.dp, end = horizontalPadding, top = 12.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(DashboardItemSpacing),
+                modifier = Modifier.fillMaxWidth().padding(start = horizontalPadding),
             ) {
                 lazyListItemsIndexed(items) { index, item ->
                     MediaPoster(
@@ -380,8 +453,9 @@ private fun DashboardSection(
                         baseUrl = baseUrl,
                         onClick = { onItemClick(item) },
                         onFocus = { onItemFocus(item) },
+                        aspectRatio = itemAspectRatio,
                         modifier = Modifier
-                            .width(110.dp)
+                            .width(itemWidth)
                             .then(
                                 if (index == 0) Modifier.focusRequester(navigator.requesters[sectionIndex])
                                 else Modifier
@@ -453,9 +527,14 @@ private fun DesktopHeroInfoRow(item: MediaItem) {
 }
 
 @Composable
-private fun SectionHeader(title: String, onViewAll: (() -> Unit)? = null, modifier: Modifier = Modifier) {
+private fun SectionHeader(
+    title: String,
+    onViewAll: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    horizontalPadding: androidx.compose.ui.unit.Dp = 28.dp,
+) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 8.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = horizontalPadding, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -478,7 +557,7 @@ private fun MediaGrid(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(start = 48.dp, top = 48.dp, end = 48.dp, bottom = 0.dp)
+            .padding(start = 88.dp, top = 48.dp, end = 48.dp, bottom = 0.dp)
     ) {
         Text(title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
@@ -538,6 +617,17 @@ private fun SearchPlaceholder() {
             Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
             Spacer(Modifier.height(16.dp))
             Text("Search functionality coming soon", color = Color.White.copy(alpha = 0.5f), fontSize = 18.sp)
+        }
+    }
+}
+
+@Composable
+private fun DesktopProfilePlaceholder() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.Person, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
+            Spacer(Modifier.height(16.dp))
+            Text("Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

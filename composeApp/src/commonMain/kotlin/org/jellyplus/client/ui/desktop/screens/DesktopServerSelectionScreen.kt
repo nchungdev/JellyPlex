@@ -51,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.discovery.DiscoveredServer
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import org.jellyplus.client.ui.mobile.screens.MobileAuthLogo
 import org.jellyplus.client.ui.viewmodels.DiscoveryState
 
@@ -66,34 +68,32 @@ fun DesktopServerSelectionScreen(
     var showManualDialog by remember { mutableStateOf(false) }
     var manualUrl by remember { mutableStateOf("http://") }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113)).padding(horizontal = 48.dp, vertical = 36.dp)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113)).padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp)) {
         MobileAuthLogo(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.TopStart)
                 .size(104.dp),
         )
 
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.TopStart)
                 .fillMaxWidth()
                 .widthIn(max = 860.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
         ) {
             // Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Spacer(Modifier.size(48.dp))
-                Spacer(Modifier.weight(1f))
                 Text(
                     "Select Server",
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                Spacer(Modifier.weight(1f))
                 if (state.isScanning) {
                     CircularProgressIndicator(color = Color(0xFF24D366), modifier = Modifier.size(24.dp))
                 } else {
