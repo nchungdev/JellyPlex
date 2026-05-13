@@ -50,6 +50,7 @@ import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
+import org.jellyplus.client.media.PlayerPipController
 import org.jellyplus.client.ui.common.components.player.PlayerAudioDialog
 import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
 import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
@@ -57,6 +58,20 @@ import kotlin.math.roundToInt
 
 private var lastSkipToastTimeMs = 0L
 private const val SKIP_TOAST_INTERVAL_MS = 2 * 60 * 60 * 1000L // 2 hours
+
+private fun normalizedTrackLanguage(language: String?): String? =
+    language
+        ?.trim()
+        ?.lowercase()
+        ?.takeIf { it.isNotBlank() }
+        ?.substringBefore('-')
+        ?.substringBefore('_')
+
+private fun languagesMatch(trackLanguage: String?, preferredLanguage: String?): Boolean {
+    val track = normalizedTrackLanguage(trackLanguage) ?: return false
+    val preferred = normalizedTrackLanguage(preferredLanguage) ?: return false
+    return track == preferred
+}
 
 private fun PlayerView.applyTextureViewSurface() {
     try {
@@ -83,6 +98,9 @@ fun MobileVideoPlayer(
     onPlaybackProgress: (String, String, Long, Boolean) -> Unit,
     onPlaybackStopped: (String, String, Long) -> Unit,
     playbackSpeed: Float,
+    seekBackSeconds: Int = 5,
+    seekForwardSeconds: Int = 10,
+    showGestureHints: Boolean = true,
     showNextPrev: Boolean = false,
     onNextEpisode: () -> Unit = {},
     onPrevEpisode: () -> Unit = {},
@@ -93,10 +111,13 @@ fun MobileVideoPlayer(
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
+    autoPictureInPicture: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
+    onToggleAutoPictureInPicture: () -> Unit = {},
     onSpeedChange: (Float) -> Unit = {},
     autoSkipOutro: Boolean = false,
     onToggleAutoSkipOutro: () -> Unit = {},
+    originalAudioLanguage: String? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -145,9 +166,11 @@ fun MobileVideoPlayer(
     var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
     var availableTextTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
     var selectedTextTrackIndex by remember { mutableStateOf(-1) }
+    var hasUserSelectedTextTrack by remember { mutableStateOf(false) }
     var availableAudioTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
     var availableAudioTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
     var selectedAudioTrackIndex by remember { mutableStateOf(0) }
+    var hasUserSelectedAudioTrack by remember { mutableStateOf(false) }
 
     var autoNextCountdown by remember { mutableStateOf(0) }
     var isUserSeeking by remember { mutableStateOf(false) }
@@ -168,7 +191,15 @@ fun MobileVideoPlayer(
         HlsMediaSource.Factory(httpDataSourceFactory).setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
     }
 
-    fun buildExoPlayer(streamUrl: String, streamMimeType: String?, startPlaying: Boolean): ExoPlayer {
+    fun buildExoPlayer(streamUrl: String, streamMimeType: String?, startPlaying: Boolean, preferredAudioLanguage: String?): ExoPlayer {
+        if (!preferredAudioLanguage.isNullOrBlank()) {
+            trackSelector.setParameters(
+                trackSelector.buildUponParameters()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    .setPreferredAudioLanguage(preferredAudioLanguage)
+                    .build()
+            )
+        }
         val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory)
         return ExoPlayer.Builder(context).setMediaSourceFactory(mediaSourceFactory).setTrackSelector(trackSelector).build().apply {
             val resolvedMime = when {
@@ -195,8 +226,8 @@ fun MobileVideoPlayer(
     var isPrimaryActive by remember { mutableStateOf(true) }
     var secondaryExoPlayer by remember { mutableStateOf<ExoPlayer?>(null) }
 
-    val primaryExoPlayer = remember(url, mimeType, accessToken) {
-        buildExoPlayer(url, mimeType, startPlaying = true).apply {
+    val primaryExoPlayer = remember(url, mimeType, accessToken, originalAudioLanguage) {
+        buildExoPlayer(url, mimeType, startPlaying = true, preferredAudioLanguage = originalAudioLanguage).apply {
             addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(playing: Boolean) { if (isPrimaryActive) isPlaying = playing }
                 override fun onPlaybackStateChanged(state: Int) {
@@ -224,6 +255,8 @@ fun MobileVideoPlayer(
                     if (isPrimaryActive) {
                         val textTracks = mutableListOf<Pair<Int, String>>(); val textLanguages = mutableListOf<String?>(); var tIdx = 0
                         val audioTracks = mutableListOf<Pair<Int, String>>(); val audioLanguages = mutableListOf<String?>(); var aIdx = 0
+                        var preferredAudioIndex = -1
+                        var originalAudioIndex = -1
                         for (group in tracks.groups) {
                             when (group.type) {
                                 C.TRACK_TYPE_TEXT -> for (i in 0 until group.length) {
@@ -235,6 +268,12 @@ fun MobileVideoPlayer(
                                     val f = group.getTrackFormat(i)
                                     audioTracks += aIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Audio $aIdx")
                                     audioLanguages += f.language
+                                    if (preferredAudioIndex == -1 && languagesMatch(f.language, originalAudioLanguage)) {
+                                        preferredAudioIndex = aIdx - 1
+                                    }
+                                    if (originalAudioIndex == -1 && f.label?.contains("original", ignoreCase = true) == true) {
+                                        originalAudioIndex = aIdx - 1
+                                    }
                                 }
                             }
                         }
@@ -242,6 +281,17 @@ fun MobileVideoPlayer(
                         availableTextTrackLanguages = textLanguages
                         availableAudioTracks = audioTracks
                         availableAudioTrackLanguages = audioLanguages
+
+                        val targetAudioIndex = preferredAudioIndex.takeIf { it >= 0 } ?: originalAudioIndex
+                        if (!hasUserSelectedAudioTrack && targetAudioIndex >= 0) {
+                            selectedAudioTrackIndex = targetAudioIndex
+                            trackSelector.setParameters(
+                                trackSelector.buildUponParameters()
+                                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                                    .setPreferredAudioLanguage(audioLanguages.getOrNull(targetAudioIndex))
+                                    .build()
+                            )
+                        }
                     }
                 }
             })
@@ -265,6 +315,10 @@ fun MobileVideoPlayer(
         gestureType = ""
         currentPosition = 0L
         duration = 0L
+        selectedTextTrackIndex = -1
+        selectedAudioTrackIndex = 0
+        hasUserSelectedTextTrack = false
+        hasUserSelectedAudioTrack = false
     }
 
     LaunchedEffect(isControlsVisible, isPlaying) {
@@ -286,6 +340,11 @@ fun MobileVideoPlayer(
     LaunchedEffect(showSkipToast) { if (showSkipToast) { delay(2500); showSkipToast = false } }
     LaunchedEffect(playbackSpeed) { currentSpeed = playbackSpeed; currentPlayer.setPlaybackSpeed(playbackSpeed) }
 
+    DisposableEffect(item.id, autoPictureInPicture) {
+        PlayerPipController.update(active = true, autoEnterEnabled = autoPictureInPicture)
+        onDispose { PlayerPipController.clear() }
+    }
+
     MobilePlayerTracker(
         exoPlayer = currentPlayer,
         item = item,
@@ -303,7 +362,14 @@ fun MobileVideoPlayer(
         metaPreloaded = metaPreloaded,
         videoPreloaded = videoPreloaded,
         buildSecondaryPlayer = { config ->
-            try { buildExoPlayer(config.url, config.mimeType, startPlaying = false) }
+            try {
+                buildExoPlayer(
+                    config.url,
+                    config.mimeType,
+                    startPlaying = false,
+                    preferredAudioLanguage = config.originalAudioLanguage,
+                )
+            }
             catch (_: Exception) { null }
         },
         onPositionUpdate = { pos, dur ->
@@ -429,7 +495,7 @@ fun MobileVideoPlayer(
                                         params.screenBrightness = brightness
                                         a.window.attributes = params
                                     }
-                                    showGestureIndicator = true
+                                    showGestureIndicator = showGestureHints
                                 } else {
                                     gestureType = "volume"
                                     val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
@@ -440,7 +506,7 @@ fun MobileVideoPlayer(
                                         (volume * maxVol).roundToInt(),
                                         AudioManager.FLAG_SHOW_UI
                                     )
-                                    showGestureIndicator = false
+                                    showGestureIndicator = showGestureHints
                                 }
                             }
                         )
@@ -473,11 +539,11 @@ fun MobileVideoPlayer(
                             if (!isLongPressing && !isControlsVisible) {
                                 val isRight = offset.x >= size.width / 2
                                 if (isRight) {
-                                    currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration))
-                                    seekFeedback = "+10"
+                                    currentPlayer.seekTo((currentPlayer.currentPosition + seekForwardSeconds * 1000L).coerceAtMost(duration))
+                                    seekFeedback = "+$seekForwardSeconds"
                                 } else {
-                                    currentPlayer.seekTo((currentPlayer.currentPosition - 5000).coerceAtLeast(0))
-                                    seekFeedback = "-5"
+                                    currentPlayer.seekTo((currentPlayer.currentPosition - seekBackSeconds * 1000L).coerceAtLeast(0))
+                                    seekFeedback = "-$seekBackSeconds"
                                 }
                                 seekFeedbackIsRight = isRight
                                 showSeekFeedback = true
@@ -507,8 +573,8 @@ fun MobileVideoPlayer(
                 MobilePlayerCenterControls(
                     isPlaying = isPlaying, isBuffering = isBuffering, showNextPrev = showNextPrev,
                     onPlayPause = { if (isPlaying) currentPlayer.pause() else currentPlayer.play() },
-                    onRewind = { currentPlayer.seekTo((currentPlayer.currentPosition - 10000).coerceAtLeast(0)) },
-                    onForward = { currentPlayer.seekTo((currentPlayer.currentPosition + 10000).coerceAtMost(duration)) },
+                    onRewind = { currentPlayer.seekTo((currentPlayer.currentPosition - seekBackSeconds * 1000L).coerceAtLeast(0)) },
+                    onForward = { currentPlayer.seekTo((currentPlayer.currentPosition + seekForwardSeconds * 1000L).coerceAtMost(duration)) },
                     onPrevEpisode = onPrevEpisode, onNextEpisode = onNextEpisode,
                     modifier = Modifier.align(Alignment.Center),
                 )
@@ -583,6 +649,7 @@ fun MobileVideoPlayer(
         availableTextTracks = availableTextTracks, selectedTextTrackIndex = selectedTextTrackIndex,
         onSelectOff = {
             selectedTextTrackIndex = -1
+            hasUserSelectedTextTrack = true
             trackSelector.setParameters(
                 trackSelector.buildUponParameters()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
@@ -593,6 +660,7 @@ fun MobileVideoPlayer(
         },
         onSelectTrack = { idx ->
             selectedTextTrackIndex = idx
+            hasUserSelectedTextTrack = true
             trackSelector.setParameters(
                 trackSelector.buildUponParameters()
                     .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
@@ -608,6 +676,7 @@ fun MobileVideoPlayer(
         availableAudioTracks = availableAudioTracks, selectedAudioTrackIndex = selectedAudioTrackIndex,
         onSelectTrack = { idx ->
             selectedAudioTrackIndex = idx
+            hasUserSelectedAudioTrack = true
             trackSelector.setParameters(
                 trackSelector.buildUponParameters()
                     .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
@@ -623,11 +692,13 @@ fun MobileVideoPlayer(
         autoSkipIntro = autoSkipIntro,
         autoSkipOutro = autoSkipOutro,
         autoNext = autoNext,
+        autoPictureInPicture = autoPictureInPicture,
         isEpisode = item.type == MediaType.EPISODE,
         currentSpeed = currentSpeed,
         onToggleAutoSkip = onToggleAutoSkip,
         onToggleAutoSkipOutro = onToggleAutoSkipOutro,
         onToggleAutoNext = onToggleAutoNext,
+        onToggleAutoPictureInPicture = onToggleAutoPictureInPicture,
         onSpeedChange = { speed -> currentSpeed = speed; currentPlayer.setPlaybackSpeed(speed); onSpeedChange(speed) },
         onDismiss = { showSettingsPopup = false },
     )

@@ -38,9 +38,9 @@ fun App() {
 fun AppContent() {
     val uiType = getUiType()
 
-    if (uiType == UiType.Mobile) {
-        OrientationEffect(ScreenOrientation.Portrait)
-    }
+    OrientationEffect(
+        if (uiType == UiType.Desktop) ScreenOrientation.Landscape else ScreenOrientation.Portrait
+    )
 
     val sessionViewModel = koinViewModel<SessionViewModel>()
     val qcViewModel = koinViewModel<QuickConnectViewModel>()

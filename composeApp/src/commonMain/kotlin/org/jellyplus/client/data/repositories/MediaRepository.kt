@@ -45,9 +45,10 @@ class MediaRepository(
 
     override suspend fun refreshHomeContent(userId: String): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
+            val featured = runCatching { remoteDataSource.getHomeFeatured(userId) }.getOrDefault(emptyList())
             val resume = remoteDataSource.getHomeResume(userId)
             val recentlyAdded = remoteDataSource.getHomeRecentlyAdded(userId)
-            localDataSource.saveHomeCache(HomeContent(resume, recentlyAdded))
+            localDataSource.saveHomeCache(HomeContent(featured, resume, recentlyAdded))
         }
     }
 
@@ -70,6 +71,11 @@ class MediaRepository(
             if (source != null) {
                 val isAudio = item.type == MediaType.AUDIO
                 val typePath = if (isAudio) "audio" else "videos"
+                val originalAudioLanguage = source.mediaStreams
+                    .filter { it.type.equals("Audio", ignoreCase = true) && !it.language.isNullOrBlank() }
+                    .firstOrNull { it.isDefault }
+                    ?.language
+                    ?.trim()
 
                 val url = when {
                     source.isRemote && source.path?.startsWith("http") == true -> {
@@ -106,7 +112,8 @@ class MediaRepository(
                 PlaybackConfig(
                     url = url ?: remoteDataSource.getVideoStreamUrl(itemId),
                     playSessionId = playSessionId,
-                    mimeType = if (isAudio) "audio/*" else "video/*"
+                    mimeType = if (isAudio) "audio/*" else "video/*",
+                    originalAudioLanguage = if (isAudio) null else originalAudioLanguage,
                 )
             } else {
                 PlaybackConfig(url = remoteDataSource.getVideoStreamUrl(itemId), playSessionId = null, mimeType = "video/*")

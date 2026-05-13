@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyplus.client.data.datasource.local.PlayerSettingsLocalDataSource
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
@@ -18,6 +19,7 @@ data class PlayerState(
     val mimeType: String? = null,
     val accessToken: String = "",
     val playSessionId: String? = null,
+    val originalAudioLanguage: String? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     // Episode context
@@ -34,7 +36,12 @@ data class PlayerState(
     val autoSkipRecap: Boolean = false,
     val autoSkipPreview: Boolean = false,
     val autoNext: Boolean = false,
+    val autoPictureInPicture: Boolean = true,
     val seamlessTransition: Boolean = false,
+    val playbackSpeed: Float = 1.0f,
+    val seekBackSeconds: Int = 5,
+    val seekForwardSeconds: Int = 10,
+    val showGestureHints: Boolean = true,
 )
 
 class PlayerViewModel(
@@ -51,6 +58,11 @@ class PlayerViewModel(
     private val setAutoNextUseCase: SetAutoNextUseCase,
     private val getAutoSkipOutroUseCase: GetAutoSkipOutroUseCase,
     private val setAutoSkipOutroUseCase: SetAutoSkipOutroUseCase,
+    private val getAutoPictureInPictureUseCase: GetAutoPictureInPictureUseCase,
+    private val setAutoPictureInPictureUseCase: SetAutoPictureInPictureUseCase,
+    private val getPlaybackSpeedUseCase: GetPlaybackSpeedUseCase,
+    private val setPlaybackSpeedUseCase: SetPlaybackSpeedUseCase,
+    private val playerSettings: PlayerSettingsLocalDataSource,
     private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
     private val getEpisodesUseCase: GetEpisodesUseCase,
     private val dispatchers: AppDispatchers,
@@ -71,6 +83,7 @@ class PlayerViewModel(
                 url = null,
                 mimeType = null,
                 playSessionId = null,
+                originalAudioLanguage = null,
                 error = null,
                 isLoading = true,
                 accessToken = getAccessTokenUseCase() ?: ""
@@ -85,6 +98,7 @@ class PlayerViewModel(
                         url = config.url,
                         playSessionId = config.playSessionId,
                         mimeType = config.mimeType,
+                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerSettings.preferOriginalAudio },
                         isLoading = false
                     )
                 } else {
@@ -132,7 +146,12 @@ class PlayerViewModel(
             try {
                 val userId = getUserIdUseCase() ?: ""
                 val config = resolveStreamConfigUseCase(nextItem, userId, "CMP-ID")
-                _state.value = _state.value.copy(nextEpisodeConfig = config, isPreloadingNextMeta = false)
+                _state.value = _state.value.copy(
+                    nextEpisodeConfig = config?.copy(
+                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerSettings.preferOriginalAudio },
+                    ),
+                    isPreloadingNextMeta = false,
+                )
             } catch (_: Exception) {
                 _state.value = _state.value.copy(isPreloadingNextMeta = false)
             }
@@ -163,19 +182,33 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoNext = next)
     }
 
+    fun toggleAutoPictureInPicture() {
+        val next = !_state.value.autoPictureInPicture
+        setAutoPictureInPictureUseCase(next)
+        _state.value = _state.value.copy(autoPictureInPicture = next)
+    }
+
     fun toggleAutoSkipRecap() {
         val next = !_state.value.autoSkipRecap
+        playerSettings.autoSkipRecap = next
         _state.value = _state.value.copy(autoSkipRecap = next)
     }
 
     fun toggleAutoSkipPreview() {
         val next = !_state.value.autoSkipPreview
+        playerSettings.autoSkipPreview = next
         _state.value = _state.value.copy(autoSkipPreview = next)
     }
 
     fun toggleSeamlessTransition() {
         val next = !_state.value.seamlessTransition
+        playerSettings.seamlessTransition = next
         _state.value = _state.value.copy(seamlessTransition = next)
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        setPlaybackSpeedUseCase(speed)
+        _state.value = _state.value.copy(playbackSpeed = speed)
     }
 
     fun loadMarkers(itemId: String) {
@@ -227,7 +260,15 @@ class PlayerViewModel(
         _state.value = _state.value.copy(
             autoSkipIntro = getAutoSkipUseCase(),
             autoSkipOutro = getAutoSkipOutroUseCase(),
+            autoSkipRecap = playerSettings.autoSkipRecap,
+            autoSkipPreview = playerSettings.autoSkipPreview,
             autoNext = getAutoNextUseCase(),
+            autoPictureInPicture = getAutoPictureInPictureUseCase(),
+            seamlessTransition = playerSettings.seamlessTransition,
+            playbackSpeed = getPlaybackSpeedUseCase(),
+            seekBackSeconds = playerSettings.seekBackSeconds,
+            seekForwardSeconds = playerSettings.seekForwardSeconds,
+            showGestureHints = playerSettings.showGestureHints,
         )
     }
 }

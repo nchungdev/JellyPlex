@@ -1,8 +1,11 @@
 package org.jellyplus.client.ui.components.player.mobile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
@@ -37,35 +40,65 @@ internal fun MobilePlayerCenterControls(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
     ) {
         if (showNextPrev) {
-            IconButton(onClick = onPrevEpisode, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Default.SkipPrevious, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(36.dp))
+            Box(
+                modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                IconButton(onClick = onPrevEpisode, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.SkipPrevious, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(34.dp))
+                }
             }
         }
 
-        IconButton(onClick = onRewind, modifier = Modifier.size(64.dp)) {
-            Icon(Icons.Default.Replay10, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(48.dp))
+        Box(
+            modifier = Modifier.size(64.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(onClick = onRewind, modifier = Modifier.size(64.dp)) {
+                Icon(Icons.Default.Replay10, null, tint = Color.White.copy(alpha = 0.94f), modifier = Modifier.size(46.dp))
+            }
         }
 
         if (isBuffering) {
-            CircularProgressIndicator(modifier = Modifier.size(72.dp), color = Color.White, strokeWidth = 3.dp)
+            Box(
+                modifier = Modifier.size(80.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(54.dp), color = Color.White, strokeWidth = 3.dp)
+            }
         } else {
-            IconButton(onClick = onPlayPause, modifier = Modifier.size(80.dp)) {
-                Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    null,
-                    tint = Color.White,
-                    modifier = Modifier.size(72.dp),
-                )
+            Box(
+                modifier = Modifier.size(84.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                IconButton(onClick = onPlayPause, modifier = Modifier.size(84.dp)) {
+                    Icon(
+                        if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        null,
+                        tint = Color.White,
+                        modifier = Modifier.size(68.dp),
+                    )
+                }
             }
         }
 
-        IconButton(onClick = onForward, modifier = Modifier.size(64.dp)) {
-            Icon(Icons.Default.Forward10, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(48.dp))
+        Box(
+            modifier = Modifier.size(64.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            IconButton(onClick = onForward, modifier = Modifier.size(64.dp)) {
+                Icon(Icons.Default.Forward10, null, tint = Color.White.copy(alpha = 0.94f), modifier = Modifier.size(46.dp))
+            }
         }
 
         if (showNextPrev) {
-            IconButton(onClick = onNextEpisode, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Default.SkipNext, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(36.dp))
+            Box(
+                modifier = Modifier.size(48.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                IconButton(onClick = onNextEpisode, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.SkipNext, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(34.dp))
+                }
             }
         }
     }

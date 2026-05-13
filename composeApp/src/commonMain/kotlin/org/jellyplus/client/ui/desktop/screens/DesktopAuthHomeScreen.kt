@@ -1,9 +1,6 @@
 package org.jellyplus.client.ui.desktop.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -26,40 +23,36 @@ fun DesktopAuthHomeScreen(
     onManualLogin: () -> Unit,
     onChangeServer: () -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Text("JellyPlus", fontSize = 64.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Text(baseUrl, color = Color.Gray, fontSize = 18.sp)
+    DesktopAuthScaffold(maxContentWidth = 420.dp) {
+        Text("JellyPlus", fontSize = 42.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(baseUrl, color = Color.Gray, fontSize = 15.sp)
 
-        Spacer(modifier = Modifier.height(64.dp))
+        Spacer(modifier = Modifier.height(42.dp))
 
         FocusableButton(
             onClick = onQuickConnect,
-            modifier = Modifier.fillMaxWidth(0.5f).height(80.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
         ) {
-            Text("Login with QuickConnect", color = Color.Black, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Login with QuickConnect", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         FocusableOutlinedButton(
             onClick = onManualLogin,
-            modifier = Modifier.fillMaxWidth(0.5f).height(80.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
         ) {
-            Text("Manual Login", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Manual Login", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(34.dp))
 
         FocusableOutlinedButton(
             onClick = onChangeServer,
-            modifier = Modifier.height(56.dp).padding(horizontal = 32.dp),
+            modifier = Modifier.height(46.dp).padding(horizontal = 32.dp),
             shape = RoundedCornerShape(28.dp),
         ) {
-            Text("Change Server", fontSize = 18.sp)
+            Text("Change Server", fontSize = 15.sp)
         }
     }
 }

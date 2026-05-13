@@ -54,8 +54,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.IntroMarker
+import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
+import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
 
 @OptIn(UnstableApi::class)
 @SuppressLint("UnsafeOptInUsageError")
@@ -74,6 +76,9 @@ fun DesktopVideoPlayer(
     onPlaybackProgress: (String, String, Long, Boolean) -> Unit,
     onPlaybackStopped: (String, String, Long) -> Unit,
     playbackSpeed: Float,
+    seekBackSeconds: Int = 5,
+    seekForwardSeconds: Int = 10,
+    showGestureHints: Boolean = true,
     showNextPrev: Boolean = false,
     onNextEpisode: () -> Unit = {},
     onPrevEpisode: () -> Unit = {},
@@ -84,7 +89,10 @@ fun DesktopVideoPlayer(
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
+    autoPictureInPicture: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
+    onToggleAutoPictureInPicture: () -> Unit = {},
+    onSpeedChange: (Float) -> Unit = {},
     autoSkipOutro: Boolean = false,
     onToggleAutoSkipOutro: () -> Unit = {},
 ) {
@@ -95,8 +103,10 @@ fun DesktopVideoPlayer(
     var isPlaying by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableStateOf(0L) }
     var duration by remember { mutableStateOf(0L) }
+    var currentSpeed by remember { mutableStateOf(playbackSpeed) }
     var seekValue by remember { mutableStateOf(0) }
     var showSeekIndicator by remember { mutableStateOf(false) }
+    var showSettingsPopup by remember { mutableStateOf(false) }
     var seekIndicatorJob by remember { mutableStateOf<Job?>(null) }
     
     var resolvedUrl by remember { mutableStateOf(url) }
@@ -138,7 +148,7 @@ fun DesktopVideoPlayer(
         val mi = androidx.media3.common.MediaItem.Builder().setUri(resolvedUrl).setMimeType(resolvedMime).build()
         if (resolvedMime == MimeTypes.APPLICATION_M3U8) exoPlayer.setMediaSource(hlsMediaSourceFactory.createMediaSource(mi))
         else exoPlayer.setMediaItem(mi)
-        exoPlayer.setPlaybackSpeed(playbackSpeed)
+        exoPlayer.setPlaybackSpeed(currentSpeed)
         exoPlayer.prepare()
     }
 
@@ -195,14 +205,14 @@ fun DesktopVideoPlayer(
                             if (keyEvent.nativeKeyEvent.repeatCount > 2) {
                                 seekIndicatorJob?.cancel(); showSeekIndicator = false; seekValue = 0
                                 exoPlayer.setPlaybackSpeed(2f)
-                            } else triggerSeek(-5)
+                            } else triggerSeek(-seekBackSeconds.coerceAtLeast(1))
                             true
                         }
                         Key.DirectionRight -> {
                             if (keyEvent.nativeKeyEvent.repeatCount > 2) {
                                 seekIndicatorJob?.cancel(); showSeekIndicator = false; seekValue = 0
                                 exoPlayer.setPlaybackSpeed(2f)
-                            } else triggerSeek(10)
+                            } else triggerSeek(seekForwardSeconds.coerceAtLeast(1))
                             true
                         }
                         Key.DirectionUp, Key.DirectionDown, Key.Enter, Key.DirectionCenter -> { isControlsVisible = true; true }
@@ -212,7 +222,7 @@ fun DesktopVideoPlayer(
                         else -> false
                     }
                 } else if (keyEvent.type == KeyEventType.KeyUp) {
-                    if (keyEvent.key == Key.DirectionLeft || keyEvent.key == Key.DirectionRight) { exoPlayer.setPlaybackSpeed(playbackSpeed); true }
+                    if (keyEvent.key == Key.DirectionLeft || keyEvent.key == Key.DirectionRight) { exoPlayer.setPlaybackSpeed(currentSpeed); true }
                     else false
                 } else false
             }
@@ -262,11 +272,31 @@ fun DesktopVideoPlayer(
             playFocusRequester = playFocusRequester,
             onBack = onBack,
             onPlayPause = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
-            onRewind = { exoPlayer.seekTo((exoPlayer.currentPosition - 10000).coerceAtLeast(0)) },
-            onForward = { exoPlayer.seekTo((exoPlayer.currentPosition + 10000).coerceAtMost(duration)) },
+            onRewind = { exoPlayer.seekTo((exoPlayer.currentPosition - seekBackSeconds.coerceAtLeast(1) * 1000L).coerceAtLeast(0)) },
+            onForward = { exoPlayer.seekTo((exoPlayer.currentPosition + seekForwardSeconds.coerceAtLeast(1) * 1000L).coerceAtMost(duration)) },
             onPrevEpisode = onPrevEpisode, onNextEpisode = onNextEpisode,
-            onSeekLeft = { exoPlayer.seekTo((currentPosition - 5000).coerceAtLeast(0)) },
-            onSeekRight = { exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration)) },
+            onSeekLeft = { exoPlayer.seekTo((currentPosition - seekBackSeconds.coerceAtLeast(1) * 1000L).coerceAtLeast(0)) },
+            onSeekRight = { exoPlayer.seekTo((currentPosition + seekForwardSeconds.coerceAtLeast(1) * 1000L).coerceAtMost(duration)) },
+            onMoreClick = { showSettingsPopup = true },
+        )
+
+        if (showSettingsPopup) PlayerSettingsPopup(
+            autoSkipIntro = autoSkipIntro,
+            autoSkipOutro = autoSkipOutro,
+            autoNext = autoNext,
+            autoPictureInPicture = autoPictureInPicture,
+            isEpisode = item.type == MediaType.EPISODE,
+            currentSpeed = currentSpeed,
+            onToggleAutoSkip = onToggleAutoSkip,
+            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+            onToggleAutoNext = onToggleAutoNext,
+            onToggleAutoPictureInPicture = onToggleAutoPictureInPicture,
+            onSpeedChange = { speed ->
+                currentSpeed = speed
+                exoPlayer.setPlaybackSpeed(speed)
+                onSpeedChange(speed)
+            },
+            onDismiss = { showSettingsPopup = false },
         )
     }
 }

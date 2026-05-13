@@ -4,17 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,18 +57,10 @@ fun MobileServerSelectionScreen(
         }
     }
 
-    Column(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
+    MobileAuthScaffold {
         Text(
             text = "Jellyfin Server",
-            fontSize = 36.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.ExtraBold,
             color = Color.White,
         )
@@ -83,7 +71,7 @@ fun MobileServerSelectionScreen(
             modifier = Modifier.padding(top = 12.dp),
         )
 
-        Spacer(modifier = Modifier.height(64.dp))
+        Spacer(modifier = Modifier.height(36.dp))
 
         OutlinedTextField(
             value = if (state.isScanning) "Scanning..." else manualUrl,
@@ -114,35 +102,25 @@ fun MobileServerSelectionScreen(
             },
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = state.error ?: "",
             color = Color.Red,
             fontSize = 14.sp,
-            modifier = Modifier.height(36.dp).padding(bottom = 8.dp),
+            modifier = Modifier.height(30.dp).padding(bottom = 6.dp),
         )
 
-        Button(
+        MobileAuthPrimaryButton(
+            text = "Connect",
             onClick = { onManualInput(manualUrl) },
             enabled = !state.isScanning && !state.isValidatingServer && manualUrl.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFB300),
-                    contentColor = Color.Black,
-                ),
-            shape = RoundedCornerShape(12.dp),
         ) {
-            if (state.isValidatingServer) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.Black,
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                Text("Connect", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
+            if (state.isValidatingServer) CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color.Black,
+                strokeWidth = 2.dp,
+            ) else Text("Connect", fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(16.dp))

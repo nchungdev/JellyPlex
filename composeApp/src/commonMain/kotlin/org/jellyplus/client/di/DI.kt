@@ -87,6 +87,10 @@ val domainModule = module {
     factoryOf(::SetAutoNextUseCase)
     factoryOf(::GetAutoSkipOutroUseCase)
     factoryOf(::SetAutoSkipOutroUseCase)
+    factoryOf(::GetPlaybackSpeedUseCase)
+    factoryOf(::SetPlaybackSpeedUseCase)
+    factoryOf(::GetAutoPictureInPictureUseCase)
+    factoryOf(::SetAutoPictureInPictureUseCase)
     factoryOf(::GetIntroMarkersUseCase)
     factoryOf(::DiscoverServersUseCase)
     factoryOf(::ValidateSessionUseCase)
@@ -106,6 +110,7 @@ val viewModelModule = module {
     viewModelOf(::SeriesDetailViewModel)
     viewModelOf(::MovieDetailViewModel)
     viewModelOf(::PlayerViewModel)
+    viewModelOf(::PlaybackPreferencesViewModel)
     viewModelOf(::SessionViewModel)
 }
 

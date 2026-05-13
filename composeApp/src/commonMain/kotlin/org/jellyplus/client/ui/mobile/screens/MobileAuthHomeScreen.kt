@@ -4,15 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,17 +23,12 @@ fun MobileAuthHomeScreen(
     onManualLogin: () -> Unit,
     onChangeServer: () -> Unit,
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(24.dp),
-    ) {
+    MobileAuthScaffold {
         Text(
             "JellyPlus",
-            fontSize = 48.sp,
+            fontSize = 34.sp,
             fontWeight = FontWeight.Black,
             color = Color.White,
-            letterSpacing = 2.sp,
         )
         Text(
             baseUrl,
@@ -48,34 +37,21 @@ fun MobileAuthHomeScreen(
             modifier = Modifier.padding(top = 8.dp),
         )
 
-        Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(56.dp))
 
-        Button(
+        MobileAuthPrimaryButton(
+            text = "Login with QuickConnect",
             onClick = onQuickConnect,
-            modifier = Modifier.fillMaxWidth(0.85f).height(64.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFB300)),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Text(
-                "Login with QuickConnect",
-                color = Color.Black,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedButton(
+        MobileAuthSecondaryButton(
+            text = "Manual Login",
             onClick = onManualLogin,
-            modifier = Modifier.fillMaxWidth(0.85f).height(64.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Text("Manual Login", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        }
+        )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         Text(
             "Change Server",

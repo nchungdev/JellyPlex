@@ -2,7 +2,7 @@ package org.jellyplus.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,11 +36,11 @@ class SeriesDetailViewModel(
     private val _state = MutableStateFlow(SeriesDetailState())
     val state: StateFlow<SeriesDetailState> = _state.asStateFlow()
 
-    // In-memory cache for episodes: Map<SeasonId, List<Episode>>
     private val episodesCache = mutableMapOf<String, List<MediaItem>>()
 
     private var loadSeriesJob: Job? = null
-    private var loadEpisodesJob: Job? = null
+    private var debouncedLoadEpisodesJob: Job? = null
+    private val loadEpisodeJobs = mutableMapOf<String, Job>()
 
     fun loadSeriesDetails(seriesId: String, focusSeasonId: String? = null) {
         // Luôn cập nhật baseUrl mới nhất từ session
@@ -54,7 +54,7 @@ class SeriesDetailViewModel(
             if (focusSeasonId != null) {
                 val target = _state.value.seasons.find { it.id == focusSeasonId }
                 if (target != null && target.id != _state.value.selectedSeason?.id) {
-                    selectSeason(target)
+                    selectSeason(target, debounce = false)
                 }
             }
             return
@@ -62,6 +62,14 @@ class SeriesDetailViewModel(
 
         loadSeriesJob?.cancel()
         loadSeriesJob = viewModelScope.launch(dispatchers.io) {
+            val previousSeriesId = _state.value.seriesId
+            if (previousSeriesId != seriesId) {
+                debouncedLoadEpisodesJob?.cancel()
+                loadEpisodeJobs.values.forEach { it.cancel() }
+                loadEpisodeJobs.clear()
+                episodesCache.clear()
+            }
+
             _state.value = _state.value.copy(
                 seriesId = seriesId,
                 isLoadingSeasons = true
@@ -95,43 +103,76 @@ class SeriesDetailViewModel(
         _state.value = _state.value.copy(selectedTabIndex = index)
     }
 
-    fun selectSeason(season: MediaItem) {
+    fun selectSeason(season: MediaItem, debounce: Boolean = true) {
         if (_state.value.selectedSeason?.id == season.id) return
 
         val seriesId = _state.value.seriesId ?: return
-        _state.value = _state.value.copy(selectedSeason = season)
-        loadEpisodes(seriesId, season.id)
+        val cachedEpisodes = episodesCache[season.id]
+        _state.value = _state.value.copy(
+            selectedSeason = season,
+            episodes = cachedEpisodes ?: emptyList(),
+            isLoadingEpisodes = cachedEpisodes == null,
+        )
+        if (cachedEpisodes != null) {
+            debouncedLoadEpisodesJob?.cancel()
+            return
+        }
+
+        debouncedLoadEpisodesJob?.cancel()
+        if (!debounce) {
+            loadEpisodes(seriesId, season.id)
+            return
+        }
+
+        debouncedLoadEpisodesJob = viewModelScope.launch {
+            delay(SEASON_EPISODE_LOAD_DEBOUNCE_MS)
+            if (_state.value.seriesId == seriesId && _state.value.selectedSeason?.id == season.id) {
+                loadEpisodes(seriesId, season.id)
+            }
+        }
     }
 
     private fun loadEpisodes(seriesId: String, seasonId: String) {
-        loadEpisodesJob?.cancel()
-
-        // Check cache first
-        if (episodesCache.containsKey(seasonId)) {
+        episodesCache[seasonId]?.let { episodes ->
             _state.value = _state.value.copy(
-                episodes = episodesCache[seasonId] ?: emptyList(),
-                isLoadingEpisodes = false
+                episodes = if (_state.value.selectedSeason?.id == seasonId) episodes else _state.value.episodes,
+                isLoadingEpisodes = if (_state.value.selectedSeason?.id == seasonId) false else _state.value.isLoadingEpisodes,
             )
             return
         }
 
-        loadEpisodesJob = viewModelScope.launch(dispatchers.io) {
-            _state.value = _state.value.copy(isLoadingEpisodes = true, episodes = emptyList())
+        if (loadEpisodeJobs[seasonId]?.isActive == true) return
+
+        loadEpisodeJobs[seasonId] = viewModelScope.launch(dispatchers.io) {
+            if (_state.value.selectedSeason?.id == seasonId) {
+                _state.value = _state.value.copy(isLoadingEpisodes = true, episodes = emptyList())
+            }
+
             val result = getEpisodesUseCase(seriesId, seasonId)
 
             result.onSuccess { episodes ->
                 episodesCache[seasonId] = episodes
-                _state.value = _state.value.copy(
-                    episodes = episodes,
-                    isLoadingEpisodes = false
-                )
+                loadEpisodeJobs.remove(seasonId)
+                if (_state.value.seriesId == seriesId && _state.value.selectedSeason?.id == seasonId) {
+                    _state.value = _state.value.copy(
+                        episodes = episodes,
+                        isLoadingEpisodes = false
+                    )
+                }
             }.onFailure { e ->
-                _state.value = _state.value.copy(isLoadingEpisodes = false, error = e.message)
+                loadEpisodeJobs.remove(seasonId)
+                if (_state.value.seriesId == seriesId && _state.value.selectedSeason?.id == seasonId) {
+                    _state.value = _state.value.copy(isLoadingEpisodes = false, error = e.message)
+                }
             }
         }
     }
 
     fun updateScrollPosition(position: Int) {
         _state.value = _state.value.copy(scrollPosition = position)
+    }
+
+    private companion object {
+        const val SEASON_EPISODE_LOAD_DEBOUNCE_MS = 250L
     }
 }

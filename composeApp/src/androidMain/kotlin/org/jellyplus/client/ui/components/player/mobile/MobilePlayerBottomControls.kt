@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,38 +57,46 @@ internal fun MobilePlayerBottomControls(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 32.dp, end = 32.dp, bottom = 20.dp),
+            .padding(start = 20.dp, end = 20.dp, bottom = 0.dp),
     ) {
-        // Info row: time | spacer | captions | audio | mark (episodes)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            shape = RoundedCornerShape(22.dp),
+            color = Color(0xFF1F2430).copy(alpha = 0.72f),
         ) {
-            Text(formatPlayerTime(displayPosition), color = Color.White, fontSize = 12.sp)
-            Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-            Text(formatPlayerTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-            Spacer(modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(38.dp)
+                    .padding(start = 14.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(formatPlayerTime(displayPosition), color = Color.White, fontSize = 13.sp)
+                Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+                Text(formatPlayerTime(duration), color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp)
+                Spacer(modifier = Modifier.weight(1f))
 
-            IconButton(onClick = onShowCaptionDialog, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Default.Subtitles,
-                    null,
-                    tint = if (selectedTextTrackIndex >= 0) Color(0xFF24D366) else Color.White,
-                    modifier = Modifier.size(20.dp),
-                )
+                IconButton(onClick = onShowCaptionDialog, modifier = Modifier.size(38.dp)) {
+                    Icon(
+                        Icons.Default.Subtitles,
+                        null,
+                        tint = if (selectedTextTrackIndex >= 0) Color(0xFF24D366) else Color.White,
+                        modifier = Modifier.size(21.dp),
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(10.dp))
+
+                IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(38.dp)) {
+                    Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(21.dp))
+                }
             }
-
-            IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-
         }
 
         // Seekbar row
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp),
+                .height(24.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
             // Background track

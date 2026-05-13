@@ -15,6 +15,7 @@ interface IMediaRemoteDataSource {
     suspend fun getWatchHistory(userId: String): List<MediaItem>
     suspend fun getHomeRecentlyAdded(userId: String): List<MediaItem>
     suspend fun getHomeResume(userId: String): List<MediaItem>
+    suspend fun getHomeFeatured(userId: String): List<MediaItem>
     suspend fun searchItems(query: String): List<MediaItem>
     suspend fun getItemDetails(itemId: String, userId: String): MediaItem
     suspend fun getPeople(itemId: String): List<Person>
@@ -48,6 +49,7 @@ class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSour
     override suspend fun getWatchHistory(userId: String): List<MediaItem> = api.getWatchHistory(userId)
     override suspend fun getHomeRecentlyAdded(userId: String): List<MediaItem> = api.getRecentlyAddedItems(userId)
     override suspend fun getHomeResume(userId: String): List<MediaItem> = api.getResumeItems(userId)
+    override suspend fun getHomeFeatured(userId: String): List<MediaItem> = api.getFeaturedItems(userId)
     override suspend fun searchItems(query: String): List<MediaItem> = api.searchItems(query)
     override suspend fun getItemDetails(itemId: String, userId: String): MediaItem = api.getItemDetails(itemId, userId)
     override suspend fun getPeople(itemId: String): List<Person> = api.getPeople(itemId)

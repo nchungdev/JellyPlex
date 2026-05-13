@@ -6,6 +6,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import org.jellyplus.client.data.local.ContextProvider
+import org.jellyplus.client.media.PlayerPipController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,5 +21,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             App()
         }
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        PlayerPipController.enterIfEnabled(this)
     }
 }

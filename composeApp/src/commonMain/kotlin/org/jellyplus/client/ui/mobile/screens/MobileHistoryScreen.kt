@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,7 +49,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun MobileHistoryScreen(
     paddingValues: PaddingValues,
     onMediaClick: (MediaItem) -> Unit,
-    onSearchClick: () -> Unit = {},
 ) {
     val viewModel: HistoryViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -60,21 +56,12 @@ fun MobileHistoryScreen(
     LaunchedEffect(Unit) { viewModel.loadHistory() }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = paddingValues.calculateTopPadding(),
+            bottom = paddingValues.calculateBottomPadding(),
+        )
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 16.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("History", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                IconButton(onClick = onSearchClick) {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Color.White)
-                }
-            }
-        }
         when {
             state.isLoading && state.watchedItems.isEmpty() && state.resumeItems.isEmpty() -> {
                 item {

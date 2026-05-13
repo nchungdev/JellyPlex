@@ -1,17 +1,21 @@
 package org.jellyplus.client
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,9 +79,61 @@ fun LoadingScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("JellyPlus", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Spacer(Modifier.height(32.dp))
+        JellyPlusLoadingLogo(modifier = Modifier.size(112.dp))
+        Spacer(Modifier.height(18.dp))
+        Text("JellyPlus", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Spacer(Modifier.height(28.dp))
         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Composable
+private fun JellyPlusLoadingLogo(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        drawRoundRect(
+            color = Color(0xFF07101F),
+            cornerRadius = CornerRadius(w * 0.22f, h * 0.22f),
+        )
+        drawOval(
+            color = Color(0xFF00D4A8).copy(alpha = 0.08f),
+            topLeft = androidx.compose.ui.geometry.Offset(w * 0.18f, h * 0.2f),
+            size = androidx.compose.ui.geometry.Size(w * 0.64f, h * 0.54f),
+        )
+
+        val bell = Path().apply {
+            moveTo(w * 0.16f, h * 0.55f)
+            quadraticTo(w * 0.15f, h * 0.10f, w * 0.50f, h * 0.08f)
+            quadraticTo(w * 0.85f, h * 0.10f, w * 0.84f, h * 0.55f)
+            quadraticTo(w * 0.84f, h * 0.80f, w * 0.50f, h * 0.81f)
+            quadraticTo(w * 0.16f, h * 0.80f, w * 0.16f, h * 0.55f)
+            close()
+        }
+        drawPath(bell, Color(0xFF00D4A8).copy(alpha = 0.74f))
+
+        val shimmer = Path().apply {
+            moveTo(w * 0.23f, h * 0.50f)
+            quadraticTo(w * 0.24f, h * 0.22f, w * 0.50f, h * 0.20f)
+            quadraticTo(w * 0.76f, h * 0.22f, w * 0.77f, h * 0.50f)
+            quadraticTo(w * 0.72f, h * 0.58f, w * 0.50f, h * 0.59f)
+            quadraticTo(w * 0.28f, h * 0.58f, w * 0.23f, h * 0.50f)
+            close()
+        }
+        drawPath(shimmer, Color.White.copy(alpha = 0.14f))
+
+        val play = Path().apply {
+            moveTo(w * 0.42f, h * 0.39f)
+            lineTo(w * 0.42f, h * 0.61f)
+            lineTo(w * 0.63f, h * 0.50f)
+            close()
+        }
+        drawPath(play, Color.White.copy(alpha = 0.72f))
+
+        val dotColor = Color(0xFFE0FFF8).copy(alpha = 0.26f)
+        drawCircle(dotColor, radius = w * 0.012f, center = androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.30f))
+        drawCircle(dotColor, radius = w * 0.010f, center = androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.17f))
+        drawCircle(dotColor, radius = w * 0.012f, center = androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.30f))
     }
 }
 

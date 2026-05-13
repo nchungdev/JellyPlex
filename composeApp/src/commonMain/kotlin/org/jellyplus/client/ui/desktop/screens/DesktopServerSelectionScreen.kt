@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.discovery.DiscoveredServer
+import org.jellyplus.client.ui.mobile.screens.MobileAuthLogo
 import org.jellyplus.client.ui.viewmodels.DiscoveryState
 
 @Composable
@@ -64,19 +66,30 @@ fun DesktopServerSelectionScreen(
     var showManualDialog by remember { mutableStateOf(false) }
     var manualUrl by remember { mutableStateOf("http://") }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113)).padding(horizontal = 48.dp, vertical = 36.dp)) {
+        MobileAuthLogo(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .size(104.dp),
+        )
+
         Column(
-            modifier = Modifier.fillMaxSize().padding(vertical = 48.dp),
-            horizontalAlignment = Alignment.Start
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .widthIn(max = 860.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Header
             Row(
-                modifier = Modifier.padding(horizontal = 64.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Spacer(Modifier.size(48.dp))
+                Spacer(Modifier.weight(1f))
                 Text(
                     "Select Server",
-                    fontSize = 32.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -94,7 +107,7 @@ fun DesktopServerSelectionScreen(
                 "Choose a server from your network or add one manually",
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 8.dp, start = 64.dp, end = 64.dp)
+                modifier = Modifier.padding(top = 8.dp)
             )
 
             if (state.error != null) {
@@ -102,19 +115,19 @@ fun DesktopServerSelectionScreen(
                     text = state.error,
                     color = Color.Red,
                     fontSize = 14.sp,
-                    modifier = Modifier.padding(top = 16.dp, start = 64.dp, end = 64.dp)
+                    modifier = Modifier.padding(top = 14.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Server Grid
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 220.dp),
-                horizontalArrangement = Arrangement.spacedBy(24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-                contentPadding = PaddingValues(horizontal = 64.dp, vertical = 16.dp),
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().height(320.dp)
             ) {
                 // Try Demo Card
                 item {

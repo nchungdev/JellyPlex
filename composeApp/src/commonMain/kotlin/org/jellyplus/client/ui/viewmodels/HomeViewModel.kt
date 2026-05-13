@@ -12,6 +12,7 @@ import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.usecases.*
 
 data class HomeState(
+    val featuredItems: List<MediaItem> = emptyList(),
     val resumeItems: List<MediaItem> = emptyList(),
     val recentlyAddedItems: List<MediaItem> = emptyList(),
     val baseUrl: String = "",
@@ -37,6 +38,7 @@ class HomeViewModel(
             getHomeContentUseCase().collect { content ->
                 if (content != null) {
                     _state.value = _state.value.copy(
+                        featuredItems = content.featuredItems,
                         resumeItems = content.resumeItems,
                         recentlyAddedItems = content.recentlyAddedItems,
                         baseUrl = getBaseUrlUseCase()

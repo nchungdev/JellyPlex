@@ -21,15 +21,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -72,6 +75,7 @@ internal fun DesktopPlayerControls(
     onNextEpisode: () -> Unit,
     onSeekLeft: () -> Unit,
     onSeekRight: () -> Unit,
+    onMoreClick: () -> Unit,
 ) {
     AnimatedVisibility(visible = isVisible, enter = fadeIn(), exit = fadeOut()) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
@@ -95,10 +99,23 @@ internal fun DesktopPlayerControls(
                         "$s - $sn$sep$ep - ${item.title}"
                     } else item.title
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(titleText, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(item.genres?.joinToString(" • ") ?: "", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Text(
+                        titleText,
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
+                Spacer(modifier = Modifier.width(16.dp))
+                DesktopPlayerIconButton(Icons.Default.MoreVert, size = 48.dp, iconSize = 26.dp, onClick = onMoreClick)
             }
 
             // Center controls
@@ -118,17 +135,27 @@ internal fun DesktopPlayerControls(
 
             // Bottom controls
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 48.dp, vertical = 64.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 48.dp, vertical = 32.dp),
             ) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(formatDesktopTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                    Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
-                    Text(formatDesktopTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
-                    Spacer(modifier = Modifier.weight(1f))
-                    DesktopPlayerIconButton(Icons.Default.Subtitles, size = 40.dp, iconSize = 22.dp) {}
-                    DesktopPlayerIconButton(Icons.Default.Settings, size = 40.dp, iconSize = 22.dp) {}
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color(0xFF1F2430).copy(alpha = 0.72f),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(44.dp).padding(start = 16.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(formatDesktopTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                        Text(formatDesktopTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
+                        Spacer(modifier = Modifier.weight(1f))
+                        DesktopPlayerIconButton(Icons.Default.Subtitles, size = 36.dp, iconSize = 20.dp) {}
+                        Spacer(modifier = Modifier.width(14.dp))
+                        DesktopPlayerIconButton(Icons.Default.Audiotrack, size = 36.dp, iconSize = 20.dp) {}
+                        Spacer(modifier = Modifier.width(14.dp))
+                        DesktopPlayerIconButton(Icons.Default.Settings, size = 36.dp, iconSize = 20.dp, onClick = onMoreClick)
+                    }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
                 DesktopSeekbar(
                     currentPosition = currentPosition,
                     duration = duration,
@@ -169,4 +196,3 @@ private fun DesktopSeekbar(
         }
     }
 }
-

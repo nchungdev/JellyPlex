@@ -55,26 +55,46 @@ fun MainScreen(
     val mainState by mainViewModel.state.collectAsState()
     val isPlayerScreen = currentScreen is Screen.Player
 
-    OrientationEffect(if (isPlayerScreen) ScreenOrientation.Landscape else ScreenOrientation.Portrait)
+    OrientationEffect(
+        if (uiType == UiType.Desktop || isPlayerScreen) {
+            ScreenOrientation.Landscape
+        } else {
+            ScreenOrientation.Portrait
+        }
+    )
 
-    // Episodes clicked outside of series detail play immediately; the full playlist
-    // is loaded in the background by PlayerViewModel so next/prev still works.
-    fun navigateTo(item: MediaItem) {
+    fun seriesStubForEpisode(item: MediaItem): MediaItem? {
+        return item.seriesId?.let { seriesId ->
+            MediaItem(
+                id = seriesId,
+                title = item.seriesName ?: "",
+                type = MediaType.SERIES,
+                backdropImageTags = item.parentBackdropImageTags,
+                imageTags = null,
+            )
+        }
+    }
+
+    fun playItem(item: MediaItem) {
         when {
             item.type == MediaType.EPISODE && item.seriesId != null -> {
-                val seriesStub = MediaItem(
-                    id = item.seriesId,
-                    title = item.seriesName ?: "",
-                    type = MediaType.SERIES,
-                    backdropImageTags = item.parentBackdropImageTags,
-                    imageTags = null,
-                )
-                currentScreen = Screen.Player(item, listOf(item), parentItem = seriesStub)
+                currentScreen = Screen.Player(item, listOf(item), parentItem = seriesStubForEpisode(item))
             }
             item.type == MediaType.MOVIE -> {
                 currentScreen = Screen.Player(item, listOf(item))
             }
             else -> currentScreen = Screen.Details(item)
+        }
+    }
+
+    fun navigateTo(item: MediaItem) {
+        currentScreen = when {
+            item.type == MediaType.EPISODE && item.seriesId != null -> {
+                Screen.Player(item, listOf(item), parentItem = seriesStubForEpisode(item))
+            }
+            item.type == MediaType.EPISODE -> Screen.Player(item, listOf(item))
+            item.type == MediaType.MOVIE || item.type == MediaType.SERIES -> Screen.Details(item)
+            else -> Screen.Details(item)
         }
     }
 
@@ -107,6 +127,7 @@ fun MainScreen(
                 DesktopMainScreen(
                     viewModel = mainViewModel,
                     onMediaClick = { navigateTo(it) },
+                    onContinueWatchingClick = { playItem(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
                     }
@@ -116,6 +137,7 @@ fun MainScreen(
                     viewModel = mainViewModel,
                     sessionViewModel = sessionViewModel,
                     onMediaClick = { navigateTo(it) },
+                    onContinueWatchingClick = { playItem(it) },
                     onViewAll = { type: MediaType, title: String ->
                         currentScreen = Screen.Listing(type, title)
                     }
@@ -211,12 +233,17 @@ fun MainScreen(
                     autoSkipIntro = playerState.autoSkipIntro,
                     autoSkipOutro = playerState.autoSkipOutro,
                     autoNext = playerState.autoNext,
+                    autoPictureInPicture = playerState.autoPictureInPicture,
+                    playbackSpeed = playerState.playbackSpeed,
                     onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
                     onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(screen.item.id) },
                     onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
                     onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
                     onToggleAutoNext = { playerViewModel.toggleAutoNext() },
+                    onToggleAutoPictureInPicture = { playerViewModel.toggleAutoPictureInPicture() },
+                    onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
                     onSeamlessNextEpisode = { goToNext() },
+                    originalAudioLanguage = playerState.originalAudioLanguage,
                 )
             }
         }

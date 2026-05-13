@@ -47,6 +47,7 @@ fun PlayerSettingsPopup(
     autoSkipRecap: Boolean = false,
     autoSkipPreview: Boolean = false,
     autoNext: Boolean = false,
+    autoPictureInPicture: Boolean = false,
     seamlessTransition: Boolean = false,
     isEpisode: Boolean = false,
     currentSpeed: Float,
@@ -55,6 +56,7 @@ fun PlayerSettingsPopup(
     onToggleAutoSkipRecap: () -> Unit = {},
     onToggleAutoSkipPreview: () -> Unit = {},
     onToggleAutoNext: () -> Unit = {},
+    onToggleAutoPictureInPicture: () -> Unit = {},
     onToggleSeamlessTransition: () -> Unit = {},
     onSpeedChange: (Float) -> Unit,
     onDismiss: () -> Unit,
@@ -108,6 +110,14 @@ fun PlayerSettingsPopup(
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                     }
+                    SectionHeader("Playback")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        PlayerSettingsChipToggle("Auto PiP", autoPictureInPicture, onToggleAutoPictureInPicture)
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
                     SectionHeader("Speedup")
                     val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
                     Row(

@@ -38,17 +38,23 @@ actual fun VideoPlayerImpl(
     showSkipEnding: Boolean,
     showNextPrev: Boolean,
     playbackSpeed: Float,
+    seekBackSeconds: Int,
+    seekForwardSeconds: Int,
+    showGestureHints: Boolean,
     uiType: org.jellyplus.client.UiType,
     nextEpisodeConfig: PlaybackConfig?,
     autoSkipIntro: Boolean,
     autoSkipOutro: Boolean,
     autoNext: Boolean,
+    autoPictureInPicture: Boolean,
     onPreloadNextMeta: () -> Unit,
     onMarkCurrentAsPlayed: () -> Unit,
     onToggleAutoSkip: () -> Unit,
     onToggleAutoSkipOutro: () -> Unit,
     onToggleAutoNext: () -> Unit,
+    onToggleAutoPictureInPicture: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
+    originalAudioLanguage: String?,
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }

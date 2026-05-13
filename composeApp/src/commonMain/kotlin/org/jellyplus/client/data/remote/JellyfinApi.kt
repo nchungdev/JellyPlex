@@ -350,6 +350,19 @@ class JellyfinApi(
         }.body()
     }
 
+    suspend fun getFeaturedItems(userId: String): List<MediaItem> {
+        val response: ItemResponse = client.get {
+            apiUrl("Users", userId, "Items")
+            parameter("Recursive", true)
+            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
+            parameter("Filters", "IsUnplayed")
+            parameter("SortBy", "Random")
+            parameter("Limit", 12)
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear")
+        }.body()
+        return response.items
+    }
+
     suspend fun getMovies(): List<MediaItem> {
         val response: ItemResponse = client.get {
             apiUrl("Items")

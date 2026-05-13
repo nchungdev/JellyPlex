@@ -31,6 +31,12 @@ import org.jellyplus.client.domain.models.MediaItem
 
 import androidx.compose.material3.MaterialTheme
 
+private enum class PosterImageState {
+    Loading,
+    Loaded,
+    Failed,
+}
+
 @Composable
 fun MediaPoster(
     item: MediaItem,
@@ -42,6 +48,10 @@ fun MediaPoster(
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
     val interactionSource = remember { MutableInteractionSource() }
+    val imageUrl = item.getImageUrl(baseUrl)
+    var imageState by remember(imageUrl) {
+        mutableStateOf(if (imageUrl.isNullOrBlank()) PosterImageState.Failed else PosterImageState.Loading)
+    }
 
     val shape = RoundedCornerShape(12.dp)
 
@@ -63,13 +73,23 @@ fun MediaPoster(
         interactionSource = interactionSource
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.05f))) {
-            MediaPosterPlaceholder(Modifier.fillMaxSize())
-            AsyncImage(
-                model = item.getImageUrl(baseUrl),
-                contentDescription = item.title,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+            when (imageState) {
+                PosterImageState.Loading -> MediaPosterPlaceholder(Modifier.fillMaxSize())
+                PosterImageState.Failed -> MediaPosterFallback(Modifier.fillMaxSize())
+                PosterImageState.Loaded -> Unit
+            }
+
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    onLoading = { imageState = PosterImageState.Loading },
+                    onSuccess = { imageState = PosterImageState.Loaded },
+                    onError = { imageState = PosterImageState.Failed },
+                )
+            }
 
             if (isFocused) {
                 Box(

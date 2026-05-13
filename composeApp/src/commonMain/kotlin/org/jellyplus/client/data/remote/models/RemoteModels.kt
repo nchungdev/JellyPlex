@@ -69,6 +69,14 @@ data class PlaybackInfoResponse(
 )
 
 @Serializable
+data class MediaStreamDto(
+    @SerialName("Type") val type: String = "",          // "Audio" | "Video" | "Subtitle"
+    @SerialName("Language") val language: String? = null,
+    @SerialName("IsDefault") val isDefault: Boolean = false,
+    @SerialName("Index") val index: Int = 0,
+)
+
+@Serializable
 data class MediaSource(
     @SerialName("Id") val id: String,
     @SerialName("SupportsDirectPlay") val supportsDirectPlay: Boolean = false,
@@ -79,6 +87,7 @@ data class MediaSource(
     @SerialName("Path") val path: String? = null,
     @SerialName("IsRemote") val isRemote: Boolean = false,
     @SerialName("TranscodingUrl") val transcodingUrl: String? = null,
+    @SerialName("MediaStreams") val mediaStreams: List<MediaStreamDto> = emptyList(),
 )
 
 @Serializable

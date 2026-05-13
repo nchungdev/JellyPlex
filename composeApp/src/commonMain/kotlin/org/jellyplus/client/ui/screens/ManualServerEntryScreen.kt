@@ -9,8 +9,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jellyplus.client.LocalUiType
+import org.jellyplus.client.UiType
 import org.jellyplus.client.ui.components.FocusableButton
 import org.jellyplus.client.ui.components.FocusableOutlinedButton
+import org.jellyplus.client.ui.mobile.screens.MobileAuthPrimaryButton
+import org.jellyplus.client.ui.mobile.screens.MobileAuthScaffold
+import org.jellyplus.client.ui.mobile.screens.MobileAuthSecondaryButton
 
 import org.jellyplus.client.ui.viewmodels.DiscoveryState
 
@@ -21,6 +26,64 @@ fun ManualServerEntryScreen(
     onBack: () -> Unit
 ) {
     var url by remember { mutableStateOf("http://") }
+    val uiType = LocalUiType.current
+
+    if (uiType != UiType.Desktop) {
+        MobileAuthScaffold {
+            Text("Enter Server URL", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Example: http://192.168.1.10:8096",
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.5f),
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            TextField(
+                value = url,
+                onValueChange = { url = it },
+                enabled = !state.isValidatingServer,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("http://") },
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+                    unfocusedIndicatorColor = Color.Gray,
+                ),
+            )
+
+            if (state.error != null) {
+                Spacer(Modifier.height(16.dp))
+                Text(text = state.error, color = Color.Red, fontSize = 14.sp)
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            MobileAuthPrimaryButton(
+                text = "Connect",
+                onClick = { onConnect(url) },
+                enabled = !state.isValidatingServer && url.isNotEmpty(),
+            ) {
+                if (state.isValidatingServer) {
+                    CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(22.dp))
+                } else {
+                    Text("Connect", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            MobileAuthSecondaryButton(
+                text = "Back",
+                onClick = onBack,
+                enabled = !state.isValidatingServer,
+            )
+        }
+        return
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
