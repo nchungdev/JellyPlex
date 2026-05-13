@@ -55,6 +55,9 @@ import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
 import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
 import kotlin.math.roundToInt
 
+private var lastSkipToastTimeMs = 0L
+private const val SKIP_TOAST_INTERVAL_MS = 2 * 60 * 60 * 1000L // 2 hours
+
 private fun PlayerView.applyTextureViewSurface() {
     try {
         val method = javaClass.getMethod("setSurfaceType", Int::class.javaPrimitiveType)
@@ -148,13 +151,9 @@ fun MobileVideoPlayer(
     var isUserSeeking by remember { mutableStateOf(false) }
     var playbackError by remember { mutableStateOf<String?>(null) }
 
-    // Auto-skip toast — show on ep 1 and every 5th episode
+    // Auto-skip toast — show at most once every 2 hours across the app session
     var showSkipToast by remember { mutableStateOf(false) }
     var skipToastLabel by remember { mutableStateOf("") }
-    val shouldShowSkipToast = run {
-        val ep = item.index ?: 0
-        ep == 1 || ep % 5 == 0
-    }
     var showBufferingIndicator by remember { mutableStateOf(false) }
 
     val trackSelector = remember { DefaultTrackSelector(context) }
@@ -341,7 +340,9 @@ fun MobileVideoPlayer(
             videoPreloaded = true
         },
         onAutoSkipped = { type ->
-            if (shouldShowSkipToast) {
+            val now = System.currentTimeMillis()
+            if (now - lastSkipToastTimeMs >= SKIP_TOAST_INTERVAL_MS) {
+                lastSkipToastTimeMs = now
                 skipToastLabel = when (type) {
                     "Credits" -> "Auto-skipped Outro / Credits"
                     else -> "Auto-skipped Intro"
