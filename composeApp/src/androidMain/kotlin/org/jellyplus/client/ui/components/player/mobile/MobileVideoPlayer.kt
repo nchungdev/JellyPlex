@@ -370,7 +370,9 @@ fun MobileVideoPlayer(
     )
 
     DisposableEffect(Unit) {
+        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
+            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             val sessionId = playSessionId
             if (sessionId != null) onPlaybackStopped(item.id, sessionId, currentPlayer.currentPosition * 10_000L)
         }
