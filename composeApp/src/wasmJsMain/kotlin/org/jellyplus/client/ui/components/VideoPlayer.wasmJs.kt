@@ -42,19 +42,13 @@ actual fun VideoPlayerImpl(
     nextEpisodeConfig: PlaybackConfig?,
     autoSkipIntro: Boolean,
     autoSkipOutro: Boolean,
-    autoSkipPreview: Boolean,
     autoNext: Boolean,
-    customMarkers: List<Pair<Long, Long>>,
     onPreloadNextMeta: () -> Unit,
     onMarkCurrentAsPlayed: () -> Unit,
-    onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
     onToggleAutoSkipOutro: () -> Unit,
-    onToggleAutoSkipPreview: () -> Unit,
     onToggleAutoNext: () -> Unit,
     onSeamlessNextEpisode: () -> Unit,
-    autoNext: Boolean,
-    onToggleAutoNext: () -> Unit,
 ) {
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }

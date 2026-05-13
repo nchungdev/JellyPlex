@@ -63,7 +63,6 @@ internal fun DesktopPlayerControls(
     currentPosition: Long,
     duration: Long,
     showNextPrev: Boolean,
-    markerState: DesktopMarkerState,
     playFocusRequester: FocusRequester,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
@@ -73,7 +72,6 @@ internal fun DesktopPlayerControls(
     onNextEpisode: () -> Unit,
     onSeekLeft: () -> Unit,
     onSeekRight: () -> Unit,
-    onMarkToggle: () -> Unit,
 ) {
     AnimatedVisibility(visible = isVisible, enter = fadeIn(), exit = fadeOut()) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))) {
@@ -128,12 +126,6 @@ internal fun DesktopPlayerControls(
                     Text(formatDesktopTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
                     Spacer(modifier = Modifier.weight(1f))
                     DesktopPlayerIconButton(Icons.Default.Subtitles, size = 40.dp, iconSize = 22.dp) {}
-                    if (item.type == MediaType.EPISODE) {
-                        DesktopPlayerIconButton(
-                            icon = Icons.Default.BookmarkAdd, size = 40.dp, iconSize = 22.dp,
-                            tint = if (markerState == DesktopMarkerState.MARKING) Color.Red else Color.White,
-                        ) { onMarkToggle() }
-                    }
                     DesktopPlayerIconButton(Icons.Default.Settings, size = 40.dp, iconSize = 22.dp) {}
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -178,4 +170,3 @@ private fun DesktopSeekbar(
     }
 }
 
-internal enum class DesktopMarkerState { IDLE, MARKING }

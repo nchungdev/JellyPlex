@@ -79,18 +79,14 @@ fun DesktopVideoPlayer(
     onPrevEpisode: () -> Unit = {},
     nextEpisodeConfig: PlaybackConfig? = null,
     autoSkipIntro: Boolean = false,
-    customMarkers: List<Pair<Long, Long>> = emptyList(),
     onPreloadNextMeta: () -> Unit = {},
     onMarkCurrentAsPlayed: () -> Unit = {},
-    onSaveCustomMarker: (Long, Long) -> Unit = { _, _ -> },
     onToggleAutoSkip: () -> Unit = {},
     onSeamlessNextEpisode: () -> Unit = {},
     autoNext: Boolean = false,
     onToggleAutoNext: () -> Unit = {},
     autoSkipOutro: Boolean = false,
     onToggleAutoSkipOutro: () -> Unit = {},
-    autoSkipPreview: Boolean = false,
-    onToggleAutoSkipPreview: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val playFocusRequester = remember { FocusRequester() }
@@ -102,8 +98,7 @@ fun DesktopVideoPlayer(
     var seekValue by remember { mutableStateOf(0) }
     var showSeekIndicator by remember { mutableStateOf(false) }
     var seekIndicatorJob by remember { mutableStateOf<Job?>(null) }
-    var markerState by remember { mutableStateOf(DesktopMarkerState.IDLE) }
-    var markerStartMs by remember { mutableStateOf(0L) }
+    
     var resolvedUrl by remember { mutableStateOf(url) }
     val scope = rememberCoroutineScope()
 
@@ -153,8 +148,7 @@ fun DesktopVideoPlayer(
         duration = 0L
         seekValue = 0
         showSeekIndicator = false
-        markerState = DesktopMarkerState.IDLE
-        markerStartMs = 0L
+        
         isControlsVisible = true
     }
     LaunchedEffect(isControlsVisible) {
@@ -264,7 +258,7 @@ fun DesktopVideoPlayer(
             item = item, parentItem = parentItem,
             isVisible = isControlsVisible, isPlaying = isPlaying,
             currentPosition = currentPosition, duration = duration,
-            showNextPrev = showNextPrev, markerState = markerState,
+            showNextPrev = showNextPrev,
             playFocusRequester = playFocusRequester,
             onBack = onBack,
             onPlayPause = { if (isPlaying) exoPlayer.pause() else exoPlayer.play() },
@@ -273,12 +267,6 @@ fun DesktopVideoPlayer(
             onPrevEpisode = onPrevEpisode, onNextEpisode = onNextEpisode,
             onSeekLeft = { exoPlayer.seekTo((currentPosition - 5000).coerceAtLeast(0)) },
             onSeekRight = { exoPlayer.seekTo((currentPosition + 10000).coerceAtMost(duration)) },
-            onMarkToggle = {
-                when (markerState) {
-                    DesktopMarkerState.IDLE -> { markerStartMs = currentPosition; markerState = DesktopMarkerState.MARKING }
-                    DesktopMarkerState.MARKING -> { onSaveCustomMarker(markerStartMs, currentPosition); markerState = DesktopMarkerState.IDLE }
-                }
-            },
         )
     }
 }

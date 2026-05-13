@@ -143,8 +143,10 @@ fun MobileVideoPlayer(
 
     // Track selection
     var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var availableTextTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
     var selectedTextTrackIndex by remember { mutableStateOf(-1) }
     var availableAudioTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var availableAudioTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
     var selectedAudioTrackIndex by remember { mutableStateOf(0) }
 
     var autoNextCountdown by remember { mutableStateOf(0) }
@@ -220,21 +222,26 @@ fun MobileVideoPlayer(
                 }
                 override fun onTracksChanged(tracks: Tracks) {
                     if (isPrimaryActive) {
-                        val textTracks = mutableListOf<Pair<Int, String>>(); var tIdx = 0
-                        val audioTracks = mutableListOf<Pair<Int, String>>(); var aIdx = 0
+                        val textTracks = mutableListOf<Pair<Int, String>>(); val textLanguages = mutableListOf<String?>(); var tIdx = 0
+                        val audioTracks = mutableListOf<Pair<Int, String>>(); val audioLanguages = mutableListOf<String?>(); var aIdx = 0
                         for (group in tracks.groups) {
                             when (group.type) {
                                 C.TRACK_TYPE_TEXT -> for (i in 0 until group.length) {
                                     val f = group.getTrackFormat(i)
                                     textTracks += tIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Sub $tIdx")
+                                    textLanguages += f.language
                                 }
                                 C.TRACK_TYPE_AUDIO -> for (i in 0 until group.length) {
                                     val f = group.getTrackFormat(i)
                                     audioTracks += aIdx++ to (f.label?.takeIf { it.isNotBlank() } ?: f.language?.takeIf { it.isNotBlank() } ?: "Audio $aIdx")
+                                    audioLanguages += f.language
                                 }
                             }
                         }
-                        availableTextTracks = textTracks; availableAudioTracks = audioTracks
+                        availableTextTracks = textTracks
+                        availableTextTrackLanguages = textLanguages
+                        availableAudioTracks = audioTracks
+                        availableAudioTrackLanguages = audioLanguages
                     }
                 }
             })
@@ -576,12 +583,22 @@ fun MobileVideoPlayer(
         availableTextTracks = availableTextTracks, selectedTextTrackIndex = selectedTextTrackIndex,
         onSelectOff = {
             selectedTextTrackIndex = -1
-            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build())
+            trackSelector.setParameters(
+                trackSelector.buildUponParameters()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                    .setPreferredTextLanguage(null)
+                    .build()
+            )
             showCaptionDialog = false
         },
         onSelectTrack = { idx ->
             selectedTextTrackIndex = idx
-            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).build())
+            trackSelector.setParameters(
+                trackSelector.buildUponParameters()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    .setPreferredTextLanguage(availableTextTrackLanguages.getOrNull(idx))
+                    .build()
+            )
             showCaptionDialog = false
         },
         onDismiss = { showCaptionDialog = false },
@@ -591,7 +608,12 @@ fun MobileVideoPlayer(
         availableAudioTracks = availableAudioTracks, selectedAudioTrackIndex = selectedAudioTrackIndex,
         onSelectTrack = { idx ->
             selectedAudioTrackIndex = idx
-            trackSelector.setParameters(trackSelector.buildUponParameters().setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build())
+            trackSelector.setParameters(
+                trackSelector.buildUponParameters()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                    .setPreferredAudioLanguage(availableAudioTrackLanguages.getOrNull(idx))
+                    .build()
+            )
             showAudioDialog = false
         },
         onDismiss = { showAudioDialog = false },

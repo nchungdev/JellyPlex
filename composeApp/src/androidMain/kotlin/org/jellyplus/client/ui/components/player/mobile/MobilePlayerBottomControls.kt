@@ -36,23 +36,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.models.MediaType
 
-internal enum class MarkerState { IDLE, MARKING }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MobilePlayerBottomControls(
     item: org.jellyplus.client.domain.models.MediaItem,
     currentPosition: Long,
     duration: Long,
-    markerState: MarkerState,
-    markerStartMs: Long,
     selectedTextTrackIndex: Int,
     onSeek: (Long) -> Unit,
     onSeekStarted: () -> Unit,
     onSeekFinished: (Long) -> Unit,
     onShowCaptionDialog: () -> Unit,
     onShowAudioDialog: () -> Unit,
-    onMarkToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var draggingValue by remember { mutableStateOf<Float?>(null) }
@@ -86,16 +81,6 @@ internal fun MobilePlayerBottomControls(
                 Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
 
-            if (item.type == MediaType.EPISODE) {
-                IconButton(onClick = onMarkToggle, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        Icons.Default.BookmarkAdd,
-                        contentDescription = "Mark preview",
-                        tint = if (markerState == MarkerState.MARKING) Color.Red else Color.White,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
         }
 
         // Seekbar row
@@ -122,26 +107,6 @@ internal fun MobilePlayerBottomControls(
                 val width = size.width
                 val height = size.height
 
-                if (markerState == MarkerState.MARKING && duration > 0) {
-                    val startX = (markerStartMs.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
-                    val currentX = (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) * width
-                    val left = minOf(startX, currentX)
-                    val right = maxOf(startX, currentX)
-
-                    // Draw the red highlight for the selection range
-                    drawRect(
-                        color = Color.Red.copy(alpha = 0.6f),
-                        topLeft = Offset(left, 0f),
-                        size = Size(right - left, height)
-                    )
-
-                    // Draw the vertical indicator at the start position
-                    drawRect(
-                        color = Color.Red,
-                        topLeft = Offset(startX - 1.dp.toPx(), -2.dp.toPx()),
-                        size = Size(2.dp.toPx(), height + 4.dp.toPx())
-                    )
-                }
             }
 
             val progress = if (duration > 0) (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f

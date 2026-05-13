@@ -60,17 +60,21 @@ fun MainScreen(
     // Episodes clicked outside of series detail play immediately; the full playlist
     // is loaded in the background by PlayerViewModel so next/prev still works.
     fun navigateTo(item: MediaItem) {
-        if (item.type == MediaType.EPISODE && item.seriesId != null) {
-            val seriesStub = MediaItem(
-                id = item.seriesId,
-                title = item.seriesName ?: "",
-                type = MediaType.SERIES,
-                backdropImageTags = item.parentBackdropImageTags,
-                imageTags = null,
-            )
-            currentScreen = Screen.Player(item, listOf(item), parentItem = seriesStub)
-        } else {
-            currentScreen = Screen.Details(item)
+        when {
+            item.type == MediaType.EPISODE && item.seriesId != null -> {
+                val seriesStub = MediaItem(
+                    id = item.seriesId,
+                    title = item.seriesName ?: "",
+                    type = MediaType.SERIES,
+                    backdropImageTags = item.parentBackdropImageTags,
+                    imageTags = null,
+                )
+                currentScreen = Screen.Player(item, listOf(item), parentItem = seriesStub)
+            }
+            item.type == MediaType.MOVIE -> {
+                currentScreen = Screen.Player(item, listOf(item))
+            }
+            else -> currentScreen = Screen.Details(item)
         }
     }
 
@@ -88,7 +92,7 @@ fun MainScreen(
         if (parent.type == MediaType.SERIES && ps.item.type == MediaType.EPISODE) {
             currentScreen = Screen.Details(parent, focusSeasonId = ps.item.seasonId)
         } else {
-            navigateTo(parent)
+            currentScreen = Screen.Details(parent)
         }
     }
 
