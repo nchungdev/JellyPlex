@@ -1,10 +1,13 @@
 package org.jellyplus.client.data.datasource.remote
 
 import org.jellyplus.client.data.remote.JellyfinApi
+import org.jellyplus.client.data.remote.models.ChapterInfo
+import org.jellyplus.client.data.remote.models.EpisodeChapterResponse
+import org.jellyplus.client.data.remote.models.IntroSkipperTimestamps
+import org.jellyplus.client.data.remote.models.MediaSegmentQueryResult
 import org.jellyplus.client.data.remote.models.PlaybackInfoResponse
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.Person
-import org.jellyplus.client.data.remote.models.ChapterInfo
 
 interface IMediaRemoteDataSource {
     suspend fun getMovies(): List<MediaItem>
@@ -32,6 +35,9 @@ interface IMediaRemoteDataSource {
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long)
     suspend fun markAsPlayed(userId: String, itemId: String)
     suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>)
+    suspend fun getMediaSegments(itemId: String): MediaSegmentQueryResult
+    suspend fun getIntroSkipperTimestamps(itemId: String): IntroSkipperTimestamps
+    suspend fun getEpisodeChapters(itemId: String): EpisodeChapterResponse
     fun getBaseUrl(): String
     fun getAccessToken(): String?
 }
@@ -73,6 +79,15 @@ class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSour
 
     override suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>) =
         api.saveChapterMarker(itemId, chapters)
+
+    override suspend fun getMediaSegments(itemId: String): MediaSegmentQueryResult =
+        api.getMediaSegments(itemId)
+
+    override suspend fun getIntroSkipperTimestamps(itemId: String): IntroSkipperTimestamps =
+        api.getIntroSkipperTimestamps(itemId)
+
+    override suspend fun getEpisodeChapters(itemId: String): EpisodeChapterResponse =
+        api.getEpisodeChapters(itemId)
 
     override fun getBaseUrl(): String = api.baseUrl
     override fun getAccessToken(): String? = api.accessToken

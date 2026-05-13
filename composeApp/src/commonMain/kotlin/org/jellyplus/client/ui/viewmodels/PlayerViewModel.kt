@@ -10,19 +10,7 @@ import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
-import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
-import org.jellyplus.client.domain.usecases.GetAutoNextUseCase
-import org.jellyplus.client.domain.usecases.GetAutoSkipUseCase
-import org.jellyplus.client.domain.usecases.GetIntroMarkersUseCase
-import org.jellyplus.client.domain.usecases.GetUserIdUseCase
-import org.jellyplus.client.domain.usecases.MarkItemAsPlayedUseCase
-import org.jellyplus.client.domain.usecases.ReportPlaybackProgressUseCase
-import org.jellyplus.client.domain.usecases.ReportPlaybackStartUseCase
-import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
-import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
-import org.jellyplus.client.domain.usecases.SaveCustomMarkerUseCase
-import org.jellyplus.client.domain.usecases.SetAutoNextUseCase
-import org.jellyplus.client.domain.usecases.SetAutoSkipUseCase
+import org.jellyplus.client.domain.usecases.*
 
 data class PlayerState(
     val itemId: String? = null,
@@ -42,6 +30,8 @@ data class PlayerState(
     val markers: List<IntroMarker> = emptyList(),
     // Player preferences
     val autoSkipIntro: Boolean = false,
+    val autoSkipOutro: Boolean = false,
+    val autoSkipPreview: Boolean = false,
     val autoNext: Boolean = false,
     // Custom markers in RAM: list of (startMs, endMs)
     val customMarkers: List<Pair<Long, Long>> = emptyList(),
@@ -60,6 +50,10 @@ class PlayerViewModel(
     private val setAutoSkipUseCase: SetAutoSkipUseCase,
     private val getAutoNextUseCase: GetAutoNextUseCase,
     private val setAutoNextUseCase: SetAutoNextUseCase,
+    private val getAutoSkipOutroUseCase: GetAutoSkipOutroUseCase,
+    private val setAutoSkipOutroUseCase: SetAutoSkipOutroUseCase,
+    private val getAutoSkipPreviewUseCase: GetAutoSkipPreviewUseCase,
+    private val setAutoSkipPreviewUseCase: SetAutoSkipPreviewUseCase,
     private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
@@ -157,6 +151,18 @@ class PlayerViewModel(
         _state.value = _state.value.copy(autoSkipIntro = next)
     }
 
+    fun toggleAutoSkipOutro() {
+        val next = !_state.value.autoSkipOutro
+        setAutoSkipOutroUseCase(next)
+        _state.value = _state.value.copy(autoSkipOutro = next)
+    }
+
+    fun toggleAutoSkipPreview() {
+        val next = !_state.value.autoSkipPreview
+        setAutoSkipPreviewUseCase(next)
+        _state.value = _state.value.copy(autoSkipPreview = next)
+    }
+
     fun toggleAutoNext() {
         val next = !_state.value.autoNext
         setAutoNextUseCase(next)
@@ -211,6 +217,8 @@ class PlayerViewModel(
     private fun loadAutoSkipPreference() {
         _state.value = _state.value.copy(
             autoSkipIntro = getAutoSkipUseCase(),
+            autoSkipOutro = getAutoSkipOutroUseCase(),
+            autoSkipPreview = getAutoSkipPreviewUseCase(),
             autoNext = getAutoNextUseCase(),
         )
     }

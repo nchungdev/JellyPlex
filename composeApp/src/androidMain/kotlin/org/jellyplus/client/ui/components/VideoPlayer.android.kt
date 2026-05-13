@@ -31,14 +31,18 @@ actual fun VideoPlayerImpl(
     uiType: UiType,
     nextEpisodeConfig: PlaybackConfig?,
     autoSkipIntro: Boolean,
+    autoSkipOutro: Boolean,
+    autoSkipPreview: Boolean,
+    autoNext: Boolean,
     customMarkers: List<Pair<Long, Long>>,
     onPreloadNextMeta: () -> Unit,
     onMarkCurrentAsPlayed: () -> Unit,
     onSaveCustomMarker: (Long, Long) -> Unit,
     onToggleAutoSkip: () -> Unit,
-    onSeamlessNextEpisode: () -> Unit,
-    autoNext: Boolean,
+    onToggleAutoSkipOutro: () -> Unit,
+    onToggleAutoSkipPreview: () -> Unit,
     onToggleAutoNext: () -> Unit,
+    onSeamlessNextEpisode: () -> Unit,
 ) {
     if (uiType == UiType.Desktop) {
         org.jellyplus.client.ui.components.player.desktop.DesktopVideoPlayer(
@@ -79,14 +83,19 @@ actual fun VideoPlayerImpl(
             onPrevEpisode = onPrevEpisode,
             nextEpisodeConfig = nextEpisodeConfig,
             autoSkipIntro = autoSkipIntro,
+            autoSkipOutro = autoSkipOutro,
+            autoSkipPreview = autoSkipPreview,
+            autoNext = autoNext,
+            onToggleAutoNext = onToggleAutoNext,
+            onSpeedChange = onSpeedChange,
             customMarkers = customMarkers,
             onPreloadNextMeta = onPreloadNextMeta,
             onMarkCurrentAsPlayed = onMarkCurrentAsPlayed,
             onSaveCustomMarker = onSaveCustomMarker,
             onToggleAutoSkip = onToggleAutoSkip,
+            onToggleAutoSkipOutro = onToggleAutoSkipOutro,
+            onToggleAutoSkipPreview = onToggleAutoSkipPreview,
             onSeamlessNextEpisode = onSeamlessNextEpisode,
-            autoNext = autoNext,
-            onToggleAutoNext = onToggleAutoNext,
         )
     }
 }

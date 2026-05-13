@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import org.jellyplus.client.data.datasource.local.MediaLocalDataSource
 import org.jellyplus.client.data.datasource.remote.IMediaRemoteDataSource
 import org.jellyplus.client.data.remote.models.ChapterInfo
+import org.jellyplus.client.data.remote.models.IntroSkipperSegment
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.HomeContent
 import org.jellyplus.client.domain.models.IntroMarker
@@ -192,7 +193,7 @@ class MediaRepository(
         try {
             val ts = remoteDataSource.getIntroSkipperTimestamps(itemId)
             val markers = buildList {
-                fun add(seg: org.jellyplus.client.data.remote.models.IntroSkipperSegment?, type: String?) {
+                fun add(seg: IntroSkipperSegment?, type: String?) {
                     if (seg?.valid == true && seg.end > seg.start) {
                         val startTicks = (seg.start * 10_000_000).toLong()
                         val endTicks = (seg.end * 10_000_000).toLong()

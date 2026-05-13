@@ -171,9 +171,12 @@ fun MainScreen(
                         }
                     },
                     uiType = uiType,
-                    nextEpisodeConfig = playerState.nextEpisodeConfig,
                     markers = playerState.markers,
+                    nextEpisodeConfig = playerState.nextEpisodeConfig,
                     autoSkipIntro = playerState.autoSkipIntro,
+                    autoSkipOutro = playerState.autoSkipOutro,
+                    autoSkipPreview = playerState.autoSkipPreview,
+                    autoNext = playerState.autoNext,
                     customMarkers = playerState.customMarkers,
                     onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
                     onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(screen.item.id) },
@@ -181,9 +184,10 @@ fun MainScreen(
                         playerViewModel.addCustomMarker(startMs, endMs, screen.item.id)
                     },
                     onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
-                    onSeamlessNextEpisode = { goToNext() },
-                    autoNext = playerState.autoNext,
+                    onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
+                    onToggleAutoSkipPreview = { playerViewModel.toggleAutoSkipPreview() },
                     onToggleAutoNext = { playerViewModel.toggleAutoNext() },
+                    onSeamlessNextEpisode = { goToNext() },
                 )
             }
         }

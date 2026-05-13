@@ -167,7 +167,7 @@ internal fun BoxScope.MobilePlayerOverlays(
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
+            modifier = Modifier,
         ) {
             Box(
                 modifier = Modifier.width(6.dp).height(120.dp)

@@ -76,7 +76,6 @@ internal fun MobilePlayerTracker(
 
             val introRanges = markers.filter { it.type == null || it.type == "Intro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
             val outroRanges = markers.filter { it.type == "Credits" || it.type == "Outro" }.map { it.startTicks / 10_000L to it.endTicks / 10_000L }
-            val allRanges = introRanges + outroRanges + customMarkers
             val activeIntro = introRanges.firstOrNull { (s, e) -> pos in s..e }
             val activeOutro = outroRanges.firstOrNull { (s, e) -> pos in s..e }
             val activePreview = customMarkers.firstOrNull { (s, e) -> pos in s..e }
