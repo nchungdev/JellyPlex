@@ -82,9 +82,19 @@ fun MainScreen(
         currentScreen = Screen.Home
     }
 
+    // Back from player: go to series detail (with correct season) or movie detail
+    fun backFromPlayer(ps: Screen.Player) {
+        val parent = ps.parentItem ?: ps.item
+        if (parent.type == MediaType.SERIES && ps.item.type == MediaType.EPISODE) {
+            currentScreen = Screen.Details(parent, focusSeasonId = ps.item.seasonId)
+        } else {
+            navigateTo(parent)
+        }
+    }
+
     val playerScreen = currentScreen as? Screen.Player
     org.jellyplus.client.AppBackHandler(enabled = playerScreen != null) {
-        playerScreen?.let { navigateTo(it.parentItem ?: it.item) }
+        playerScreen?.let { backFromPlayer(it) }
     }
 
     when (val screen = currentScreen) {
@@ -173,7 +183,7 @@ fun MainScreen(
                     mimeType = playerState.mimeType,
                     accessToken = playerState.accessToken,
                     playSessionId = playerState.playSessionId,
-                    onBack = { navigateTo(screen.parentItem ?: screen.item) },
+                    onBack = { backFromPlayer(screen) },
                     showNextPrev = playlist.size > 1,
                     onPlaybackStart = { itemId, sessionId ->
                         playerViewModel.reportStart(itemId, sessionId)
