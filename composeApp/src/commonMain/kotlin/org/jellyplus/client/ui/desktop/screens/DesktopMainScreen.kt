@@ -57,6 +57,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -144,11 +145,24 @@ fun DesktopMainScreen(
             }
         }
 
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(136.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colorStops = arrayOf(
+                            0.00f to Color.Black.copy(alpha = 0.36f),
+                            0.48f to Color.Black.copy(alpha = 0.22f),
+                            1.00f to Color.Transparent,
+                        )
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(64.dp)
-                .background(Color.Black.copy(alpha = 0.22f))
                 .padding(vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -180,7 +194,7 @@ private fun MainDashboard(
     onFocusExit: () -> Unit,
 ) {
     val contentHorizontalPadding = 88.dp
-    val heroBottomPadding = 360.dp
+    val heroBottomPadding = 330.dp
     val focusedSectionBottomPadding = 86.dp
     val nextSectionPeekOffset = 164.dp
     val dashboardSections = remember(
@@ -263,24 +277,28 @@ private fun MainDashboard(
                     )
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth(0.68f)
-                            .height(340.dp)
+                            .fillMaxSize()
                             .background(
                                 Brush.horizontalGradient(
                                     colorStops = arrayOf(
-                                        0.00f to Color.Black.copy(alpha = 0.72f),
-                                        0.58f to Color.Black.copy(alpha = 0.44f),
+                                        0.00f to Color.Black.copy(alpha = 0.60f),
+                                        0.30f to Color.Black.copy(alpha = 0.36f),
+                                        0.66f to Color.Transparent,
                                         1.00f to Color.Transparent,
                                     )
                                 )
                             )
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
                                     colorStops = arrayOf(
                                         0.00f to Color.Transparent,
-                                        0.36f to Color.Black.copy(alpha = 0.18f),
-                                        1.00f to Color.Black.copy(alpha = 0.62f),
+                                        0.34f to Color.Transparent,
+                                        0.64f to Color.Black.copy(alpha = 0.24f),
+                                        1.00f to Color.Black.copy(alpha = 0.76f),
                                     )
                                 )
                             )
@@ -297,7 +315,8 @@ private fun MainDashboard(
                                 text = metadata,
                                 color = Color.White.copy(alpha = 0.72f),
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.SansSerif,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -307,7 +326,8 @@ private fun MainDashboard(
                             text = item.title.uppercase(),
                             color = Color.White,
                             fontSize = titleFontSize,
-                            fontWeight = FontWeight.ExtraBold,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.SansSerif,
                             lineHeight = titleFontSize * 1.3f,
                             maxLines = 2,
                             overflow = TextOverflow.Visible,
@@ -506,22 +526,51 @@ private fun DesktopHeroInfoRow(item: MediaItem) {
                     modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif,
                 )
             }
-            Text(rating.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp)
+            Text(
+                rating.toString(),
+                color = Color.White.copy(alpha = 0.82f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.SansSerif,
+            )
         }
-        item.year?.let { Text(it.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp) }
+        item.year?.let {
+            Text(
+                it.toString(),
+                color = Color.White.copy(alpha = 0.82f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily.SansSerif,
+            )
+        }
         item.runTimeTicks?.let { ticks ->
             val minutes = ticks / 10_000_000 / 60
             if (minutes > 0) {
-                Text("${minutes / 60}h ${minutes % 60}m", color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp)
+                Text(
+                    "${minutes / 60}h ${minutes % 60}m",
+                    color = Color.White.copy(alpha = 0.82f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.SansSerif,
+                )
             }
         }
         if (item.type == MediaType.EPISODE) {
             val season = item.parentIndexNumber?.let { "S${it.toString().padStart(2, '0')}" }
             val episode = item.index?.let { "E${it.toString().padStart(2, '0')}" }
             val label = listOfNotNull(season, episode).joinToString(" ")
-            if (label.isNotBlank()) Text(label, color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp)
+            if (label.isNotBlank()) {
+                Text(
+                    label,
+                    color = Color.White.copy(alpha = 0.82f),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.SansSerif,
+                )
+            }
         }
     }
 }

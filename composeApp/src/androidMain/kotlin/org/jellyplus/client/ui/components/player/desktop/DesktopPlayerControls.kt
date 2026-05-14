@@ -20,12 +20,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
@@ -82,7 +80,7 @@ internal fun DesktopPlayerControls(
 
             // Top bar
             Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 48.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DesktopPlayerIconButton(
@@ -127,7 +125,7 @@ internal fun DesktopPlayerControls(
                 if (showNextPrev) DesktopPlayerIconButton(Icons.Default.SkipPrevious, size = 56.dp, iconSize = 32.dp) { onPrevEpisode() }
                 DesktopPlayerIconButton(Icons.Default.Replay10, size = 64.dp, iconSize = 40.dp) { onRewind() }
                 DesktopPlayerButton(onClick = onPlayPause, size = 96.dp, modifier = Modifier.focusRequester(playFocusRequester)) {
-                    Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(56.dp))
+                    Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(56.dp))
                 }
                 DesktopPlayerIconButton(Icons.Default.Forward10, size = 64.dp, iconSize = 40.dp) { onForward() }
                 if (showNextPrev) DesktopPlayerIconButton(Icons.Default.SkipNext, size = 56.dp, iconSize = 32.dp) { onNextEpisode() }
@@ -135,27 +133,31 @@ internal fun DesktopPlayerControls(
 
             // Bottom controls
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 48.dp, vertical = 32.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(start = 32.dp, end = 32.dp, bottom = 20.dp),
             ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF1F2430).copy(alpha = 0.72f),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(44.dp).padding(start = 16.dp, end = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    Surface(
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xFF1F2430).copy(alpha = 0.72f),
                     ) {
-                        Text(formatDesktopTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                        Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
-                        Text(formatDesktopTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
-                        Spacer(modifier = Modifier.weight(1f))
-                        DesktopPlayerIconButton(Icons.Default.Subtitles, size = 36.dp, iconSize = 20.dp) {}
-                        Spacer(modifier = Modifier.width(14.dp))
-                        DesktopPlayerIconButton(Icons.Default.Audiotrack, size = 36.dp, iconSize = 20.dp) {}
-                        Spacer(modifier = Modifier.width(14.dp))
-                        DesktopPlayerIconButton(Icons.Default.Settings, size = 36.dp, iconSize = 20.dp, onClick = onMoreClick)
+                        Row(
+                            modifier = Modifier.height(40.dp).padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(formatDesktopTime(currentPosition), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                            Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+                            Text(formatDesktopTime(duration), color = Color.White.copy(alpha = 0.7f), fontSize = 16.sp)
+                        }
                     }
+                    Spacer(modifier = Modifier.weight(1f))
+                    DesktopPlayerIconButton(Icons.Default.Subtitles, size = 38.dp, iconSize = 21.dp) {}
+                    Spacer(modifier = Modifier.width(18.dp))
+                    DesktopPlayerIconButton(Icons.Default.Audiotrack, size = 38.dp, iconSize = 21.dp) {}
                 }
+                Spacer(modifier = Modifier.height(2.dp))
                 DesktopSeekbar(
                     currentPosition = currentPosition,
                     duration = duration,
@@ -176,7 +178,7 @@ private fun DesktopSeekbar(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     Box(
-        modifier = Modifier.fillMaxWidth().height(40.dp)
+        modifier = Modifier.fillMaxWidth().height(30.dp)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
             .onKeyEvent { keyEvent ->
