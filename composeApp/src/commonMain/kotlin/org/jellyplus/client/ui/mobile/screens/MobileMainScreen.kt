@@ -2,6 +2,7 @@ package org.jellyplus.client.ui.mobile.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,9 +36,12 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -59,10 +65,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -437,108 +446,237 @@ private fun SearchContent(
 ) {
     val searchViewModel: SearchViewModel = koinViewModel()
     val state by searchViewModel.state.collectAsState()
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        try { focusRequester.requestFocus() } catch (_: Exception) {}
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp),
     ) {
-            TextField(
-                value = state.query,
-                onValueChange = { searchViewModel.onQueryChange(it) },
-                placeholder = { Text("Movies, shows, people...", color = Color.White.copy(alpha = 0.4f)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.08f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = MaterialTheme.colorScheme.primary,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                ),
-                shape = RoundedCornerShape(12.dp),
-                leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f)) },
-                trailingIcon = {
-                    if (state.query.isNotBlank()) {
-                        IconButton(onClick = { searchViewModel.clearQuery() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear search", tint = Color.White)
-                        }
+        // ── Search bar ──────────────────────────────────────────────────
+        TextField(
+            value = state.query,
+            onValueChange = { searchViewModel.onQueryChange(it) },
+            placeholder = { Text("Movies, shows, people...", color = Color.White.copy(alpha = 0.4f)) },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .focusRequester(focusRequester),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            shape = RoundedCornerShape(12.dp),
+            leadingIcon = {
+                Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f))
+            },
+            trailingIcon = {
+                if (state.query.isNotBlank()) {
+                    IconButton(onClick = { searchViewModel.clearQuery() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White)
                     }
-                },
-            )
-            Spacer(Modifier.height(12.dp))
+                }
+            },
+        )
 
-            when {
-                state.query.isBlank() -> {
-                    if (state.searchHistory.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Recent searches", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            TextButton(onClick = { searchViewModel.clearHistory() }) {
-                                Text("Clear", color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            items(state.searchHistory) { query ->
-                                SearchHistoryRow(
-                                    query = query,
-                                    onClick = { searchViewModel.onQueryChange(query) },
-                                )
-                            }
-                        }
-                    } else {
+        // ── Filter chips (visible once user has typed) ──────────────────
+        if (state.query.isNotBlank()) {
+            val filters = listOf(
+                null to "All",
+                MediaType.MOVIE to "Movies",
+                MediaType.SERIES to "TV Shows",
+                MediaType.EPISODE to "Episodes",
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                filters.forEach { (type, label) ->
+                    val selected = state.selectedFilter == type
+                    FilterChip(
+                        selected = selected,
+                        onClick = { searchViewModel.onFilterChange(type) },
+                        label = { Text(label, fontSize = 13.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color.White.copy(alpha = 0.07f),
+                            labelColor = Color.White.copy(alpha = 0.75f),
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selected,
+                            selectedBorderColor = Color.Transparent,
+                            borderColor = Color.White.copy(alpha = 0.15f),
+                        ),
+                    )
+                }
+            }
+        }
+
+        // ── Content area ────────────────────────────────────────────────
+        when {
+            state.query.isBlank() -> {
+                if (state.searchHistory.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
-                            "Search for movies and shows",
-                            color = Color.White.copy(alpha = 0.3f),
-                            fontSize = 14.sp,
-                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            "Recent searches",
+                            color = Color.White,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
                         )
+                        TextButton(onClick = { searchViewModel.clearHistory() }) {
+                            Text("Clear all", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                        }
                     }
-                }
-                state.isLoading -> {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items(state.searchHistory) { query ->
+                            SearchHistoryRow(
+                                query = query,
+                                onClick = { searchViewModel.onQueryChange(query) },
+                                onRemove = { searchViewModel.removeHistoryItem(query) },
+                            )
+                        }
                     }
-                }
-                state.error != null -> {
-                    Text(state.error ?: "Search failed", color = Color.White.copy(alpha = 0.55f), fontSize = 14.sp)
-                }
-                state.results.isEmpty() -> {
-                    Text("No results found for '${state.query}'", color = Color.White.copy(alpha = 0.55f), fontSize = 14.sp)
-                }
-                else -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(state.results) { item ->
-                            SearchResultRow(
-                                item = item,
-                                baseUrl = state.baseUrl,
-                                onClick = { onMediaClick(item) },
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.12f),
+                                modifier = Modifier.size(72.dp),
+                            )
+                            Text(
+                                "Search movies, shows & more",
+                                color = Color.White.copy(alpha = 0.3f),
+                                fontSize = 15.sp,
                             )
                         }
                     }
                 }
             }
+
+            state.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            state.error != null -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        state.error ?: "Search failed",
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 14.sp,
+                    )
+                }
+            }
+
+            state.displayResults.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("No results for", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
+                        Text(
+                            "\"${state.query}\"",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                Text(
+                    text = "${state.displayResults.size} result${if (state.displayResults.size != 1) "s" else ""}",
+                    color = Color.White.copy(alpha = 0.38f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    items(state.displayResults) { item ->
+                        SearchResultRow(
+                            item = item,
+                            baseUrl = state.baseUrl,
+                            onClick = { onMediaClick(item) },
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun SearchHistoryRow(query: String, onClick: () -> Unit) {
+private fun SearchHistoryRow(query: String, onClick: () -> Unit, onRemove: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.History, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
+        Icon(
+            Icons.Default.History,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.35f),
+            modifier = Modifier.size(18.dp),
+        )
         Spacer(Modifier.width(12.dp))
-        Text(query, color = Color.White, fontSize = 15.sp)
+        Text(
+            query,
+            color = Color.White,
+            fontSize = 15.sp,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Remove",
+                tint = Color.White.copy(alpha = 0.28f),
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -547,35 +685,101 @@ private fun SearchResultRow(item: MediaItem, baseUrl: String, onClick: () -> Uni
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(
-            model = item.getImageUrl(baseUrl),
-            contentDescription = null,
+        // Poster thumbnail with played dot
+        Box(
             modifier = Modifier
-                .width(56.dp)
-                .height(84.dp)
+                .width(52.dp)
+                .height(78.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.White.copy(alpha = 0.06f)),
-            contentScale = ContentScale.Crop,
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
-            Text(
-                text = when (item.type) {
-                    MediaType.MOVIE -> item.year?.let { "Movie · $it" } ?: "Movie"
-                    MediaType.SERIES -> item.year?.let { "TV Series · $it" } ?: "TV Series"
-                    MediaType.EPISODE -> item.seriesName?.let { "$it · Episode" } ?: "Episode"
-                    else -> item.type.value
-                },
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 12.sp,
-                maxLines = 1,
+        ) {
+            AsyncImage(
+                model = item.getImageUrl(baseUrl),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
+            if (item.isPlayed) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(8.dp)
+                        .background(Color(0xFF4CAF50), CircleShape),
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                item.title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val meta = buildString {
+                append(when (item.type) {
+                    MediaType.MOVIE -> "Movie"
+                    MediaType.SERIES -> "TV Series"
+                    MediaType.EPISODE -> "Episode"
+                    else -> item.type.value
+                })
+                item.year?.let { append(" · $it") }
+                if (item.type == MediaType.EPISODE) {
+                    item.seriesName?.let { name ->
+                        val s = item.parentIndexNumber?.let { "S${it.toString().padStart(2,'0')}" } ?: ""
+                        val e = item.index?.let { "E${it.toString().padStart(2,'0')}" } ?: ""
+                        val ep = listOf(s, e).filter { it.isNotBlank() }.joinToString("")
+                        if (ep.isNotBlank()) append(" · $name $ep") else append(" · $name")
+                    }
+                }
+            }
+            Text(meta, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1)
+
+            item.runTimeTicks?.let { ticks ->
+                val totalMin = (ticks / 10_000_000 / 60).toInt()
+                if (totalMin > 0) {
+                    val h = totalMin / 60; val m = totalMin % 60
+                    Text(
+                        text = if (h > 0) "${h}h ${m}m" else "${m}m",
+                        color = Color.White.copy(alpha = 0.32f),
+                        fontSize = 11.sp,
+                    )
+                }
+            }
+        }
+
+        // Rating
+        item.rating?.let { r ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(start = 8.dp, end = 2.dp),
+            ) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFB300),
+                    modifier = Modifier.size(13.dp),
+                )
+                Text(
+                    "%.1f".format(r),
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

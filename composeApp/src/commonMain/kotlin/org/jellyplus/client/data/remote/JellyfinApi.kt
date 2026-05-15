@@ -282,8 +282,9 @@ class JellyfinApi(
             apiUrl("Items")
             parameter("searchTerm", query)
             parameter("Recursive", true)
-            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value},${MediaType.EPISODE.value}")
+            parameter("Limit", 50)
+            parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,Genres,CommunityRating,RunTimeTicks")
         }.body()
         return response.items
     }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -42,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.LocalUiType
@@ -66,7 +69,8 @@ fun MediaListingScreen(
         else items.filter { it.title.contains(searchQuery, ignoreCase = true) }
     }
     val uiType = LocalUiType.current
-    val columns = if (uiType == UiType.Desktop) 6 else 3
+    val isDesktop = uiType == UiType.Desktop
+    val columns = if (isDesktop) 6 else 3
     val gridState = rememberLazyGridState()
     val shouldLoadMore by remember(filteredItems, searchQuery, hasMore, isLoadingMore) {
         derivedStateOf {
@@ -78,11 +82,13 @@ fun MediaListingScreen(
             }
         }
     }
-    val horizontalPadding = if (uiType == UiType.Desktop) {
+    val horizontalPadding = if (isDesktop) {
         PaddingValues(start = DesktopContentLeftPadding, end = DesktopContentRightPadding)
     } else {
         PaddingValues(horizontal = 16.dp)
     }
+    val contentTopPadding = if (isDesktop) 28.dp else 8.dp
+    val searchBarMaxWidth = if (isDesktop) 520.dp else androidx.compose.ui.unit.Dp.Unspecified
 
     Column(
         modifier = Modifier
@@ -91,28 +97,43 @@ fun MediaListingScreen(
             .statusBarsPadding()
             .padding(horizontalPadding)
     ) {
-        // Header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = contentTopPadding, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
             }
             Spacer(Modifier.width(8.dp))
-            Text(
-                title,
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    title,
+                    color = Color.White,
+                    fontSize = if (isDesktop) 30.sp else 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = if (searchQuery.isBlank()) {
+                        "${items.size} loaded${if (hasMore) " +" else ""}"
+                    } else {
+                        "${filteredItems.size} result${if (filteredItems.size == 1) "" else "s"}"
+                    },
+                    color = Color.White.copy(alpha = 0.42f),
+                    fontSize = 13.sp,
+                )
+            }
         }
 
-        // Search Bar
         Surface(
             color = Color.White.copy(alpha = 0.05f),
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(56.dp)
+            modifier = Modifier
+                .then(if (searchBarMaxWidth == androidx.compose.ui.unit.Dp.Unspecified) Modifier.fillMaxWidth() else Modifier.width(searchBarMaxWidth))
+                .height(52.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
                 Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f))
@@ -128,37 +149,54 @@ fun MediaListingScreen(
                         unfocusedIndicatorColor = Color.Transparent,
                         cursorColor = Color(0xFF00D4A8)
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
                 )
+                if (searchQuery.isNotBlank()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White.copy(alpha = 0.7f))
+                    }
+                }
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // Grid
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Fixed(columns),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(filteredItems) { item ->
-                MediaPoster(
-                    item = item,
-                    baseUrl = baseUrl,
-                    onClick = { onMediaClick(item) },
-                    modifier = Modifier.fillMaxWidth()
+        if (filteredItems.isEmpty() && !isLoadingMore) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = if (searchQuery.isBlank()) "No items found" else "No results for \"$searchQuery\"",
+                    color = Color.White.copy(alpha = 0.48f),
+                    fontSize = if (isDesktop) 18.sp else 15.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (isLoadingMore) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        } else {
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Fixed(columns),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 28.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (isDesktop) 18.dp else 10.dp),
+                verticalArrangement = Arrangement.spacedBy(if (isDesktop) 24.dp else 16.dp)
+            ) {
+                items(filteredItems, key = { it.id }) { item ->
+                    MediaPoster(
+                        item = item,
+                        baseUrl = baseUrl,
+                        onClick = { onMediaClick(item) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (isLoadingMore) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }

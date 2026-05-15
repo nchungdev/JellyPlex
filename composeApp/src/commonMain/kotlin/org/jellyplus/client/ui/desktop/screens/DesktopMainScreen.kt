@@ -29,18 +29,30 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,6 +64,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -89,6 +102,7 @@ import org.jellyplus.client.ui.viewmodels.HomeState
 import org.jellyplus.client.ui.viewmodels.HomeViewModel
 import org.jellyplus.client.ui.viewmodels.HistoryViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
+import org.jellyplus.client.ui.viewmodels.SearchViewModel
 import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.lazy.itemsIndexed as lazyListItemsIndexed
@@ -164,7 +178,7 @@ fun DesktopMainScreen(
                         try { sidebarFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
                     },
                 )
-                NavDestination.Search -> SearchPlaceholder()
+                NavDestination.Search -> DesktopSearchContent(onMediaClick = onMediaClick)
                 NavDestination.History -> DesktopHistoryScreen(
                     onContinueWatchingClick = onContinueWatchingClick,
                     onMediaClick = onMediaClick,
@@ -925,12 +939,334 @@ private fun DesktopHistoryScreen(
 }
 
 @Composable
-private fun SearchPlaceholder() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
-            Spacer(Modifier.height(16.dp))
-            Text("Search functionality coming soon", color = Color.White.copy(alpha = 0.5f), fontSize = 18.sp)
+private fun DesktopSearchContent(onMediaClick: (MediaItem) -> Unit) {
+    val searchViewModel: SearchViewModel = koinViewModel()
+    val state by searchViewModel.state.collectAsState()
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        try { focusRequester.requestFocus() } catch (_: Exception) {}
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp),
+    ) {
+        // ── Search bar ──────────────────────────────────────────────────
+        TextField(
+            value = state.query,
+            onValueChange = { searchViewModel.onQueryChange(it) },
+            placeholder = {
+                Text("Search movies, shows, people...", color = Color.White.copy(alpha = 0.35f), fontSize = 20.sp)
+            },
+            singleLine = true,
+            modifier = Modifier
+                .fillMaxWidth(0.65f)
+                .focusRequester(focusRequester),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            shape = RoundedCornerShape(14.dp),
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 20.sp, color = Color.White),
+            leadingIcon = {
+                Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(22.dp))
+            },
+            trailingIcon = {
+                if (state.query.isNotBlank()) {
+                    IconButton(onClick = { searchViewModel.clearQuery() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White.copy(alpha = 0.7f))
+                    }
+                }
+            },
+        )
+
+        Spacer(Modifier.height(20.dp))
+
+        // ── Filter chips ────────────────────────────────────────────────
+        if (state.query.isNotBlank()) {
+            val filters = listOf(
+                null to "All",
+                MediaType.MOVIE to "Movies",
+                MediaType.SERIES to "TV Shows",
+                MediaType.EPISODE to "Episodes",
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                filters.forEach { (type, label) ->
+                    val selected = state.selectedFilter == type
+                    FilterChip(
+                        selected = selected,
+                        onClick = { searchViewModel.onFilterChange(type) },
+                        label = { Text(label, fontSize = 14.sp) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color.White.copy(alpha = 0.07f),
+                            labelColor = Color.White.copy(alpha = 0.75f),
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = selected,
+                            selectedBorderColor = Color.Transparent,
+                            borderColor = Color.White.copy(alpha = 0.15f),
+                        ),
+                    )
+                }
+            }
+        }
+
+        // ── Content area ────────────────────────────────────────────────
+        when {
+            state.query.isBlank() -> {
+                if (state.searchHistory.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Recent searches",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        TextButton(onClick = { searchViewModel.clearHistory() }) {
+                            Text("Clear all", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+                        }
+                    }
+                    // History as chips / pill row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        state.searchHistory.forEach { query ->
+                            Surface(
+                                onClick = { searchViewModel.onQueryChange(query) },
+                                color = Color.White.copy(alpha = 0.07f),
+                                shape = RoundedCornerShape(20.dp),
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.45f),
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                    Text(query, color = Color.White, fontSize = 14.sp)
+                                    IconButton(
+                                        onClick = { searchViewModel.removeHistoryItem(query) },
+                                        modifier = Modifier.size(20.dp),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Remove",
+                                            tint = Color.White.copy(alpha = 0.3f),
+                                            modifier = Modifier.size(13.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.1f),
+                                modifier = Modifier.size(96.dp),
+                            )
+                            Text(
+                                "Search movies, shows & more",
+                                color = Color.White.copy(alpha = 0.28f),
+                                fontSize = 18.sp,
+                            )
+                        }
+                    }
+                }
+            }
+
+            state.isLoading -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(56.dp))
+                }
+            }
+
+            state.error != null -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(state.error ?: "Search failed", color = Color.White.copy(alpha = 0.45f), fontSize = 16.sp)
+                }
+            }
+
+            state.displayResults.isEmpty() -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text("No results for", color = Color.White.copy(alpha = 0.38f), fontSize = 16.sp)
+                        Text(
+                            "\"${state.query}\"",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                Text(
+                    "${state.displayResults.size} result${if (state.displayResults.size != 1) "s" else ""}",
+                    color = Color.White.copy(alpha = 0.35f),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                androidx.compose.foundation.lazy.LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(state.displayResults) { item ->
+                        DesktopSearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopSearchResultRow(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        color = Color.White.copy(alpha = 0.0f),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Poster
+            Box(
+                modifier = Modifier
+                    .width(64.dp)
+                    .height(96.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.06f)),
+            ) {
+                AsyncImage(
+                    model = item.getImageUrl(baseUrl),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+                if (item.isPlayed) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(5.dp)
+                            .size(9.dp)
+                            .background(Color(0xFF4CAF50), CircleShape),
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    item.title,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val meta = buildString {
+                    append(when (item.type) {
+                        MediaType.MOVIE -> "Movie"
+                        MediaType.SERIES -> "TV Series"
+                        MediaType.EPISODE -> "Episode"
+                        else -> item.type.value
+                    })
+                    item.year?.let { append(" · $it") }
+                    if (item.type == MediaType.EPISODE) {
+                        item.seriesName?.let { name ->
+                            val s = item.parentIndexNumber?.let { "S${it.toString().padStart(2,'0')}" } ?: ""
+                            val e = item.index?.let { "E${it.toString().padStart(2,'0')}" } ?: ""
+                            val ep = listOf(s, e).filter { it.isNotBlank() }.joinToString("")
+                            if (ep.isNotBlank()) append(" · $name $ep") else append(" · $name")
+                        }
+                    }
+                }
+                Text(meta, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, maxLines = 1)
+
+                item.runTimeTicks?.let { ticks ->
+                    val totalMin = (ticks / 10_000_000 / 60).toInt()
+                    if (totalMin > 0) {
+                        val h = totalMin / 60; val m = totalMin % 60
+                        Text(
+                            if (h > 0) "${h}h ${m}m" else "${m}m",
+                            color = Color.White.copy(alpha = 0.3f),
+                            fontSize = 12.sp,
+                        )
+                    }
+                }
+
+                item.overview?.let { overview ->
+                    Text(
+                        overview,
+                        color = Color.White.copy(alpha = 0.38f),
+                        fontSize = 13.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            // Rating
+            item.rating?.let { r ->
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(start = 16.dp, end = 4.dp),
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFB300),
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "%.1f".format(r),
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
         }
     }
 }

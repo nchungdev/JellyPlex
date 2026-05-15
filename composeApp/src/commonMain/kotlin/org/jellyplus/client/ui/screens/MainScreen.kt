@@ -140,6 +140,10 @@ fun MainScreen(
         currentScreen = Screen.Home
     }
 
+    org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Home && homeTabIndex != 0) {
+        homeTabIndex = 0
+    }
+
     // Back from player: go to series detail (with correct season) or movie detail
     fun backFromPlayer(ps: Screen.Player) {
         val parent = ps.parentItem ?: ps.item

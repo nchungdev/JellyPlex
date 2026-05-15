@@ -3,7 +3,6 @@ package org.jellyplus.client.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.russhwolf.settings.Settings
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.MediaItem
+import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplus.client.domain.usecases.SearchItemsUseCase
 
@@ -19,10 +19,17 @@ data class SearchState(
     val query: String = "",
     val results: List<MediaItem> = emptyList(),
     val searchHistory: List<String> = emptyList(),
+    /** null = All types */
+    val selectedFilter: MediaType? = null,
     val baseUrl: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-)
+) {
+    /** Results filtered by the active type chip. */
+    val displayResults: List<MediaItem>
+        get() = if (selectedFilter == null) results
+                else results.filter { it.type == selectedFilter }
+}
 
 class SearchViewModel(
     private val searchItemsUseCase: SearchItemsUseCase,
@@ -52,7 +59,7 @@ class SearchViewModel(
     }
 
     fun onQueryChange(newQuery: String) {
-        _state.value = _state.value.copy(query = newQuery)
+        _state.value = _state.value.copy(query = newQuery, error = null)
 
         searchJob?.cancel()
         if (newQuery.isBlank()) {
@@ -60,29 +67,34 @@ class SearchViewModel(
             return
         }
 
-        searchJob =
-            viewModelScope.launch(dispatchers.io) {
-                delay(500) // Debounce
-                _state.value = _state.value.copy(isLoading = true)
-                val result = searchItemsUseCase(newQuery)
+        searchJob = viewModelScope.launch(dispatchers.io) {
+            delay(400) // debounce
+            _state.value = _state.value.copy(isLoading = true)
+            val result = searchItemsUseCase(newQuery)
 
-                result.onSuccess { results ->
-                    rememberQuery(newQuery)
-                    _state.value =
-                        _state.value.copy(
-                            results = results,
-                            baseUrl = getBaseUrlUseCase(),
-                            isLoading = false,
-                        )
-                }.onFailure { e ->
-                    _state.value = _state.value.copy(error = e.message, isLoading = false)
-                }
+            result.onSuccess { items ->
+                rememberQuery(newQuery)
+                _state.value = _state.value.copy(
+                    results = items,
+                    baseUrl = getBaseUrlUseCase(),
+                    isLoading = false,
+                )
+            }.onFailure { e ->
+                _state.value = _state.value.copy(error = e.message, isLoading = false)
             }
+        }
+    }
+
+    fun onFilterChange(type: MediaType?) {
+        _state.value = _state.value.copy(selectedFilter = type)
     }
 
     fun clearQuery() {
         searchJob?.cancel()
-        _state.value = _state.value.copy(query = "", results = emptyList(), isLoading = false, error = null)
+        _state.value = _state.value.copy(
+            query = "", results = emptyList(),
+            isLoading = false, error = null,
+        )
     }
 
     fun clearHistory() {
@@ -90,10 +102,15 @@ class SearchViewModel(
         _state.value = _state.value.copy(searchHistory = emptyList())
     }
 
+    fun removeHistoryItem(query: String) {
+        val next = _state.value.searchHistory.filter { it != query }
+        settings.putString(KEY_SEARCH_HISTORY, next.joinToString(HISTORY_SEPARATOR))
+        _state.value = _state.value.copy(searchHistory = next)
+    }
+
     private fun rememberQuery(query: String) {
         val normalized = query.trim()
         if (normalized.isBlank()) return
-
         val nextHistory = listOf(normalized) +
             _state.value.searchHistory.filterNot { it.equals(normalized, ignoreCase = true) }
         val capped = nextHistory.take(MAX_HISTORY_ITEMS)
