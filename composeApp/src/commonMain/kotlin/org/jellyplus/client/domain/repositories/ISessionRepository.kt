@@ -23,6 +23,7 @@ interface ISessionRepository {
     fun updateBaseUrl(url: String)
     fun setPersistDemo(enabled: Boolean)
     fun updateToken(token: String)
+    fun updatePassword(password: String?)
     fun clear()
     fun hasSession(): Boolean
 }

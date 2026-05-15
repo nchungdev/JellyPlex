@@ -46,8 +46,11 @@ import org.jellyplus.client.UiType
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.Screen
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
 import org.jellyplus.client.ui.desktop.screens.DesktopMainScreen
 import org.jellyplus.client.ui.mobile.screens.MobileMainScreen
+import org.jellyplus.client.ui.mobile.screens.SearchContent
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.MainState
 import org.jellyplus.client.ui.viewmodels.PlayerViewModel
@@ -144,6 +147,15 @@ fun MainScreen(
         homeTabIndex = 0
     }
 
+    org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Search) {
+        currentScreen = Screen.Home
+    }
+
+    org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Settings) {
+        homeTabIndex = 3
+        currentScreen = Screen.Home
+    }
+
     // Back from player: go to series detail (with correct season) or movie detail
     fun backFromPlayer(ps: Screen.Player) {
         val parent = ps.parentItem ?: ps.item
@@ -183,14 +195,26 @@ fun MainScreen(
                 onContinueWatchingClick = { playItem(it, homeTabIndex) },
                 onViewAll = { type: MediaType, title: String ->
                     currentScreen = Screen.Listing(type, title)
-                }
+                },
+                onViewAllGenre = { genre ->
+                    currentScreen = Screen.Listing(
+                        type = MediaType.MOVIE,
+                        title = genre,
+                        genre = genre,
+                    )
+                },
+                onSearch = { currentScreen = Screen.Search },
+                onSettings = {
+                    homeTabIndex = 3
+                    currentScreen = Screen.Settings
+                },
             )
         }
 
         // ── Layer 1: Details overlay ─────────────────────────────────────
         val detailScreen = currentScreen as? Screen.Details
         if (detailScreen != null) {
-            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818))) {
                 if (detailScreen.item.type == MediaType.SERIES) {
                     SeriesDetailScreen(
                         item = detailScreen.item,
@@ -226,27 +250,75 @@ fun MainScreen(
         // ── Layer 2: Listing overlay ─────────────────────────────────────
         val listingScreen = currentScreen as? Screen.Listing
         if (listingScreen != null) {
-            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+            // Items: genre listings merge movies+tvShows filtered to that genre
+            val listingItems = when {
+                listingScreen.genre != null -> {
+                    val g = listingScreen.genre
+                    (mainState.movies + mainState.tvShows).filter { item ->
+                        item.genres?.any { it.equals(g, ignoreCase = true) } == true
+                    }.distinctBy { it.id }
+                }
+                listingScreen.type == MediaType.MOVIE -> mainState.movies
+                else -> mainState.tvShows
+            }
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818))) {
                 MediaListingScreen(
                     title = listingScreen.title,
-                    items = if (listingScreen.type == MediaType.MOVIE) mainState.movies else mainState.tvShows,
+                    items = listingItems,
                     baseUrl = mainState.baseUrl,
-                    isLoadingMore = if (listingScreen.type == MediaType.MOVIE) mainState.isLoadingMoreMovies else mainState.isLoadingMoreTvShows,
-                    hasMore = if (listingScreen.type == MediaType.MOVIE) mainState.hasMoreMovies else mainState.hasMoreTvShows,
+                    showGenreFilter = listingScreen.genre == null,
+                    isLoadingMore = when {
+                        listingScreen.genre != null -> false
+                        listingScreen.type == MediaType.MOVIE -> mainState.isLoadingMoreMovies
+                        else -> mainState.isLoadingMoreTvShows
+                    },
+                    hasMore = when {
+                        listingScreen.genre != null -> false
+                        listingScreen.type == MediaType.MOVIE -> mainState.hasMoreMovies
+                        else -> mainState.hasMoreTvShows
+                    },
                     onLoadMore = {
-                        if (listingScreen.type == MediaType.MOVIE) {
-                            mainViewModel.loadMoreMovies()
-                        } else {
-                            mainViewModel.loadMoreTvShows()
-                        }
+                        if (listingScreen.type == MediaType.MOVIE) mainViewModel.loadMoreMovies()
+                        else mainViewModel.loadMoreTvShows()
                     },
                     onBack = { currentScreen = Screen.Home },
-                    onMediaClick = { navigateTo(it) }
+                    onMediaClick = { navigateTo(it) },
+                    onNavigateToSearch = { currentScreen = Screen.Search },
                 )
             }
         }
 
-        // ── Layer 3: Player overlay ──────────────────────────────────────
+        // ── Layer 3: Search overlay ──────────────────────────────────────
+        if (currentScreen is Screen.Search) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF181818))
+                    .statusBarsPadding(),
+            ) {
+                SearchContent(
+                    paddingValues = PaddingValues(0.dp),
+                    onMediaClick = { item ->
+                        navigateTo(item)
+                    },
+                )
+            }
+        }
+
+        // ── Layer 4: Settings overlay ────────────────────────────────────
+        if (currentScreen is Screen.Settings) {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818))) {
+                SettingsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = {
+                        homeTabIndex = 3
+                        currentScreen = Screen.Home
+                    },
+                )
+            }
+        }
+
+        // ── Layer 5: Player overlay ──────────────────────────────────────
         val playerScreen = currentScreen as? Screen.Player
         if (playerScreen != null) {
             val playerViewModel: PlayerViewModel = koinViewModel()

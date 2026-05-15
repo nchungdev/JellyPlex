@@ -9,6 +9,7 @@ interface IQuickConnectRemoteDataSource {
     suspend fun initiate(): QuickConnectResult
     suspend fun getStatus(secret: String): QuickConnectResult
     suspend fun authenticate(secret: String): AuthenticationResult
+    suspend fun authorize(code: String, userId: String?): Boolean
     fun getBaseUrl(): String
 }
 
@@ -17,5 +18,6 @@ class QuickConnectRemoteDataSource(private val api: JellyfinApi) : IQuickConnect
     override suspend fun initiate(): QuickConnectResult = api.initiateQuickConnect()
     override suspend fun getStatus(secret: String): QuickConnectResult = api.getQuickConnectState(secret)
     override suspend fun authenticate(secret: String): AuthenticationResult = api.authenticateWithQuickConnect(secret)
+    override suspend fun authorize(code: String, userId: String?): Boolean = api.authorizeQuickConnect(code, userId)
     override fun getBaseUrl(): String = api.baseUrl
 }

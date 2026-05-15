@@ -30,7 +30,8 @@ val dataModule = module {
     singleOf(::PlayerSettingsLocalDataSource)
     
     // 2. Strategy Repositories
-    single<ISessionRepository> { 
+    single<IPlayerSettingsRepository> { get<PlayerSettingsLocalDataSource>() }
+    single<ISessionRepository> {
         SessionRepository(
             persistentDataSource = get(),
             inMemoryDataSource = get()
@@ -83,19 +84,17 @@ val domainModule = module {
     factoryOf(::MarkItemAsPlayedUseCase)
     factoryOf(::SaveCustomMarkerUseCase)
     factoryOf(::GetWatchHistoryUseCase)
-    factoryOf(::GetAutoSkipUseCase)
-    factoryOf(::SetAutoSkipUseCase)
-    factoryOf(::GetAutoNextUseCase)
-    factoryOf(::SetAutoNextUseCase)
-    factoryOf(::GetAutoSkipOutroUseCase)
-    factoryOf(::SetAutoSkipOutroUseCase)
-    factoryOf(::GetPlaybackSpeedUseCase)
-    factoryOf(::SetPlaybackSpeedUseCase)
-    factoryOf(::GetAutoPictureInPictureUseCase)
-    factoryOf(::SetAutoPictureInPictureUseCase)
     factoryOf(::GetIntroMarkersUseCase)
     factoryOf(::DiscoverServersUseCase)
     factoryOf(::ValidateSessionUseCase)
+    // Auth / session helpers
+    factoryOf(::GetUserNameUseCase)
+    factoryOf(::GetPersistDemoUseCase)
+    factoryOf(::SetPersistDemoUseCase)
+    factoryOf(::ChangePasswordUseCase)
+    factoryOf(::AuthorizeQuickConnectUseCase)
+    // Player preferences facade (singleton — shared across PlayerViewModel & PlaybackPreferencesViewModel)
+    singleOf(::PlayerPreferencesUseCases)
 }
 
 val viewModelModule = module {
@@ -113,6 +112,7 @@ val viewModelModule = module {
     viewModelOf(::MovieDetailViewModel)
     viewModelOf(::PlayerViewModel)
     viewModelOf(::PlaybackPreferencesViewModel)
+    viewModelOf(::AccountSettingsViewModel)
     viewModelOf(::SessionViewModel)
 }
 

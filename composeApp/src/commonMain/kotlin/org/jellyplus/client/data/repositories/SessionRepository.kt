@@ -90,6 +90,16 @@ class SessionRepository(
         }
     }
 
+    override fun updatePassword(password: String?) {
+        val currentUrl = baseUrl
+
+        inMemoryDataSource.password = password
+
+        if (!isDemo(currentUrl) || persistDemo) {
+            persistentDataSource.password = password
+        }
+    }
+
     override fun clear() {
         persistentDataSource.clear()
         inMemoryDataSource.clear()

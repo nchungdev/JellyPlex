@@ -14,6 +14,9 @@ import org.jellyplus.client.domain.models.Constants
 import org.jellyplus.client.domain.usecases.ClearSessionUseCase
 import org.jellyplus.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplus.client.domain.usecases.GetIsAuthenticatedUseCase
+import org.jellyplus.client.domain.usecases.GetPersistDemoUseCase
+import org.jellyplus.client.domain.usecases.GetUserNameUseCase
+import org.jellyplus.client.domain.usecases.SetPersistDemoUseCase
 import org.jellyplus.client.domain.usecases.UpdateBaseUrlUseCase
 import org.jellyplus.client.domain.usecases.ValidateSessionUseCase
 
@@ -29,6 +32,9 @@ class SessionViewModel(
     private val clearSessionUseCase: ClearSessionUseCase,
     private val updateBaseUrlUseCase: UpdateBaseUrlUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val getUserNameUseCase: GetUserNameUseCase,
+    private val getPersistDemoUseCase: GetPersistDemoUseCase,
+    private val setPersistDemoUseCase: SetPersistDemoUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
 
@@ -41,7 +47,7 @@ class SessionViewModel(
         SessionState(
             isAuthenticated = authenticated,
             isValidating = validating,
-            persistDemo = clearSessionUseCase.getPersistDemo()
+            persistDemo = getPersistDemoUseCase()
         )
     }.stateIn(
         scope = viewModelScope,
@@ -50,7 +56,7 @@ class SessionViewModel(
     )
 
     fun getBaseUrl(): String = getBaseUrlUseCase()
-    fun getUserName(): String? = clearSessionUseCase.getUserName()
+    fun getUserName(): String? = getUserNameUseCase()
 
     init {
         validateStartupSession()
@@ -94,7 +100,7 @@ class SessionViewModel(
 
     fun togglePersistDemo(enabled: Boolean) {
         viewModelScope.launch {
-            clearSessionUseCase.setPersistDemo(enabled)
+            setPersistDemoUseCase(enabled)
             // If we are currently on demo and disabled persistence, it might have cleared session
             if (!enabled && getBaseUrl().contains(Constants.DEMO_SERVER_HOST)) {
                 logout()

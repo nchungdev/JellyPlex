@@ -92,7 +92,7 @@ internal fun DesktopHeroDetailScaffold(
         try { playFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
     }
 
-    Box(modifier = modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+    Box(modifier = modifier.fillMaxSize().background(Color(0xFF181818))) {
         AsyncImage(
             model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
             contentDescription = null,
@@ -118,7 +118,7 @@ internal fun DesktopHeroDetailScaffold(
                         colorStops = arrayOf(
                             0.00f to Color.Black.copy(alpha = 0.22f),
                             0.54f to Color.Transparent,
-                            1.00f to Color(0xFF0F1113).copy(alpha = 0.96f),
+                            1.00f to Color(0xFF181818).copy(alpha = 0.96f),
                         )
                     )
                 )

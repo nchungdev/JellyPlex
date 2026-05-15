@@ -6,12 +6,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.jellyplus.client.data.datasource.local.PlayerSettingsLocalDataSource
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.PlaybackConfig
-import org.jellyplus.client.domain.usecases.*
+import org.jellyplus.client.domain.usecases.GetAccessTokenUseCase
+import org.jellyplus.client.domain.usecases.GetEpisodesUseCase
+import org.jellyplus.client.domain.usecases.GetIntroMarkersUseCase
+import org.jellyplus.client.domain.usecases.GetUserIdUseCase
+import org.jellyplus.client.domain.usecases.MarkItemAsPlayedUseCase
+import org.jellyplus.client.domain.usecases.PlayerPreferencesUseCases
+import org.jellyplus.client.domain.usecases.ReportPlaybackProgressUseCase
+import org.jellyplus.client.domain.usecases.ReportPlaybackStartUseCase
+import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
+import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
 
 data class PlayerState(
     val itemId: String? = null,
@@ -52,17 +60,7 @@ class PlayerViewModel(
     private val reportPlaybackProgressUseCase: ReportPlaybackProgressUseCase,
     private val reportPlaybackStoppedUseCase: ReportPlaybackStoppedUseCase,
     private val markItemAsPlayedUseCase: MarkItemAsPlayedUseCase,
-    private val getAutoSkipUseCase: GetAutoSkipUseCase,
-    private val setAutoSkipUseCase: SetAutoSkipUseCase,
-    private val getAutoNextUseCase: GetAutoNextUseCase,
-    private val setAutoNextUseCase: SetAutoNextUseCase,
-    private val getAutoSkipOutroUseCase: GetAutoSkipOutroUseCase,
-    private val setAutoSkipOutroUseCase: SetAutoSkipOutroUseCase,
-    private val getAutoPictureInPictureUseCase: GetAutoPictureInPictureUseCase,
-    private val setAutoPictureInPictureUseCase: SetAutoPictureInPictureUseCase,
-    private val getPlaybackSpeedUseCase: GetPlaybackSpeedUseCase,
-    private val setPlaybackSpeedUseCase: SetPlaybackSpeedUseCase,
-    private val playerSettings: PlayerSettingsLocalDataSource,
+    private val playerPrefs: PlayerPreferencesUseCases,
     private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
     private val getEpisodesUseCase: GetEpisodesUseCase,
     private val dispatchers: AppDispatchers,
@@ -71,7 +69,7 @@ class PlayerViewModel(
     val state: StateFlow<PlayerState> = _state.asStateFlow()
 
     init {
-        loadAutoSkipPreference()
+        loadPlayerPreferences()
     }
 
     fun loadStreamUrl(item: MediaItem) {
@@ -98,7 +96,7 @@ class PlayerViewModel(
                         url = config.url,
                         playSessionId = config.playSessionId,
                         mimeType = config.mimeType,
-                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerSettings.preferOriginalAudio },
+                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerPrefs.preferOriginalAudio },
                         isLoading = false
                     )
                 } else {
@@ -148,7 +146,7 @@ class PlayerViewModel(
                 val config = resolveStreamConfigUseCase(nextItem, userId, "CMP-ID")
                 _state.value = _state.value.copy(
                     nextEpisodeConfig = config?.copy(
-                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerSettings.preferOriginalAudio },
+                        originalAudioLanguage = config.originalAudioLanguage.takeIf { playerPrefs.preferOriginalAudio },
                     ),
                     isPreloadingNextMeta = false,
                 )
@@ -166,48 +164,48 @@ class PlayerViewModel(
 
     fun toggleAutoSkip() {
         val next = !_state.value.autoSkipIntro
-        setAutoSkipUseCase(next)
+        playerPrefs.setAutoSkipIntro(next)
         _state.value = _state.value.copy(autoSkipIntro = next)
     }
 
     fun toggleAutoSkipOutro() {
         val next = !_state.value.autoSkipOutro
-        setAutoSkipOutroUseCase(next)
+        playerPrefs.setAutoSkipOutro(next)
         _state.value = _state.value.copy(autoSkipOutro = next)
     }
 
     fun toggleAutoNext() {
         val next = !_state.value.autoNext
-        setAutoNextUseCase(next)
+        playerPrefs.setAutoNext(next)
         _state.value = _state.value.copy(autoNext = next)
     }
 
     fun toggleAutoPictureInPicture() {
         val next = !_state.value.autoPictureInPicture
-        setAutoPictureInPictureUseCase(next)
+        playerPrefs.setAutoPictureInPicture(next)
         _state.value = _state.value.copy(autoPictureInPicture = next)
     }
 
     fun toggleAutoSkipRecap() {
         val next = !_state.value.autoSkipRecap
-        playerSettings.autoSkipRecap = next
+        playerPrefs.setAutoSkipRecap(next)
         _state.value = _state.value.copy(autoSkipRecap = next)
     }
 
     fun toggleAutoSkipPreview() {
         val next = !_state.value.autoSkipPreview
-        playerSettings.autoSkipPreview = next
+        playerPrefs.setAutoSkipPreview(next)
         _state.value = _state.value.copy(autoSkipPreview = next)
     }
 
     fun toggleSeamlessTransition() {
         val next = !_state.value.seamlessTransition
-        playerSettings.seamlessTransition = next
+        playerPrefs.setSeamlessTransition(next)
         _state.value = _state.value.copy(seamlessTransition = next)
     }
 
     fun setPlaybackSpeed(speed: Float) {
-        setPlaybackSpeedUseCase(speed)
+        playerPrefs.setPlaybackSpeed(speed)
         _state.value = _state.value.copy(playbackSpeed = speed)
     }
 
@@ -256,19 +254,19 @@ class PlayerViewModel(
         }
     }
 
-    private fun loadAutoSkipPreference() {
+    private fun loadPlayerPreferences() {
         _state.value = _state.value.copy(
-            autoSkipIntro = getAutoSkipUseCase(),
-            autoSkipOutro = getAutoSkipOutroUseCase(),
-            autoSkipRecap = playerSettings.autoSkipRecap,
-            autoSkipPreview = playerSettings.autoSkipPreview,
-            autoNext = getAutoNextUseCase(),
-            autoPictureInPicture = getAutoPictureInPictureUseCase(),
-            seamlessTransition = playerSettings.seamlessTransition,
-            playbackSpeed = getPlaybackSpeedUseCase(),
-            seekBackSeconds = playerSettings.seekBackSeconds,
-            seekForwardSeconds = playerSettings.seekForwardSeconds,
-            showGestureHints = playerSettings.showGestureHints,
+            autoSkipIntro = playerPrefs.autoSkipIntro,
+            autoSkipOutro = playerPrefs.autoSkipOutro,
+            autoSkipRecap = playerPrefs.autoSkipRecap,
+            autoSkipPreview = playerPrefs.autoSkipPreview,
+            autoNext = playerPrefs.autoNext,
+            autoPictureInPicture = playerPrefs.autoPictureInPicture,
+            seamlessTransition = playerPrefs.seamlessTransition,
+            playbackSpeed = playerPrefs.playbackSpeed,
+            seekBackSeconds = playerPrefs.seekBackSeconds,
+            seekForwardSeconds = playerPrefs.seekForwardSeconds,
+            showGestureHints = playerPrefs.showGestureHints,
         )
     }
 }

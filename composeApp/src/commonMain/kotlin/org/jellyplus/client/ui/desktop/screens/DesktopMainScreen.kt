@@ -86,11 +86,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
-import org.jellyplus.client.ui.common.navigation.DpadSectionNavigator
-import org.jellyplus.client.ui.common.navigation.gridItemDpadHandler
-import org.jellyplus.client.ui.common.navigation.rememberDpadGridNavigator
-import org.jellyplus.client.ui.common.navigation.rememberDpadSectionNavigator
-import org.jellyplus.client.ui.common.navigation.sectionItemDpadHandler
+import org.jellyplus.client.ui.navigation.DpadSectionNavigator
+import org.jellyplus.client.ui.navigation.gridItemDpadHandler
+import org.jellyplus.client.ui.navigation.rememberDpadGridNavigator
+import org.jellyplus.client.ui.navigation.rememberDpadSectionNavigator
+import org.jellyplus.client.ui.navigation.sectionItemDpadHandler
 import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
 import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
@@ -163,7 +163,7 @@ fun DesktopMainScreen(
             .distinctBy { it.id }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818))) {
         Box(modifier = Modifier.fillMaxSize()) {
             when (selectedNav) {
                 NavDestination.Home -> MainDashboard(
@@ -184,7 +184,13 @@ fun DesktopMainScreen(
                     onMediaClick = onMediaClick,
                 )
                 NavDestination.Favorites -> MediaGrid("Favorites", favoriteItems, state.baseUrl, onMediaClick)
-                NavDestination.Profile -> DesktopProfilePlaceholder()
+                NavDestination.Profile -> {
+                    val sv = sessionViewModel ?: koinViewModel()
+                    org.jellyplus.client.ui.screens.SettingsScreen(
+                        sessionViewModel = sv,
+                        onBack = {},
+                    )
+                }
             }
         }
 
@@ -322,7 +328,7 @@ private fun MainDashboard(
                                     colorStops = arrayOf(
                                         0.0f to Color.Black.copy(alpha = 0.18f),
                                         0.52f to Color.Black.copy(alpha = 0.46f),
-                                        1.0f to Color(0xFF0F1113),
+                                        1.0f to Color(0xFF181818),
                                     )
                                 )
                             )

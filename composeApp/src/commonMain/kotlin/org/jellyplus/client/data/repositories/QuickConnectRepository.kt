@@ -23,6 +23,10 @@ class QuickConnectRepository(
         remoteDataSource.initiate()
     }
 
+    override suspend fun authorize(code: String): Boolean = withContext(dispatchers.io) {
+        remoteDataSource.authorize(code, sessionRepository.userId)
+    }
+
     override fun pollStatus(secret: String): Flow<QuickConnectResult> =
         flow {
             println("QuickConnect: Starting polling with secret: $secret")

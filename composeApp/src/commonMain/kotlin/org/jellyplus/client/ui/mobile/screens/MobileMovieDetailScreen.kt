@@ -77,7 +77,7 @@ fun MobileMovieDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F1113))
+            .background(Color(0xFF181818))
             .verticalScroll(rememberScrollState())
     ) {
         // ── Backdrop + overlaid info ─────────────────────────────────────────
@@ -108,7 +108,7 @@ fun MobileMovieDetailScreen(
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFF0F1113))
+                            colors = listOf(Color.Transparent, Color(0xFF181818))
                         )
                     )
             )

@@ -1,4 +1,4 @@
-package org.jellyplus.client.ui.common.navigation
+package org.jellyplus.client.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable

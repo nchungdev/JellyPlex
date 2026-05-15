@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.JellyPlus.Splash" parent="Theme.JellyPlus">
         <item name="android:windowSplashScreenBackground">@color/splash_background</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_system_splash_logo</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="android:windowBackground">@color/splash_background</item>
     </style>

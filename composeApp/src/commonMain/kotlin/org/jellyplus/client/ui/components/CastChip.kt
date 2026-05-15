@@ -1,4 +1,4 @@
-package org.jellyplus.client.ui.common.components
+package org.jellyplus.client.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

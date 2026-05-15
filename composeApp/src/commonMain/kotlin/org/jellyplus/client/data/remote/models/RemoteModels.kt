@@ -11,6 +11,13 @@ data class AuthenticateByNameRequest(
 )
 
 @Serializable
+data class UpdateUserPasswordRequest(
+    @SerialName("CurrentPw") val currentPassword: String,
+    @SerialName("NewPw") val newPassword: String,
+    @SerialName("ResetPassword") val resetPassword: Boolean = false,
+)
+
+@Serializable
 data class DeviceProfile(
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long = 140000000,
     @SerialName("MaxStaticBitrate") val maxStaticBitrate: Long = 140000000,

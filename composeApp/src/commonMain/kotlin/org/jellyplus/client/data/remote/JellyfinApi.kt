@@ -247,6 +247,15 @@ class JellyfinApi(
         return json.decodeFromString(QuickConnectResult.serializer(), response.bodyAsText())
     }
 
+    suspend fun authorizeQuickConnect(code: String, userId: String? = null): Boolean {
+        val response = client.post {
+            apiUrl("QuickConnect", "Authorize")
+            parameter("code", code)
+            userId?.let { parameter("userId", it) }
+        }
+        return response.body()
+    }
+
     suspend fun authenticateWithQuickConnect(secret: String): AuthenticationResult {
         return client.post {
             apiUrl("Users", "AuthenticateWithQuickConnect")
@@ -254,6 +263,15 @@ class JellyfinApi(
             contentType(ContentType.Application.Json)
             setBody(mapOf("Secret" to secret))
         }.body()
+    }
+
+    suspend fun updateUserPassword(userId: String?, currentPassword: String, newPassword: String) {
+        client.post {
+            apiUrl("Users", "Password")
+            userId?.let { parameter("userId", it) }
+            contentType(ContentType.Application.Json)
+            setBody(UpdateUserPasswordRequest(currentPassword, newPassword))
+        }
     }
 
     suspend fun authenticateByName(request: org.jellyplus.client.data.remote.models.AuthenticateByNameRequest): AuthenticationResult {

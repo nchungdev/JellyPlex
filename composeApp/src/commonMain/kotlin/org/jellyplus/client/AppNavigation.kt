@@ -145,10 +145,13 @@ fun LoadingScreen() {
     }
 }
 
+@Composable
+expect fun JellyPlusLoadingLogo(modifier: Modifier = Modifier)
+
 private val SplashBackground = Color(0xFF101010)
 
 @Composable
-private fun JellyPlusLoadingLogo(modifier: Modifier = Modifier) {
+internal fun JellyPlusLoadingLogoFallback(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height

@@ -1,4 +1,4 @@
-package org.jellyplus.client.ui.common.components
+package org.jellyplus.client.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background

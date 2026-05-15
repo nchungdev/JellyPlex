@@ -2,46 +2,28 @@ package org.jellyplus.client.ui.mobile.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,15 +31,8 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,27 +41,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jellyplus.client.domain.models.Constants
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
-import org.jellyplus.client.isDebug
-import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.viewmodels.HomeViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
-import org.jellyplus.client.ui.viewmodels.PlaybackPreferencesState
 import org.jellyplus.client.ui.viewmodels.PlaybackPreferencesViewModel
-import org.jellyplus.client.ui.viewmodels.SearchViewModel
 import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -98,386 +63,65 @@ fun MobileMainScreen(
     onSelectedTabChange: (Int) -> Unit,
     onMediaClick: (MediaItem) -> Unit,
     onContinueWatchingClick: (MediaItem) -> Unit,
-    onViewAll: (MediaType, String) -> Unit
+    onViewAll: (MediaType, String) -> Unit,
+    onViewAllGenre: (String) -> Unit = {},
+    onSearch: () -> Unit = {},
+    onSettings: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
-    val sessionState by sessionViewModel.uiState.collectAsState()
     val homeViewModel: HomeViewModel = koinViewModel()
+    val prefsViewModel: PlaybackPreferencesViewModel = koinViewModel()
+    val prefsState by prefsViewModel.state.collectAsState()
+    var homeHeaderAlpha by remember { mutableStateOf(0f) }
+    var profileHeaderAlpha by remember { mutableStateOf(0f) }
 
     Scaffold(
         topBar = {
             MobileTopHeader(
-                title = when (selectedTab) {
-                    1 -> "Search"
-                    2 -> "History"
-                    3 -> "Profile"
-                    else -> null
-                },
-                transparent = selectedTab == 0,
+                title = when (selectedTab) { 1 -> "Favorites"; 2 -> "History"; 3 -> "Profile"; else -> null },
+                backgroundAlpha = when (selectedTab) { 0 -> homeHeaderAlpha; 3 -> profileHeaderAlpha; else -> 1f },
+                showSearchButton = selectedTab != 3,
+                onSearch = onSearch,
             )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.Black.copy(alpha = 0.95f),
-                contentColor = Color.White,
-                tonalElevation = 0.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == 0,
-                    onClick = { onSelectedTabChange(0) },
-                    icon = { Icon(Icons.Default.Home, null) },
-                    label = { Text("Home") },
-                    colors = navigationColors()
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 1,
-                    onClick = { onSelectedTabChange(1) },
-                    icon = { Icon(Icons.Default.Search, null) },
-                    label = { Text("Search") },
-                    colors = navigationColors()
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 2,
-                    onClick = { onSelectedTabChange(2) },
-                    icon = { Icon(Icons.Default.History, null) },
-                    label = { Text("History") },
-                    colors = navigationColors()
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { onSelectedTabChange(3) },
-                    icon = { Icon(Icons.Default.Person, null) },
-                    label = { Text("Profile") },
-                    colors = navigationColors()
-                )
+            NavigationBar(containerColor = Color.Black.copy(alpha = 0.95f), contentColor = Color.White, tonalElevation = 0.dp) {
+                NavigationBarItem(selectedTab == 0, { onSelectedTabChange(0) }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 1, { onSelectedTabChange(1) }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favorites") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 2, { onSelectedTabChange(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("History") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 3, { onSelectedTabChange(3) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, colors = navigationColors())
             }
         },
-        containerColor = Color(0xFF0F1113)
+        containerColor = Color(0xFF181818),
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
             when (selectedTab) {
                 0 -> HomeContent(
-                    viewModel,
-                    homeViewModel,
-                    state,
-                    state.baseUrl,
-                    onMediaClick,
-                    onContinueWatchingClick,
+                    viewModel = viewModel, homeViewModel = homeViewModel,
+                    state = state, baseUrl = state.baseUrl,
+                    onMediaClick = onMediaClick, onContinueWatchingClick = onContinueWatchingClick,
                     onContinueWatchingHeaderClick = { onSelectedTabChange(2) },
-                    onViewAll,
-                    paddingValues,
-                )
-                1 -> SearchContent(
+                    onViewAll = onViewAll, onViewAllGenre = onViewAllGenre,
                     paddingValues = paddingValues,
-                    onMediaClick = onMediaClick,
+                    homeSectionOrder = prefsState.homeSectionOrder,
+                    homeEnabledSections = prefsState.homeEnabledSections,
+                    onHeaderAlphaChange = { homeHeaderAlpha = it },
                 )
-                2 -> MobileHistoryScreen(
-                    paddingValues = paddingValues,
-                    onMediaClick = onContinueWatchingClick,
-                )
+                1 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
+                2 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onContinueWatchingClick)
                 3 -> ProfileContent(
-                    state = state,
-                    baseUrl = state.baseUrl,
-                    sessionViewModel = sessionViewModel,
-                    onMediaClick = onMediaClick,
-                    onLogout = { sessionViewModel.logout() },
-                    paddingValues = paddingValues,
+                    state = state, baseUrl = state.baseUrl, sessionViewModel = sessionViewModel,
+                    onMediaClick = onMediaClick, onFavorites = { onSelectedTabChange(1) },
+                    onHistory = { onSelectedTabChange(2) }, onSettings = onSettings,
+                    onHeaderAlphaChange = { profileHeaderAlpha = it },
+                    onLogout = { sessionViewModel.logout() }, paddingValues = paddingValues,
                 )
             }
         }
     }
 }
 
-@Composable
-private fun HomeContent(
-    viewModel: MainViewModel,
-    homeViewModel: HomeViewModel,
-    state: org.jellyplus.client.ui.viewmodels.MainState,
-    baseUrl: String,
-    onMediaClick: (MediaItem) -> Unit,
-    onContinueWatchingClick: (MediaItem) -> Unit,
-    onContinueWatchingHeaderClick: () -> Unit,
-    onViewAll: (MediaType, String) -> Unit,
-    paddingValues: PaddingValues,
-) {
-    val homeState by homeViewModel.state.collectAsState()
-    val hasHomeContent = homeState.featuredItems.isNotEmpty() ||
-        homeState.resumeItems.isNotEmpty() ||
-        homeState.recentlyAddedItems.isNotEmpty()
-    val hasMainContent = state.movies.isNotEmpty() || state.tvShows.isNotEmpty()
-    val isHomeLoading = !hasHomeContent && !hasMainContent && (homeState.isLoading || state.isLoading)
-
-    if (isHomeLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    top = paddingValues.calculateTopPadding(),
-                    bottom = paddingValues.calculateBottomPadding(),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-        }
-        return
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = 0.dp,
-            bottom = paddingValues.calculateBottomPadding(),
-        )
-    ) {
-        if (homeState.error != null && !hasHomeContent && !hasMainContent) {
-            // ERROR STATE
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 100.dp, start = 32.dp, end = 32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(Icons.Default.CloudOff, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(80.dp))
-                    Spacer(Modifier.height(24.dp))
-                    Text("Connection Error", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(homeState.error ?: "Unable to reach server", color = Color.White.copy(alpha = 0.5f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Spacer(Modifier.height(32.dp))
-                    Button(
-                        onClick = {
-                            homeViewModel.loadHomeContent()
-                            viewModel.loadData()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("Retry", color = Color.Black)
-                    }
-                }
-            }
-        } else if (!hasHomeContent && !hasMainContent) {
-            // EMPTY STATE
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(Icons.Default.Inbox, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(100.dp))
-                    Spacer(Modifier.height(24.dp))
-                    Text("Library is empty", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text("No media found on this server", color = Color.White.copy(alpha = 0.5f))
-                }
-            }
-        } else {
-            val heroItem = homeState.featuredItems.firstOrNull()
-
-            if (heroItem != null) item {
-                Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-                    val item = heroItem
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clickable { onMediaClick(item) },
-                    ) {
-                        AsyncImage(
-                            model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(150.dp)
-                            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Black.copy(alpha = 0.36f), Color.Transparent)))
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
-                    )
-                    Column(
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            item.title,
-                            color = Color.White,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            lineHeight = 31.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            maxLines = 3,
-                        )
-                        Spacer(Modifier.height(18.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(0.84f),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Button(
-                                onClick = { onContinueWatchingClick(item) },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                shape = RoundedCornerShape(999.dp),
-                                modifier = Modifier.height(48.dp).weight(1f)
-                            ) {
-                                Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Xem ngay", color = Color.Black, fontWeight = FontWeight.Bold)
-                            }
-                            IconButton(
-                                onClick = { onMediaClick(item) },
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .background(Color.White.copy(alpha = 0.18f), CircleShape),
-                            ) {
-                                Icon(Icons.Default.Info, null, tint = Color.White)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Continue Watching — đặt đầu tiên vì đây là nội dung ưu tiên
-            if (homeState.resumeItems.isNotEmpty()) {
-                item {
-                    SectionHeader("Continue Watching", onViewAll = onContinueWatchingHeaderClick)
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(homeState.resumeItems) { item ->
-                            MobileContinueWatchingCard(item, baseUrl, onClick = { onContinueWatchingClick(item) })
-                        }
-                    }
-                }
-            }
-
-            // Recently Added
-            if (homeState.recentlyAddedItems.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("Recently Added")
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(homeState.recentlyAddedItems) { item ->
-                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                        }
-                    }
-                }
-            }
-
-            // ── Genre sections ─────────────────────────────────────────────
-            val allItems = (homeState.recentlyAddedItems + state.movies + state.tvShows).distinctBy { it.id }
-            val genreMap: Map<String, List<MediaItem>> = allItems
-                .flatMap { item -> (item.genres ?: emptyList()).map { genre -> genre to item } }
-                .groupBy({ it.first }, { it.second })
-                .filter { it.value.size >= 2 }
-            val topGenres = genreMap.entries
-                .sortedByDescending { it.value.size }
-                .take(5)
-
-            topGenres.forEach { (genre, genreItems) ->
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader(genre)
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        items(genreItems.take(10)) { item ->
-                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                        }
-                    }
-                }
-            }
-
-            if (state.movies.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("Movies", onViewAll = { onViewAll(MediaType.MOVIE, "Movies") })
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(state.movies) { item ->
-                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                        }
-                    }
-                }
-            }
-
-            if (state.tvShows.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("TV Series", onViewAll = { onViewAll(MediaType.SERIES, "TV Series") })
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(state.tvShows) { item ->
-                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                        }
-                    }
-                }
-            }
-
-            // ── All genres list at the bottom ──────────────────────────────
-            val allGenres = (homeState.recentlyAddedItems + state.movies + state.tvShows)
-                .flatMap { it.genres ?: emptyList() }
-                .distinct()
-                .sorted()
-
-            if (allGenres.isNotEmpty()) {
-                item {
-                    Spacer(Modifier.height(28.dp))
-                    SectionHeader("Genres")
-                    Spacer(Modifier.height(12.dp))
-                    val visibleGenres = allGenres.take(10)
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        // 2-column grid of genre chips
-                        val rows = visibleGenres.chunked(2)
-                        rows.forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                rowItems.forEach { genre ->
-                                    Surface(
-                                        onClick = { onViewAll(MediaType.MOVIE, genre) },
-                                        modifier = Modifier.weight(1f).height(48.dp),
-                                        color = Color.White.copy(alpha = 0.07f),
-                                        shape = RoundedCornerShape(12.dp),
-                                    ) {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Text(
-                                                genre,
-                                                color = Color.White,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Medium,
-                                            )
-                                        }
-                                    }
-                                }
-                                // Fill last row if odd count
-                                if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-                            }
-                        }
-                        if (allGenres.size > 10) {
-                            TextButton(
-                                onClick = { /* TODO: show all genres */ },
-                                modifier = Modifier.align(Alignment.CenterHorizontally),
-                            ) {
-                                Text("See all genres", color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        item { Spacer(Modifier.height(32.dp)) }
-    }
-}
+// ── Top header ────────────────────────────────────────────────────────────────
 
 @Composable
 private fun AppLogoText() {
@@ -490,458 +134,31 @@ private fun AppLogoText() {
 @Composable
 private fun MobileTopHeader(
     title: String?,
-    transparent: Boolean = false,
+    backgroundAlpha: Float = 1f,
+    showSearchButton: Boolean = false,
+    onSearch: () -> Unit = {},
+    showSettingsButton: Boolean = false,
+    onSettings: () -> Unit = {},
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                if (transparent) {
-                    Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.76f), Color.Black.copy(alpha = 0.34f), Color.Transparent)
-                    )
-                } else {
-                    Brush.verticalGradient(listOf(Color(0xFF0F1113), Color(0xFF0F1113)))
-                }
-            )
-            .statusBarsPadding()
-            .height(56.dp)
-            .padding(start = 16.dp, end = 4.dp),
+        modifier = Modifier.fillMaxWidth()
+            .background(Color(0xFF181818).copy(alpha = backgroundAlpha.coerceIn(0f, 1f)))
+            .statusBarsPadding().height(56.dp).padding(start = 16.dp, end = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (title == null) {
-            AppLogoText()
-        } else {
-            Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.size(48.dp))
-    }
-}
+        if (title == null) AppLogoText()
+        else Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
 
-@Composable
-private fun SearchContent(
-    paddingValues: PaddingValues,
-    onMediaClick: (MediaItem) -> Unit,
-) {
-    val searchViewModel: SearchViewModel = koinViewModel()
-    val state by searchViewModel.state.collectAsState()
-
-    val focusRequester = remember { FocusRequester() }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    LaunchedEffect(Unit) {
-        try { focusRequester.requestFocus() } catch (_: Exception) {}
-    }
-    LaunchedEffect(state.results) {
-        if (state.results.isNotEmpty()) keyboardController?.hide()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(horizontal = 16.dp),
-    ) {
-        // ── Search bar ──────────────────────────────────────────────────
-        TextField(
-            value = state.query,
-            onValueChange = { searchViewModel.onQueryChange(it) },
-            placeholder = { Text("Movies, shows, people...", color = Color.White.copy(alpha = 0.4f)) },
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .focusRequester(focusRequester),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White.copy(alpha = 0.08f),
-                unfocusedContainerColor = Color.White.copy(alpha = 0.06f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-            shape = RoundedCornerShape(12.dp),
-            leadingIcon = {
-                Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.5f))
-            },
-            trailingIcon = {
-                if (state.query.isNotBlank()) {
-                    IconButton(onClick = { searchViewModel.clearQuery() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White)
-                    }
-                }
-            },
-        )
-
-        // ── Filter chips (visible once user has typed) ──────────────────
-        if (state.query.isNotBlank()) {
-            val filters = listOf(
-                null to "All",
-                MediaType.MOVIE to "Movies",
-                MediaType.SERIES to "TV Shows",
-                MediaType.EPISODE to "Episodes",
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                filters.forEach { (type, label) ->
-                    val selected = state.selectedFilter == type
-                    FilterChip(
-                        selected = selected,
-                        onClick = { searchViewModel.onFilterChange(type) },
-                        label = { Text(label, fontSize = 13.sp) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = Color.Black,
-                            containerColor = Color.White.copy(alpha = 0.07f),
-                            labelColor = Color.White.copy(alpha = 0.75f),
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = selected,
-                            selectedBorderColor = Color.Transparent,
-                            borderColor = Color.White.copy(alpha = 0.15f),
-                        ),
-                    )
-                }
-            }
-        }
-
-        // ── Content area ────────────────────────────────────────────────
         when {
-            state.query.isBlank() -> {
-                if (state.searchHistory.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "Recent searches",
-                            color = Color.White,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        TextButton(onClick = { searchViewModel.clearHistory() }) {
-                            Text("Clear all", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
-                        }
-                    }
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        items(state.searchHistory) { query ->
-                            SearchHistoryRow(
-                                query = query,
-                                onClick = { searchViewModel.onQueryChange(query) },
-                                onRemove = { searchViewModel.removeHistoryItem(query) },
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.12f),
-                                modifier = Modifier.size(72.dp),
-                            )
-                            Text(
-                                "Search movies, shows & more",
-                                color = Color.White.copy(alpha = 0.3f),
-                                fontSize = 15.sp,
-                            )
-                        }
-                    }
-                }
-            }
-
-            state.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            state.error != null -> {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        state.error ?: "Search failed",
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 14.sp,
-                    )
-                }
-            }
-
-            state.displayResults.isEmpty() -> {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Text("No results for", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
-                        Text(
-                            "\"${state.query}\"",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
-
-            else -> {
-                val displayResults = state.displayResults
-                val activeFilter = state.selectedFilter
-
-                if (activeFilter != null) {
-                    // Flat list when a filter is active
-                    Text(
-                        "${displayResults.size} result${if (displayResults.size != 1) "s" else ""}",
-                        color = Color.White.copy(alpha = 0.38f),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(displayResults) { item ->
-                            SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
-                        }
-                    }
-                } else {
-                    // Sectioned by type
-                    val movies = displayResults.filter { it.type == MediaType.MOVIE }
-                    val series = displayResults.filter { it.type == MediaType.SERIES }
-                    val episodes = displayResults.filter { it.type == MediaType.EPISODE }
-                    val others = displayResults.filter { it.type != MediaType.MOVIE && it.type != MediaType.SERIES && it.type != MediaType.EPISODE }
-
-                    val totalCount = displayResults.size
-                    Text(
-                        "$totalCount result${if (totalCount != 1) "s" else ""}",
-                        color = Color.White.copy(alpha = 0.38f),
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
-
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        if (movies.isNotEmpty()) {
-                            item {
-                                Text(
-                                    "Movies (${movies.size})",
-                                    color = Color.White.copy(alpha = 0.55f),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
-                                )
-                            }
-                            items(movies) { item ->
-                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
-                            }
-                        }
-                        if (series.isNotEmpty()) {
-                            item {
-                                Text(
-                                    "TV Shows (${series.size})",
-                                    color = Color.White.copy(alpha = 0.55f),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-                                )
-                            }
-                            items(series) { item ->
-                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
-                            }
-                        }
-                        if (episodes.isNotEmpty()) {
-                            item {
-                                Text(
-                                    "Episodes (${episodes.size})",
-                                    color = Color.White.copy(alpha = 0.55f),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-                                )
-                            }
-                            items(episodes) { item ->
-                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
-                            }
-                        }
-                        if (others.isNotEmpty()) {
-                            item {
-                                Text(
-                                    "Other (${others.size})",
-                                    color = Color.White.copy(alpha = 0.55f),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
-                                )
-                            }
-                            items(others) { item ->
-                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
-                            }
-                        }
-                    }
-                }
-            }
+            showSearchButton -> IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search", tint = Color.White) }
+            showSettingsButton -> IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Settings", tint = Color.White) }
+            else -> Spacer(Modifier.size(48.dp))
         }
     }
 }
 
-@Composable
-private fun SearchHistoryRow(query: String, onClick: () -> Unit, onRemove: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            Icons.Default.History,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.35f),
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            query,
-            color = Color.White,
-            fontSize = 15.sp,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        IconButton(onClick = onRemove, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Remove",
-                tint = Color.White.copy(alpha = 0.28f),
-                modifier = Modifier.size(16.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SearchResultRow(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Poster thumbnail with played dot
-        Box(
-            modifier = Modifier
-                .width(72.dp)
-                .height(108.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.06f)),
-        ) {
-            AsyncImage(
-                model = item.getImageUrl(baseUrl),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-            if (item.isPlayed) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(8.dp)
-                        .background(Color(0xFF4CAF50), CircleShape),
-                )
-            }
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                item.title,
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val meta = buildString {
-                append(when (item.type) {
-                    MediaType.MOVIE -> "Movie"
-                    MediaType.SERIES -> "TV Series"
-                    MediaType.EPISODE -> "Episode"
-                    else -> item.type.value
-                })
-                item.year?.let { append(" · $it") }
-                if (item.type == MediaType.EPISODE) {
-                    item.seriesName?.let { name ->
-                        val s = item.parentIndexNumber?.let { "S${it.toString().padStart(2,'0')}" } ?: ""
-                        val e = item.index?.let { "E${it.toString().padStart(2,'0')}" } ?: ""
-                        val ep = listOf(s, e).filter { it.isNotBlank() }.joinToString("")
-                        if (ep.isNotBlank()) append(" · $name $ep") else append(" · $name")
-                    }
-                }
-            }
-            Text(meta, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1)
-
-            item.runTimeTicks?.let { ticks ->
-                val totalMin = (ticks / 10_000_000 / 60).toInt()
-                if (totalMin > 0) {
-                    val h = totalMin / 60; val m = totalMin % 60
-                    Text(
-                        text = if (h > 0) "${h}h ${m}m" else "${m}m",
-                        color = Color.White.copy(alpha = 0.32f),
-                        fontSize = 11.sp,
-                    )
-                }
-            }
-        }
-
-        // Rating
-        item.rating?.let { r ->
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(start = 8.dp, end = 2.dp),
-            ) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    tint = Color(0xFFFFB300),
-                    modifier = Modifier.size(13.dp),
-                )
-                Text(
-                    "%.1f".format(r),
-                    color = Color.White.copy(alpha = 0.55f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
-        }
-    }
-}
+// ── Favorites tab ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun FavoritesContent(
@@ -950,19 +167,15 @@ private fun FavoritesContent(
     onMediaClick: (MediaItem) -> Unit,
     paddingValues: PaddingValues,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)
-    ) {
-        val favoriteItems = state.items.filter { it.userData?.isFavorite == true }
-        if (favoriteItems.isEmpty()) {
+    val favorites = state.items.filter { it.userData?.isFavorite == true }
+    Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
+        if (favorites.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No favorites yet", color = Color.White.copy(alpha = 0.5f))
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(favoriteItems) { item ->
-                    FavoriteItemCard(item, baseUrl, onMediaClick)
-                }
+                items(favorites) { item -> FavoriteItemCard(item, baseUrl, onMediaClick) }
             }
         }
     }
@@ -971,17 +184,17 @@ private fun FavoritesContent(
 @Composable
 private fun FavoriteItemCard(item: MediaItem, baseUrl: String, onClick: (MediaItem) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
+        modifier = Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
             .clickable { onClick(item) },
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         AsyncImage(
-            model = item.getImageUrl(baseUrl),
-            contentDescription = null,
+            model = item.getImageUrl(baseUrl), contentDescription = null,
             modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.size(16.dp))
         Column {
             Text(item.title, color = Color.White, fontWeight = FontWeight.Bold)
             Text(item.year?.toString() ?: "", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
@@ -991,331 +204,7 @@ private fun FavoriteItemCard(item: MediaItem, baseUrl: String, onClick: (MediaIt
     }
 }
 
-@Composable
-private fun ProfileContent(
-    state: org.jellyplus.client.ui.viewmodels.MainState,
-    baseUrl: String,
-    sessionViewModel: SessionViewModel,
-    onMediaClick: (MediaItem) -> Unit,
-    onLogout: () -> Unit,
-    paddingValues: PaddingValues,
-) {
-    val sessionState by sessionViewModel.uiState.collectAsState()
-    val favoriteItems = state.items.filter { it.userData?.isFavorite == true }
-    val isDemoServer = sessionViewModel.getBaseUrl().contains(Constants.DEMO_SERVER_HOST, ignoreCase = true)
-    val playbackPreferencesViewModel: PlaybackPreferencesViewModel = koinViewModel()
-    val playbackPreferences by playbackPreferencesViewModel.state.collectAsState()
-    var showPlaybackPreferences by remember { mutableStateOf(false) }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(paddingValues),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        item {
-            Spacer(Modifier.height(32.dp))
-            Box(
-                modifier = Modifier.size(120.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Person, null, tint = Color.Black, modifier = Modifier.size(64.dp))
-            }
-            Spacer(Modifier.height(24.dp))
-            Text(sessionViewModel.getUserName() ?: "Jellyfin User", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Text(sessionViewModel.getBaseUrl(), color = Color.White.copy(alpha = 0.5f))
-
-            Spacer(Modifier.height(40.dp))
-            SectionHeader("Favorites")
-            if (favoriteItems.isEmpty()) {
-                Text(
-                    "No favorites yet",
-                    color = Color.White.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-        }
-
-        items(favoriteItems) { item ->
-            FavoriteItemCard(item, baseUrl, onMediaClick)
-            Spacer(Modifier.height(12.dp))
-        }
-
-        item {
-            Spacer(Modifier.height(24.dp))
-            ProfileOption("Account Settings", Icons.Default.Settings)
-            ProfileOption(
-                label = "Playback Preferences",
-                icon = Icons.Default.PlayArrow,
-                onClick = { showPlaybackPreferences = !showPlaybackPreferences },
-            )
-            if (showPlaybackPreferences) {
-                PlaybackPreferencesPanel(
-                    state = playbackPreferences,
-                    onAutoSkipIntroChange = playbackPreferencesViewModel::setAutoSkipIntro,
-                    onAutoSkipOutroChange = playbackPreferencesViewModel::setAutoSkipOutro,
-                    onAutoSkipRecapChange = playbackPreferencesViewModel::setAutoSkipRecap,
-                    onAutoSkipPreviewChange = playbackPreferencesViewModel::setAutoSkipPreview,
-                    onAutoNextChange = playbackPreferencesViewModel::setAutoNext,
-                    onAutoPipChange = playbackPreferencesViewModel::setAutoPictureInPicture,
-                    onSeamlessTransitionChange = playbackPreferencesViewModel::setSeamlessTransition,
-                    onPreferOriginalAudioChange = playbackPreferencesViewModel::setPreferOriginalAudio,
-                    onShowGestureHintsChange = playbackPreferencesViewModel::setShowGestureHints,
-                    onPlaybackSpeedChange = playbackPreferencesViewModel::setPlaybackSpeed,
-                    onSeekBackChange = playbackPreferencesViewModel::setSeekBackSeconds,
-                    onSeekForwardChange = playbackPreferencesViewModel::setSeekForwardSeconds,
-                )
-            }
-
-            if (isDebug() || isDemoServer) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Info, null, tint = Color.White.copy(alpha = 0.7f))
-                    Spacer(Modifier.width(16.dp))
-                    Column {
-                        Text("Keep trying demo", color = Color.White, fontSize = 16.sp)
-                        Text("Persist demo session across restarts", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    Switch(
-                        checked = sessionState.persistDemo,
-                        onCheckedChange = { sessionViewModel.togglePersistDemo(it) },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-            }
-
-            ProfileOption("Help & Support", Icons.Default.Info)
-            Spacer(Modifier.height(32.dp))
-            TextButton(onClick = onLogout) {
-                Text("Sign Out", color = Color.Red, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileOption(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: (() -> Unit)? = null,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(icon, null, tint = Color.White.copy(alpha = 0.7f))
-        Spacer(Modifier.width(16.dp))
-        Text(label, color = Color.White, fontSize = 16.sp)
-        Spacer(Modifier.weight(1f))
-        Icon(Icons.Default.ChevronRight, null, tint = Color.White.copy(alpha = 0.3f))
-    }
-}
-
-@Composable
-private fun PlaybackPreferencesPanel(
-    state: PlaybackPreferencesState,
-    onAutoSkipIntroChange: (Boolean) -> Unit,
-    onAutoSkipOutroChange: (Boolean) -> Unit,
-    onAutoSkipRecapChange: (Boolean) -> Unit,
-    onAutoSkipPreviewChange: (Boolean) -> Unit,
-    onAutoNextChange: (Boolean) -> Unit,
-    onAutoPipChange: (Boolean) -> Unit,
-    onSeamlessTransitionChange: (Boolean) -> Unit,
-    onPreferOriginalAudioChange: (Boolean) -> Unit,
-    onShowGestureHintsChange: (Boolean) -> Unit,
-    onPlaybackSpeedChange: (Float) -> Unit,
-    onSeekBackChange: (Int) -> Unit,
-    onSeekForwardChange: (Int) -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .padding(14.dp),
-    ) {
-        PreferenceGroupTitle("Speed")
-        PreferenceChips(
-            labels = listOf("0.75x", "1x", "1.25x", "1.5x", "2x"),
-            selectedIndex = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f).indexOf(state.playbackSpeed).coerceAtLeast(1),
-            onSelect = { index ->
-                onPlaybackSpeedChange(listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)[index])
-            },
-        )
-
-        PreferenceGroupTitle("Auto skip")
-        PreferenceSwitchRow("Intro", "Skip intro segments when available", state.autoSkipIntro, onAutoSkipIntroChange)
-        PreferenceSwitchRow("Outro / Credits", "Jump credits when the server marks them", state.autoSkipOutro, onAutoSkipOutroChange)
-        PreferenceSwitchRow("Recap", "Skip recap segments before an episode starts", state.autoSkipRecap, onAutoSkipRecapChange)
-        PreferenceSwitchRow("Preview", "Skip preview/trailer segments", state.autoSkipPreview, onAutoSkipPreviewChange)
-
-        PreferenceGroupTitle("Episode flow")
-        PreferenceSwitchRow("Auto Next", "Continue to the next episode automatically", state.autoNext, onAutoNextChange)
-        PreferenceSwitchRow("Seamless transition", "Preload the next episode for faster handoff", state.seamlessTransition, onSeamlessTransitionChange)
-
-        PreferenceGroupTitle("Language & mobile")
-        PreferenceSwitchRow("Prefer original audio", "Choose original language tracks when Jellyfin can identify them", state.preferOriginalAudio, onPreferOriginalAudioChange)
-        PreferenceSwitchRow("Auto PiP", "Enter picture-in-picture when leaving playback", state.autoPictureInPicture, onAutoPipChange)
-        PreferenceSwitchRow("Gesture hints", "Show brightness/volume feedback while swiping", state.showGestureHints, onShowGestureHintsChange)
-
-        PreferenceGroupTitle("Seek buttons")
-        PreferenceChips(
-            labels = listOf("-5s", "-10s", "-15s"),
-            selectedIndex = listOf(5, 10, 15).indexOf(state.seekBackSeconds).coerceAtLeast(0),
-            onSelect = { index -> onSeekBackChange(listOf(5, 10, 15)[index]) },
-        )
-        Spacer(Modifier.height(8.dp))
-        PreferenceChips(
-            labels = listOf("+10s", "+30s", "+60s"),
-            selectedIndex = listOf(10, 30, 60).indexOf(state.seekForwardSeconds).coerceAtLeast(0),
-            onSelect = { index -> onSeekForwardChange(listOf(10, 30, 60)[index]) },
-        )
-    }
-}
-
-@Composable
-private fun PreferenceGroupTitle(title: String) {
-    Text(
-        title,
-        color = Color.White,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
-private fun PreferenceSwitchRow(
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, lineHeight = 16.sp)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
-                uncheckedThumbColor = Color.Gray,
-                uncheckedTrackColor = Color.White.copy(alpha = 0.18f),
-            ),
-        )
-    }
-}
-
-@Composable
-private fun PreferenceChips(
-    labels: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.10f))
-                    .clickable { onSelect(index) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    label,
-                    color = if (selected) Color.Black else Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, onViewAll: (() -> Unit)? = null) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onViewAll != null) Modifier.clickable(onClick = onViewAll) else Modifier)
-            .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-        if (onViewAll != null) {
-            IconButton(onClick = onViewAll) {
-                Icon(Icons.Default.ChevronRight, null, tint = Color.White.copy(alpha = 0.5f))
-            }
-        }
-    }
-}
-
-@Composable
-internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
-    val progress = if (item.runTimeTicks != null && item.runTimeTicks > 0) {
-        item.playbackPositionTicks.toFloat() / item.runTimeTicks.toFloat()
-    } else 0f
-
-    Column(
-        modifier = Modifier.width(256.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
-            .clickable { onClick() }) {
-        Box(modifier = Modifier.height(144.dp).fillMaxWidth()) {
-            AsyncImage(
-                model = item.getBackdropUrl(baseUrl),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // Progress Bar
-            if (progress > 0) {
-                Box(
-                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp)
-                        .background(Color.Gray.copy(alpha = 0.5f))
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.primary)
-                    )
-                }
-            }
-        }
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            val subText = if (item.type == MediaType.EPISODE) {
-                "S${item.parentIndexNumber ?: 0}E${item.index ?: 0}"
-            } else {
-                "Resume watching"
-            }
-            Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, maxLines = 1)
-        }
-    }
-}
+// ── Nav bar colors ────────────────────────────────────────────────────────────
 
 @Composable
 private fun navigationColors() = NavigationBarItemDefaults.colors(
@@ -1323,5 +212,5 @@ private fun navigationColors() = NavigationBarItemDefaults.colors(
     selectedTextColor = MaterialTheme.colorScheme.primary,
     unselectedIconColor = Color.White.copy(alpha = 0.5f),
     unselectedTextColor = Color.White.copy(alpha = 0.5f),
-    indicatorColor = Color.Transparent
+    indicatorColor = Color.Transparent,
 )

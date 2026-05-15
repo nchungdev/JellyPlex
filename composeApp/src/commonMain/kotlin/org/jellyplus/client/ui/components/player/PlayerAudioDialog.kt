@@ -1,4 +1,4 @@
-package org.jellyplus.client.ui.common.components.player
+package org.jellyplus.client.ui.components.player
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

@@ -92,7 +92,7 @@ fun MobileSeriesDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F1113)),
+            .background(Color(0xFF181818)),
     ) {
         LazyColumn(
             state = listState,
@@ -127,7 +127,7 @@ fun MobileSeriesDetailScreen(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color(0xFF0F1113))
+                                colors = listOf(Color.Transparent, Color(0xFF181818))
                             )
                         )
                 )
@@ -243,7 +243,7 @@ fun MobileSeriesDetailScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(0xFF0F1113))
+                            .background(Color(0xFF181818))
                     ) {
                         if (collapseProgress > 0.85f) {
                             Spacer(
@@ -336,7 +336,7 @@ private fun MobileSeriesCollapsingBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F1113).copy(alpha = progress.coerceIn(0f, 1f)))
+            .background(Color(0xFF181818).copy(alpha = progress.coerceIn(0f, 1f)))
             .statusBarsPadding()
             .height(56.dp)
             .padding(start = 4.dp, end = 16.dp),

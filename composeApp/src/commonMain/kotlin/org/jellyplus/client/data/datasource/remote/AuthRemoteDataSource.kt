@@ -10,6 +10,7 @@ interface IAuthRemoteDataSource {
     suspend fun validateToken(): UserDto
     fun updateBaseUrl(url: String)
     fun getBaseUrl(): String
+    suspend fun changePassword(userId: String?, currentPassword: String, newPassword: String)
 }
 
 class AuthRemoteDataSource(private val api: JellyfinApi) : IAuthRemoteDataSource {
@@ -28,4 +29,8 @@ class AuthRemoteDataSource(private val api: JellyfinApi) : IAuthRemoteDataSource
     }
 
     override fun getBaseUrl(): String = api.baseUrl
+
+    override suspend fun changePassword(userId: String?, currentPassword: String, newPassword: String) {
+        api.updateUserPassword(userId, currentPassword, newPassword)
+    }
 }

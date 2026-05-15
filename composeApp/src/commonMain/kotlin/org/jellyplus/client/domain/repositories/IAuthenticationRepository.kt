@@ -21,4 +21,5 @@ interface IAuthenticationRepository {
     fun setPersistDemo(enabled: Boolean)
     fun getPersistDemo(): Boolean
     suspend fun validate(): Boolean
+    suspend fun changePassword(currentPassword: String, newPassword: String)
 }

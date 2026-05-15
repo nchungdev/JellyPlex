@@ -66,6 +66,10 @@ class AuthenticationRepository(
 
     override fun getPersistDemo(): Boolean = sessionRepository.persistDemo
 
+    override suspend fun changePassword(currentPassword: String, newPassword: String) = withContext(dispatchers.io) {
+        remoteDataSource.changePassword(sessionRepository.userId, currentPassword, newPassword)
+    }
+
     override suspend fun validate(): Boolean = withContext(dispatchers.io) {
         if (!hasSession()) return@withContext false
         try {

@@ -54,9 +54,9 @@ import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
 import org.jellyplus.client.media.PlayerPipController
-import org.jellyplus.client.ui.common.components.player.PlayerAudioDialog
-import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
-import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
+import org.jellyplus.client.ui.components.player.PlayerAudioDialog
+import org.jellyplus.client.ui.components.player.PlayerCaptionDialog
+import org.jellyplus.client.ui.components.player.PlayerSettingsPopup
 import kotlin.math.roundToInt
 
 private var lastSkipToastTimeMs = 0L

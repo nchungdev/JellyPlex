@@ -68,7 +68,7 @@ fun DesktopServerSelectionScreen(
     var showManualDialog by remember { mutableStateOf(false) }
     var manualUrl by remember { mutableStateOf("http://") }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113)).padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818)).padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp)) {
         MobileAuthLogo(
             modifier = Modifier
                 .align(Alignment.TopStart)
