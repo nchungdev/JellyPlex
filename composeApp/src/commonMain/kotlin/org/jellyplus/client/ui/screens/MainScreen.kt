@@ -159,112 +159,121 @@ fun MainScreen(
         playerScreen?.let { backFromPlayer(it) }
     }
 
-    when (val screen = currentScreen) {
-        is Screen.Home -> {
-            if (uiType == UiType.Desktop) {
-                DesktopMainScreen(
-                    viewModel = mainViewModel,
-                    selectedNavIndex = homeTabIndex,
-                    onSelectedNavIndexChange = { homeTabIndex = it },
-                    onMediaClick = { navigateTo(it) },
-                    onContinueWatchingClick = { playItem(it, homeTabIndex) },
-                    onViewAll = { type: MediaType, title: String ->
-                        currentScreen = Screen.Listing(type, title)
-                    }
-                )
-            } else {
-                MobileMainScreen(
-                    viewModel = mainViewModel,
-                    sessionViewModel = sessionViewModel,
-                    selectedTab = homeTabIndex.coerceIn(0, 3),
-                    onSelectedTabChange = { homeTabIndex = it },
-                    onMediaClick = { navigateTo(it) },
-                    onContinueWatchingClick = { playItem(it, homeTabIndex) },
-                    onViewAll = { type: MediaType, title: String ->
-                        currentScreen = Screen.Listing(type, title)
-                    }
-                )
-            }
-        }
-
-        is Screen.Details -> {
-            if (screen.item.type == MediaType.SERIES) {
-                SeriesDetailScreen(
-                    item = screen.item,
-                    focusSeasonId = screen.focusSeasonId,
-                    recommendedItems = mainState.tvShows.filterNot { it.id == screen.item.id }.take(12),
-                    onBack = {
-                        homeTabIndex = detailBackTabIndex
-                        currentScreen = Screen.Home
-                    },
-                    onPlay = { },
-                    onPlayEpisode = { episode, parent, playlist ->
-                        currentScreen = Screen.Player(episode, playlist, parent)
-                    },
-                    onRecommendedClick = { navigateTo(it) },
-                )
-            } else {
-                MovieDetailScreen(
-                    item = screen.item,
-                    recommendedItems = mainState.movies.filterNot { it.id == screen.item.id }.take(12),
-                    onBack = {
-                        homeTabIndex = detailBackTabIndex
-                        currentScreen = Screen.Home
-                    },
-                    onPlay = { item ->
-                        currentScreen = Screen.Player(item, listOf(item))
-                    },
-                    onRecommendedClick = { navigateTo(it) },
-                )
-            }
-        }
-
-        is Screen.Listing -> {
-            MediaListingScreen(
-                title = screen.title,
-                items = if (screen.type == MediaType.MOVIE) mainState.movies else mainState.tvShows,
-                baseUrl = mainState.baseUrl,
-                isLoadingMore = if (screen.type == MediaType.MOVIE) mainState.isLoadingMoreMovies else mainState.isLoadingMoreTvShows,
-                hasMore = if (screen.type == MediaType.MOVIE) mainState.hasMoreMovies else mainState.hasMoreTvShows,
-                onLoadMore = {
-                    if (screen.type == MediaType.MOVIE) {
-                        mainViewModel.loadMoreMovies()
-                    } else {
-                        mainViewModel.loadMoreTvShows()
-                    }
-                },
-                onBack = { currentScreen = Screen.Home },
-                onMediaClick = { navigateTo(it) }
+    // ── Layer 0: Home — always kept in the composition tree so its scroll
+    //             position and ViewModel state are never lost on back-nav.
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiType == UiType.Desktop) {
+            DesktopMainScreen(
+                viewModel = mainViewModel,
+                selectedNavIndex = homeTabIndex,
+                onSelectedNavIndexChange = { homeTabIndex = it },
+                onMediaClick = { navigateTo(it) },
+                onContinueWatchingClick = { playItem(it, homeTabIndex) },
+                onViewAll = { type: MediaType, title: String ->
+                    currentScreen = Screen.Listing(type, title)
+                }
+            )
+        } else {
+            MobileMainScreen(
+                viewModel = mainViewModel,
+                sessionViewModel = sessionViewModel,
+                selectedTab = homeTabIndex.coerceIn(0, 3),
+                onSelectedTabChange = { homeTabIndex = it },
+                onMediaClick = { navigateTo(it) },
+                onContinueWatchingClick = { playItem(it, homeTabIndex) },
+                onViewAll = { type: MediaType, title: String ->
+                    currentScreen = Screen.Listing(type, title)
+                }
             )
         }
 
-        is Screen.Player -> {
+        // ── Layer 1: Details overlay ─────────────────────────────────────
+        val detailScreen = currentScreen as? Screen.Details
+        if (detailScreen != null) {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+                if (detailScreen.item.type == MediaType.SERIES) {
+                    SeriesDetailScreen(
+                        item = detailScreen.item,
+                        focusSeasonId = detailScreen.focusSeasonId,
+                        recommendedItems = mainState.tvShows.filterNot { it.id == detailScreen.item.id }.take(12),
+                        onBack = {
+                            homeTabIndex = detailBackTabIndex
+                            currentScreen = Screen.Home
+                        },
+                        onPlay = { },
+                        onPlayEpisode = { episode, parent, playlist ->
+                            currentScreen = Screen.Player(episode, playlist, parent)
+                        },
+                        onRecommendedClick = { navigateTo(it) },
+                    )
+                } else {
+                    MovieDetailScreen(
+                        item = detailScreen.item,
+                        recommendedItems = mainState.movies.filterNot { it.id == detailScreen.item.id }.take(12),
+                        onBack = {
+                            homeTabIndex = detailBackTabIndex
+                            currentScreen = Screen.Home
+                        },
+                        onPlay = { item ->
+                            currentScreen = Screen.Player(item, listOf(item))
+                        },
+                        onRecommendedClick = { navigateTo(it) },
+                    )
+                }
+            }
+        }
+
+        // ── Layer 2: Listing overlay ─────────────────────────────────────
+        val listingScreen = currentScreen as? Screen.Listing
+        if (listingScreen != null) {
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F1113))) {
+                MediaListingScreen(
+                    title = listingScreen.title,
+                    items = if (listingScreen.type == MediaType.MOVIE) mainState.movies else mainState.tvShows,
+                    baseUrl = mainState.baseUrl,
+                    isLoadingMore = if (listingScreen.type == MediaType.MOVIE) mainState.isLoadingMoreMovies else mainState.isLoadingMoreTvShows,
+                    hasMore = if (listingScreen.type == MediaType.MOVIE) mainState.hasMoreMovies else mainState.hasMoreTvShows,
+                    onLoadMore = {
+                        if (listingScreen.type == MediaType.MOVIE) {
+                            mainViewModel.loadMoreMovies()
+                        } else {
+                            mainViewModel.loadMoreTvShows()
+                        }
+                    },
+                    onBack = { currentScreen = Screen.Home },
+                    onMediaClick = { navigateTo(it) }
+                )
+            }
+        }
+
+        // ── Layer 3: Player overlay ──────────────────────────────────────
+        val playerScreen = currentScreen as? Screen.Player
+        if (playerScreen != null) {
             val playerViewModel: PlayerViewModel = koinViewModel()
             val playerState by playerViewModel.state.collectAsState()
 
-            val playlist = screen.playlist
-            val currentIndex = playlist.indexOfFirst { it.id == screen.item.id }
+            val playlist = playerScreen.playlist
+            val currentIndex = playlist.indexOfFirst { it.id == playerScreen.item.id }
 
-            LaunchedEffect(screen.item.id) {
-                playerViewModel.loadStreamUrl(screen.item)
+            LaunchedEffect(playerScreen.item.id) {
+                playerViewModel.loadStreamUrl(playerScreen.item)
                 playerViewModel.setEpisodeContext(playlist, currentIndex)
-                playerViewModel.loadMarkers(screen.item.id)
-                // Opened directly (not from series detail): load full season playlist
-                if (screen.item.type == MediaType.EPISODE && playlist.size == 1) {
-                    playerViewModel.loadEpisodePlaylist(screen.item)
+                playerViewModel.loadMarkers(playerScreen.item.id)
+                if (playerScreen.item.type == MediaType.EPISODE && playlist.size == 1) {
+                    playerViewModel.loadEpisodePlaylist(playerScreen.item)
                 }
             }
 
             fun goToNext() {
                 val next = currentIndex + 1
                 if (next < playlist.size) {
-                    currentScreen = Screen.Player(playlist[next], playlist, screen.parentItem)
+                    currentScreen = Screen.Player(playlist[next], playlist, playerScreen.parentItem)
                 }
             }
 
-            var showDelayedLoading by rememberSaveable(screen.item.id) { mutableStateOf(false) }
+            var showDelayedLoading by rememberSaveable(playerScreen.item.id) { mutableStateOf(false) }
 
-            LaunchedEffect(screen.item.id, playerState.url) {
+            LaunchedEffect(playerScreen.item.id, playerState.url) {
                 showDelayedLoading = false
                 if (playerState.url == null) {
                     kotlinx.coroutines.delay(2_000)
@@ -272,56 +281,58 @@ fun MainScreen(
                 }
             }
 
-            playerState.url?.let { url ->
-                org.jellyplus.client.ui.components.VideoPlayer(
-                    item = screen.item,
-                    parentItem = screen.parentItem,
-                    url = url,
-                    mimeType = playerState.mimeType,
-                    accessToken = playerState.accessToken,
-                    playSessionId = playerState.playSessionId,
-                    onBack = { backFromPlayer(screen) },
-                    showNextPrev = playlist.size > 1,
-                    onPlaybackStart = { itemId, sessionId ->
-                        playerViewModel.reportStart(itemId, sessionId)
-                    },
-                    onPlaybackProgress = { itemId, sessionId, pos, paused ->
-                        playerViewModel.reportProgress(itemId, sessionId, pos, paused)
-                    },
-                    onPlaybackStopped = { itemId, sessionId, pos ->
-                        playerViewModel.reportStopped(itemId, sessionId, pos)
-                    },
-                    onNextEpisode = { goToNext() },
-                    onPrevEpisode = {
-                        val prev = currentIndex - 1
-                        if (prev >= 0) {
-                            currentScreen = Screen.Player(playlist[prev], playlist, screen.parentItem)
-                        }
-                    },
-                    uiType = uiType,
-                    markers = playerState.markers,
-                    nextEpisodeConfig = playerState.nextEpisodeConfig,
-                    autoSkipIntro = playerState.autoSkipIntro,
-                    autoSkipOutro = playerState.autoSkipOutro,
-                    autoNext = playerState.autoNext,
-                    autoPictureInPicture = playerState.autoPictureInPicture,
-                    playbackSpeed = playerState.playbackSpeed,
-                    onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
-                    onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(screen.item.id) },
-                    onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
-                    onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
-                    onToggleAutoNext = { playerViewModel.toggleAutoNext() },
-                    onToggleAutoPictureInPicture = { playerViewModel.toggleAutoPictureInPicture() },
-                    onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
-                    onSeamlessNextEpisode = { goToNext() },
-                    originalAudioLanguage = playerState.originalAudioLanguage,
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                playerState.url?.let { url ->
+                    org.jellyplus.client.ui.components.VideoPlayer(
+                        item = playerScreen.item,
+                        parentItem = playerScreen.parentItem,
+                        url = url,
+                        mimeType = playerState.mimeType,
+                        accessToken = playerState.accessToken,
+                        playSessionId = playerState.playSessionId,
+                        onBack = { backFromPlayer(playerScreen) },
+                        showNextPrev = playlist.size > 1,
+                        onPlaybackStart = { itemId, sessionId ->
+                            playerViewModel.reportStart(itemId, sessionId)
+                        },
+                        onPlaybackProgress = { itemId, sessionId, pos, paused ->
+                            playerViewModel.reportProgress(itemId, sessionId, pos, paused)
+                        },
+                        onPlaybackStopped = { itemId, sessionId, pos ->
+                            playerViewModel.reportStopped(itemId, sessionId, pos)
+                        },
+                        onNextEpisode = { goToNext() },
+                        onPrevEpisode = {
+                            val prev = currentIndex - 1
+                            if (prev >= 0) {
+                                currentScreen = Screen.Player(playlist[prev], playlist, playerScreen.parentItem)
+                            }
+                        },
+                        uiType = uiType,
+                        markers = playerState.markers,
+                        nextEpisodeConfig = playerState.nextEpisodeConfig,
+                        autoSkipIntro = playerState.autoSkipIntro,
+                        autoSkipOutro = playerState.autoSkipOutro,
+                        autoNext = playerState.autoNext,
+                        autoPictureInPicture = playerState.autoPictureInPicture,
+                        playbackSpeed = playerState.playbackSpeed,
+                        onPreloadNextMeta = { playerViewModel.preloadNextEpisodeMeta() },
+                        onMarkCurrentAsPlayed = { playerViewModel.markCurrentAsPlayed(playerScreen.item.id) },
+                        onToggleAutoSkip = { playerViewModel.toggleAutoSkip() },
+                        onToggleAutoSkipOutro = { playerViewModel.toggleAutoSkipOutro() },
+                        onToggleAutoNext = { playerViewModel.toggleAutoNext() },
+                        onToggleAutoPictureInPicture = { playerViewModel.toggleAutoPictureInPicture() },
+                        onSpeedChange = { playerViewModel.setPlaybackSpeed(it) },
+                        onSeamlessNextEpisode = { goToNext() },
+                        originalAudioLanguage = playerState.originalAudioLanguage,
+                    )
+                } ?: PlayerResolvingScreen(
+                    item = playerScreen.item,
+                    parentItem = playerScreen.parentItem,
+                    showLoading = showDelayedLoading,
+                    onBack = { backFromPlayer(playerScreen) },
                 )
-            } ?: PlayerResolvingScreen(
-                item = screen.item,
-                parentItem = screen.parentItem,
-                showLoading = showDelayedLoading,
-                onBack = { backFromPlayer(screen) },
-            )
+            }
         }
     }
 }

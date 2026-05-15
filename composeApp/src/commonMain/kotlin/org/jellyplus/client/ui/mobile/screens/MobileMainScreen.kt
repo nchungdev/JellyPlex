@@ -49,6 +49,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -67,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -365,6 +367,31 @@ private fun HomeContent(
                 }
             }
 
+            // ── Genre sections ─────────────────────────────────────────────
+            val allItems = (homeState.recentlyAddedItems + state.movies + state.tvShows).distinctBy { it.id }
+            val genreMap: Map<String, List<MediaItem>> = allItems
+                .flatMap { item -> (item.genres ?: emptyList()).map { genre -> genre to item } }
+                .groupBy({ it.first }, { it.second })
+                .filter { it.value.size >= 2 }
+            val topGenres = genreMap.entries
+                .sortedByDescending { it.value.size }
+                .take(5)
+
+            topGenres.forEach { (genre, genreItems) ->
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    SectionHeader(genre)
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        items(genreItems.take(10)) { item ->
+                            MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                        }
+                    }
+                }
+            }
+
             if (state.movies.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(20.dp))
@@ -390,6 +417,59 @@ private fun HomeContent(
                     ) {
                         items(state.tvShows) { item ->
                             MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                        }
+                    }
+                }
+            }
+
+            // ── All genres list at the bottom ──────────────────────────────
+            val allGenres = (homeState.recentlyAddedItems + state.movies + state.tvShows)
+                .flatMap { it.genres ?: emptyList() }
+                .distinct()
+                .sorted()
+
+            if (allGenres.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(28.dp))
+                    SectionHeader("Genres")
+                    Spacer(Modifier.height(12.dp))
+                    val visibleGenres = allGenres.take(10)
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        // 2-column grid of genre chips
+                        val rows = visibleGenres.chunked(2)
+                        rows.forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                rowItems.forEach { genre ->
+                                    Surface(
+                                        onClick = { onViewAll(MediaType.MOVIE, genre) },
+                                        modifier = Modifier.weight(1f).height(48.dp),
+                                        color = Color.White.copy(alpha = 0.07f),
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text(
+                                                genre,
+                                                color = Color.White,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                        }
+                                    }
+                                }
+                                // Fill last row if odd count
+                                if (rowItems.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                        if (allGenres.size > 10) {
+                            TextButton(
+                                onClick = { /* TODO: show all genres */ },
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                            ) {
+                                Text("See all genres", color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
                 }
@@ -448,8 +528,12 @@ private fun SearchContent(
     val state by searchViewModel.state.collectAsState()
 
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     LaunchedEffect(Unit) {
         try { focusRequester.requestFocus() } catch (_: Exception) {}
+    }
+    LaunchedEffect(state.results) {
+        if (state.results.isNotEmpty()) keyboardController?.hide()
     }
 
     Column(
@@ -624,19 +708,94 @@ private fun SearchContent(
             }
 
             else -> {
-                Text(
-                    text = "${state.displayResults.size} result${if (state.displayResults.size != 1) "s" else ""}",
-                    color = Color.White.copy(alpha = 0.38f),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    items(state.displayResults) { item ->
-                        SearchResultRow(
-                            item = item,
-                            baseUrl = state.baseUrl,
-                            onClick = { onMediaClick(item) },
-                        )
+                val displayResults = state.displayResults
+                val activeFilter = state.selectedFilter
+
+                if (activeFilter != null) {
+                    // Flat list when a filter is active
+                    Text(
+                        "${displayResults.size} result${if (displayResults.size != 1) "s" else ""}",
+                        color = Color.White.copy(alpha = 0.38f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(displayResults) { item ->
+                            SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                        }
+                    }
+                } else {
+                    // Sectioned by type
+                    val movies = displayResults.filter { it.type == MediaType.MOVIE }
+                    val series = displayResults.filter { it.type == MediaType.SERIES }
+                    val episodes = displayResults.filter { it.type == MediaType.EPISODE }
+                    val others = displayResults.filter { it.type != MediaType.MOVIE && it.type != MediaType.SERIES && it.type != MediaType.EPISODE }
+
+                    val totalCount = displayResults.size
+                    Text(
+                        "$totalCount result${if (totalCount != 1) "s" else ""}",
+                        color = Color.White.copy(alpha = 0.38f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (movies.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "Movies (${movies.size})",
+                                    color = Color.White.copy(alpha = 0.55f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                                )
+                            }
+                            items(movies) { item ->
+                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                            }
+                        }
+                        if (series.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "TV Shows (${series.size})",
+                                    color = Color.White.copy(alpha = 0.55f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+                                )
+                            }
+                            items(series) { item ->
+                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                            }
+                        }
+                        if (episodes.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "Episodes (${episodes.size})",
+                                    color = Color.White.copy(alpha = 0.55f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+                                )
+                            }
+                            items(episodes) { item ->
+                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                            }
+                        }
+                        if (others.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "Other (${others.size})",
+                                    color = Color.White.copy(alpha = 0.55f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+                                )
+                            }
+                            items(others) { item ->
+                                SearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                            }
+                        }
                     }
                 }
             }
@@ -693,8 +852,8 @@ private fun SearchResultRow(item: MediaItem, baseUrl: String, onClick: () -> Uni
         // Poster thumbnail with played dot
         Box(
             modifier = Modifier
-                .width(52.dp)
-                .height(78.dp)
+                .width(72.dp)
+                .height(108.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.White.copy(alpha = 0.06f)),
         ) {
