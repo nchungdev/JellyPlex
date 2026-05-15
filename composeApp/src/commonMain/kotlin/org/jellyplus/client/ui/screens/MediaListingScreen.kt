@@ -2,6 +2,7 @@ package org.jellyplus.client.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,19 +16,25 @@ import androidx.compose.foundation.layout.width
 import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
 import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +54,9 @@ fun MediaListingScreen(
     title: String,
     items: List<MediaItem>,
     baseUrl: String,
+    isLoadingMore: Boolean = false,
+    hasMore: Boolean = false,
+    onLoadMore: () -> Unit = {},
     onBack: () -> Unit,
     onMediaClick: (MediaItem) -> Unit
 ) {
@@ -57,6 +67,17 @@ fun MediaListingScreen(
     }
     val uiType = LocalUiType.current
     val columns = if (uiType == UiType.Desktop) 6 else 3
+    val gridState = rememberLazyGridState()
+    val shouldLoadMore by remember(filteredItems, searchQuery, hasMore, isLoadingMore) {
+        derivedStateOf {
+            if (searchQuery.isNotEmpty() || !hasMore || isLoadingMore || filteredItems.isEmpty()) {
+                false
+            } else {
+                val lastVisibleIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                lastVisibleIndex >= filteredItems.lastIndex - columns
+            }
+        }
+    }
     val horizontalPadding = if (uiType == UiType.Desktop) {
         PaddingValues(start = DesktopContentLeftPadding, end = DesktopContentRightPadding)
     } else {
@@ -116,6 +137,7 @@ fun MediaListingScreen(
 
         // Grid
         LazyVerticalGrid(
+            state = gridState,
             columns = GridCells.Fixed(columns),
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -130,6 +152,20 @@ fun MediaListingScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            if (isLoadingMore) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
         }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) onLoadMore()
     }
 }

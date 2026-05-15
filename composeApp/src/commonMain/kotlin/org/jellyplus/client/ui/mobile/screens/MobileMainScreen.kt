@@ -71,8 +71,6 @@ import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.isDebug
 import org.jellyplus.client.ui.components.MediaPoster
-import org.jellyplus.client.ui.components.MediaPosterPlaceholder
-import org.jellyplus.client.ui.components.MediaRowPlaceholder
 import org.jellyplus.client.ui.viewmodels.HomeViewModel
 import org.jellyplus.client.ui.viewmodels.MainViewModel
 import org.jellyplus.client.ui.viewmodels.PlaybackPreferencesState
@@ -192,6 +190,23 @@ private fun HomeContent(
     paddingValues: PaddingValues,
 ) {
     val homeState by homeViewModel.state.collectAsState()
+    val isHomeLoading = homeState.isLoading || !homeState.hasLoaded
+
+    if (isHomeLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(
+                    top = paddingValues.calculateTopPadding(),
+                    bottom = paddingValues.calculateBottomPadding(),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        }
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -199,21 +214,7 @@ private fun HomeContent(
             bottom = paddingValues.calculateBottomPadding(),
         )
     ) {
-        if (state.isLoading && state.items.isEmpty()) {
-            // GLOBAL SKELETON
-            item {
-                MediaPosterPlaceholder(Modifier.fillMaxWidth().height(500.dp))
-            }
-            item {
-                Column(Modifier.padding(top = 16.dp)) {
-                    SectionHeader("Movies")
-                    MediaRowPlaceholder()
-                    Spacer(Modifier.height(20.dp))
-                    SectionHeader("TV Series")
-                    MediaRowPlaceholder()
-                }
-            }
-        } else if (!state.isLoading && state.items.isEmpty() && state.error != null) {
+        if (homeState.error != null && homeState.featuredItems.isEmpty() && homeState.resumeItems.isEmpty() && homeState.recentlyAddedItems.isEmpty()) {
             // ERROR STATE
             item {
                 Column(
@@ -223,17 +224,25 @@ private fun HomeContent(
                     Icon(Icons.Default.CloudOff, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(80.dp))
                     Spacer(Modifier.height(24.dp))
                     Text("Connection Error", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                    Text(state.error ?: "Unable to reach server", color = Color.White.copy(alpha = 0.5f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Text(homeState.error ?: "Unable to reach server", color = Color.White.copy(alpha = 0.5f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     Spacer(Modifier.height(32.dp))
                     Button(
-                        onClick = { viewModel.loadData() },
+                        onClick = {
+                            homeViewModel.loadHomeContent()
+                            viewModel.loadData()
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("Retry", color = Color.Black)
                     }
                 }
             }
-        } else if (state.items.isEmpty()) {
+        } else if (
+            homeState.featuredItems.isEmpty() &&
+            homeState.resumeItems.isEmpty() &&
+            homeState.recentlyAddedItems.isEmpty() &&
+            state.items.isEmpty()
+        ) {
             // EMPTY STATE
             item {
                 Column(
@@ -249,74 +258,70 @@ private fun HomeContent(
         } else {
             val heroItem = homeState.featuredItems.firstOrNull()
 
-            if (heroItem != null || homeState.isLoading) item {
+            if (heroItem != null) item {
                 Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-                    if (heroItem != null) {
-                        val item = heroItem
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable { onMediaClick(item) },
-                        ) {
-                            AsyncImage(
-                                model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Black.copy(alpha = 0.36f), Color.Transparent)))
+                    val item = heroItem
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clickable { onMediaClick(item) },
+                    ) {
+                        AsyncImage(
+                            model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Black.copy(alpha = 0.36f), Color.Transparent)))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
+                    )
+                    Column(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            item.title,
+                            color = Color.White,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            lineHeight = 31.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 3,
                         )
-                        Column(
-                            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 28.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        Spacer(Modifier.height(18.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(0.84f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                item.title,
-                                color = Color.White,
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                lineHeight = 31.sp,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                maxLines = 3,
-                            )
-                            Spacer(Modifier.height(18.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(0.84f),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                            Button(
+                                onClick = { onContinueWatchingClick(item) },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = RoundedCornerShape(999.dp),
+                                modifier = Modifier.height(48.dp).weight(1f)
                             ) {
-                                Button(
-                                    onClick = { onContinueWatchingClick(item) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                    shape = RoundedCornerShape(999.dp),
-                                    modifier = Modifier.height(48.dp).weight(1f)
-                                ) {
-                                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Xem ngay", color = Color.Black, fontWeight = FontWeight.Bold)
-                                }
-                                IconButton(
-                                    onClick = { onMediaClick(item) },
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(Color.White.copy(alpha = 0.18f), CircleShape),
-                                ) {
-                                    Icon(Icons.Default.Info, null, tint = Color.White)
-                                }
+                                Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Xem ngay", color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
+                            IconButton(
+                                onClick = { onMediaClick(item) },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(Color.White.copy(alpha = 0.18f), CircleShape),
+                            ) {
+                                Icon(Icons.Default.Info, null, tint = Color.White)
                             }
                         }
-                    } else if (homeState.isLoading) {
-                        MediaPosterPlaceholder(Modifier.fillMaxSize())
                     }
                 }
             }

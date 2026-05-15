@@ -8,3 +8,8 @@ data class HomeContent(
     val resumeItems: List<MediaItem>,
     val recentlyAddedItems: List<MediaItem>
 )
+
+data class PagedMediaItems(
+    val items: List<MediaItem>,
+    val totalRecordCount: Int,
+)

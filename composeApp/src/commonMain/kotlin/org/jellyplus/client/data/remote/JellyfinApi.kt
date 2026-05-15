@@ -26,6 +26,9 @@ import kotlinx.serialization.json.Json
 import org.jellyplus.client.data.remote.models.*
 import org.jellyplus.client.domain.models.*
 import org.jellyplus.client.domain.repositories.ISessionRepository
+import org.jellyplus.client.logDebug
+import org.jellyplus.client.logError
+import kotlin.time.TimeSource
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -39,6 +42,19 @@ class JellyfinApi(
     // Dynamic properties to ensure we always use the latest session data
     val baseUrl: String get() = sessionRepository.baseUrl ?: ""
     val accessToken: String? get() = sessionRepository.accessToken
+
+    private suspend inline fun <T> timedApiCall(name: String, crossinline block: suspend () -> T): T {
+        val mark = TimeSource.Monotonic.markNow()
+        logDebug("JellyPerf", "API $name -> start")
+        return try {
+            val result = block()
+            logDebug("JellyPerf", "API $name <- success ${mark.elapsedNow().inWholeMilliseconds}ms")
+            result
+        } catch (e: Throwable) {
+            logError("JellyPerf", "API $name <- failed ${mark.elapsedNow().inWholeMilliseconds}ms: ${e.message}", e)
+            throw e
+        }
+    }
 
     private val client =
         HttpClient {
@@ -335,56 +351,85 @@ class JellyfinApi(
     }
 
     suspend fun getResumeItems(userId: String): List<MediaItem> {
-        val response: ItemResponse = client.get {
-            apiUrl("Users", userId, "Items", "Resume")
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-        }.body()
-        return response.items
+        return timedApiCall("home.resume limit=20") {
+            val response: ItemResponse = client.get {
+                apiUrl("Users", userId, "Items", "Resume")
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+                parameter("Limit", 20)
+            }.body()
+            logDebug("JellyPerf", "API home.resume count=${response.items.size} total=${response.totalRecordCount}")
+            response.items
+        }
     }
 
     suspend fun getRecentlyAddedItems(userId: String): List<MediaItem> {
-        return client.get {
-            apiUrl("Users", userId, "Items", "Latest")
-            parameter("Limit", 20)
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-        }.body()
+        return timedApiCall("home.recentlyAdded limit=20") {
+            val items: List<MediaItem> = client.get {
+                apiUrl("Users", userId, "Items", "Latest")
+                parameter("Limit", 20)
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+            }.body()
+            logDebug("JellyPerf", "API home.recentlyAdded count=${items.size}")
+            items
+        }
     }
 
     suspend fun getFeaturedItems(userId: String): List<MediaItem> {
-        val response: ItemResponse = client.get {
-            apiUrl("Users", userId, "Items")
-            parameter("Recursive", true)
-            parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
-            parameter("Filters", "IsUnplayed")
-            parameter("SortBy", "Random")
-            parameter("Limit", 12)
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear")
-        }.body()
-        return response.items
+        return timedApiCall("home.featured random limit=12") {
+            val response: ItemResponse = client.get {
+                apiUrl("Users", userId, "Items")
+                parameter("Recursive", true)
+                parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
+                parameter("Filters", "IsUnplayed")
+                parameter("SortBy", "Random")
+                parameter("Limit", 12)
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear")
+            }.body()
+            logDebug("JellyPerf", "API home.featured count=${response.items.size} total=${response.totalRecordCount}")
+            response.items
+        }
     }
 
     suspend fun getMovies(): List<MediaItem> {
-        val response: ItemResponse = client.get {
-            apiUrl("Items")
-            parameter("SortBy", "SortName")
-            parameter("SortOrder", "Ascending")
-            parameter("Recursive", true)
-            parameter("IncludeItemTypes", MediaType.MOVIE.value)
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-        }.body()
-        return response.items
+        return getMoviesPage(startIndex = 0, limit = 10).items
+    }
+
+    suspend fun getMoviesPage(startIndex: Int, limit: Int): PagedMediaItems {
+        return timedApiCall("movies page start=$startIndex limit=$limit") {
+            val response: ItemResponse = client.get {
+                apiUrl("Items")
+                parameter("SortBy", "SortName")
+                parameter("SortOrder", "Ascending")
+                parameter("Recursive", true)
+                parameter("IncludeItemTypes", MediaType.MOVIE.value)
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+                parameter("StartIndex", startIndex)
+                parameter("Limit", limit)
+            }.body()
+            logDebug("JellyPerf", "API movies page count=${response.items.size} total=${response.totalRecordCount}")
+            PagedMediaItems(response.items, response.totalRecordCount)
+        }
     }
 
     suspend fun getTvShows(): List<MediaItem> {
-        val response: ItemResponse = client.get {
-            apiUrl("Items")
-            parameter("SortBy", "SortName")
-            parameter("SortOrder", "Ascending")
-            parameter("Recursive", true)
-            parameter("IncludeItemTypes", MediaType.SERIES.value)
-            parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
-        }.body()
-        return response.items
+        return getTvShowsPage(startIndex = 0, limit = 10).items
+    }
+
+    suspend fun getTvShowsPage(startIndex: Int, limit: Int): PagedMediaItems {
+        return timedApiCall("tv page start=$startIndex limit=$limit") {
+            val response: ItemResponse = client.get {
+                apiUrl("Items")
+                parameter("SortBy", "SortName")
+                parameter("SortOrder", "Ascending")
+                parameter("Recursive", true)
+                parameter("IncludeItemTypes", MediaType.SERIES.value)
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete")
+                parameter("StartIndex", startIndex)
+                parameter("Limit", limit)
+            }.body()
+            logDebug("JellyPerf", "API tv page count=${response.items.size} total=${response.totalRecordCount}")
+            PagedMediaItems(response.items, response.totalRecordCount)
+        }
     }
 
     suspend fun getSeasons(seriesId: String): List<MediaItem> {

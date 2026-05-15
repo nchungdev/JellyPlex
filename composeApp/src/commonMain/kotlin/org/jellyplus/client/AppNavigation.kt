@@ -1,22 +1,37 @@
 package org.jellyplus.client
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.models.Constants
@@ -74,18 +89,63 @@ fun AppMainContent(
 
 @Composable
 fun LoadingScreen() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        started = true
+    }
+
+    val iconOffsetY by animateDpAsState(
+        targetValue = if (started) 0.dp else 82.dp,
+        animationSpec = tween(durationMillis = 520),
+    )
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis = 420, delayMillis = 120),
+    )
+    val loadingAlpha by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = tween(durationMillis = 360, delayMillis = 360),
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SplashBackground),
+        contentAlignment = Alignment.Center,
     ) {
-        JellyPlusLoadingLogo(modifier = Modifier.size(112.dp))
-        Spacer(Modifier.height(18.dp))
-        Text("JellyPlus", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Color.White)
-        Spacer(Modifier.height(28.dp))
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            JellyPlusLoadingLogo(
+                modifier = Modifier
+                    .size(160.dp)
+                    .offset(y = iconOffsetY),
+            )
+            Spacer(Modifier.height(18.dp))
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Color.White)) {
+                        append("Jelly")
+                    }
+                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                        append("Plus")
+                    }
+                },
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.graphicsLayer(alpha = titleAlpha),
+            )
+            Spacer(Modifier.height(64.dp))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.graphicsLayer(alpha = loadingAlpha),
+            )
+        }
     }
 }
+
+private val SplashBackground = Color(0xFF101010)
 
 @Composable
 private fun JellyPlusLoadingLogo(modifier: Modifier = Modifier) {

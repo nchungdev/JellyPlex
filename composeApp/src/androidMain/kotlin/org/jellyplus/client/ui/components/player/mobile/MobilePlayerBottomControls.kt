@@ -52,6 +52,8 @@ internal fun MobilePlayerBottomControls(
     val displayPosition = draggingValue?.toLong() ?: currentPosition
     val isInteractingWithSeekbar = draggingValue != null
     val seekbarHorizontalInset = 14.dp
+    val seekbarLineHeight = 4.dp
+    val seekbarThumbSize = if (isInteractingWithSeekbar) 20.dp else seekbarLineHeight + 2.dp
 
     Column(
         modifier = modifier
@@ -117,20 +119,35 @@ internal fun MobilePlayerBottomControls(
                     .padding(horizontal = seekbarHorizontalInset),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
-                )
-
                 val progress = if (duration > 0) (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
                 Box(
                     modifier = Modifier
+                        .fillMaxWidth()
+                        .height(seekbarLineHeight)
+                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
+                )
+
+                Box(
+                    modifier = Modifier
                         .fillMaxWidth(progress)
-                        .height(4.dp)
+                        .height(seekbarLineHeight)
                         .background(Color(0xFF00D4A8), RoundedCornerShape(2.dp)),
                 )
+
+                if (duration > 0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress)
+                            .height(seekbarThumbSize),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(seekbarThumbSize)
+                                .background(Color.White, CircleShape),
+                        )
+                    }
+                }
             }
 
             if (duration > 0) {
@@ -154,11 +171,7 @@ internal fun MobilePlayerBottomControls(
                         inactiveTrackColor = Color.Transparent,
                     ),
                     thumb = {
-                        Box(
-                            modifier = Modifier
-                                .size(if (isInteractingWithSeekbar) 20.dp else 4.dp)
-                                .background(Color.White, CircleShape)
-                        )
+                        Box(Modifier.size(0.dp))
                     },
                 )
             }

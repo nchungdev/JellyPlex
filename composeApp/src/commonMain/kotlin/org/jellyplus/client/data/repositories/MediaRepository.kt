@@ -2,6 +2,8 @@ package org.jellyplus.client.data.repositories
 
 import io.ktor.http.appendPathSegments
 import io.ktor.http.takeFrom
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 import org.jellyplus.client.data.datasource.local.MediaLocalDataSource
@@ -13,10 +15,14 @@ import org.jellyplus.client.domain.models.HomeContent
 import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
+import org.jellyplus.client.domain.models.PagedMediaItems
 import org.jellyplus.client.domain.models.Person
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.domain.repositories.IMediaRepository
 import org.jellyplus.client.domain.repositories.ISessionRepository
+import org.jellyplus.client.logDebug
+import org.jellyplus.client.logError
+import kotlin.time.TimeSource
 
 class MediaRepository(
     private val remoteDataSource: IMediaRemoteDataSource,
@@ -31,24 +37,48 @@ class MediaRepository(
 
     override suspend fun refreshMovies(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
-            val movies = remoteDataSource.getMovies()
+            val movies = remoteDataSource.getMoviesPage(startIndex = 0, limit = 10).items
             localDataSource.saveMoviesCache(movies)
         }
     }
 
     override suspend fun refreshTvShows(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
-            val shows = remoteDataSource.getTvShows()
+            val shows = remoteDataSource.getTvShowsPage(startIndex = 0, limit = 10).items
             localDataSource.saveTvShowsCache(shows)
         }
     }
 
+    override suspend fun getMoviesPage(startIndex: Int, limit: Int): Result<PagedMediaItems> = withContext(dispatchers.io) {
+        runCatching { remoteDataSource.getMoviesPage(startIndex, limit) }
+    }
+
+    override suspend fun getTvShowsPage(startIndex: Int, limit: Int): Result<PagedMediaItems> = withContext(dispatchers.io) {
+        runCatching { remoteDataSource.getTvShowsPage(startIndex, limit) }
+    }
+
     override suspend fun refreshHomeContent(userId: String): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
-            val featured = runCatching { remoteDataSource.getHomeFeatured(userId) }.getOrDefault(emptyList())
-            val resume = remoteDataSource.getHomeResume(userId)
-            val recentlyAdded = remoteDataSource.getHomeRecentlyAdded(userId)
-            localDataSource.saveHomeCache(HomeContent(featured, resume, recentlyAdded))
+            val mark = TimeSource.Monotonic.markNow()
+            logDebug("JellyPerf", "Repo refreshHomeContent -> start")
+            coroutineScope {
+                val featuredDeferred = async {
+                    runCatching { remoteDataSource.getHomeFeatured(userId) }.getOrDefault(emptyList())
+                }
+                val resumeDeferred = async { remoteDataSource.getHomeResume(userId) }
+                val recentlyAddedDeferred = async { remoteDataSource.getHomeRecentlyAdded(userId) }
+
+                localDataSource.saveHomeCache(
+                    HomeContent(
+                        featuredItems = featuredDeferred.await(),
+                        resumeItems = resumeDeferred.await(),
+                        recentlyAddedItems = recentlyAddedDeferred.await(),
+                    )
+                )
+            }
+            logDebug("JellyPerf", "Repo refreshHomeContent <- success ${mark.elapsedNow().inWholeMilliseconds}ms")
+        }.onFailure { e ->
+            logError("JellyPerf", "Repo refreshHomeContent <- failed: ${e.message}", e)
         }
     }
 

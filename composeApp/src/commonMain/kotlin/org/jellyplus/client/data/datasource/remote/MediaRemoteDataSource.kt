@@ -7,11 +7,14 @@ import org.jellyplus.client.data.remote.models.IntroSkipperTimestamps
 import org.jellyplus.client.data.remote.models.MediaSegmentQueryResult
 import org.jellyplus.client.data.remote.models.PlaybackInfoResponse
 import org.jellyplus.client.domain.models.MediaItem
+import org.jellyplus.client.domain.models.PagedMediaItems
 import org.jellyplus.client.domain.models.Person
 
 interface IMediaRemoteDataSource {
     suspend fun getMovies(): List<MediaItem>
     suspend fun getTvShows(): List<MediaItem>
+    suspend fun getMoviesPage(startIndex: Int, limit: Int): PagedMediaItems
+    suspend fun getTvShowsPage(startIndex: Int, limit: Int): PagedMediaItems
     suspend fun getWatchHistory(userId: String): List<MediaItem>
     suspend fun getHomeRecentlyAdded(userId: String): List<MediaItem>
     suspend fun getHomeResume(userId: String): List<MediaItem>
@@ -46,6 +49,10 @@ interface IMediaRemoteDataSource {
 class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSource {
     override suspend fun getMovies(): List<MediaItem> = api.getMovies()
     override suspend fun getTvShows(): List<MediaItem> = api.getTvShows()
+    override suspend fun getMoviesPage(startIndex: Int, limit: Int): PagedMediaItems =
+        api.getMoviesPage(startIndex, limit)
+    override suspend fun getTvShowsPage(startIndex: Int, limit: Int): PagedMediaItems =
+        api.getTvShowsPage(startIndex, limit)
     override suspend fun getWatchHistory(userId: String): List<MediaItem> = api.getWatchHistory(userId)
     override suspend fun getHomeRecentlyAdded(userId: String): List<MediaItem> = api.getRecentlyAddedItems(userId)
     override suspend fun getHomeResume(userId: String): List<MediaItem> = api.getResumeItems(userId)

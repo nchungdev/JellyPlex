@@ -23,3 +23,7 @@ expect fun AppBackHandler(enabled: Boolean = true, onBack: () -> Unit)
 expect fun getDeviceName(): String
 
 expect fun isDebug(): Boolean
+
+expect fun logDebug(tag: String, message: String)
+
+expect fun logError(tag: String, message: String, throwable: Throwable? = null)

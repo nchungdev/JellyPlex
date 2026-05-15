@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#07101F</color>
+    <color name="splash_background">#101010</color>
+    <color name="jelly_primary">#00D4A8</color>
 </resources>

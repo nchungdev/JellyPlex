@@ -236,20 +236,50 @@ fun MobileSeriesDetailScreen(
         // ── Season tabs — sticky header ──────────────────────────────────────
         if (state.seasons.isNotEmpty()) {
             stickyHeader {
-                LazyRow(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Color(0xFF0F1113))
-                        .padding(vertical = 12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        .statusBarsPadding()
                 ) {
-                    items(state.seasons) { season ->
-                        MobileSeasonTab(
-                            season = season,
-                            isSelected = season.id == state.selectedSeason?.id,
-                            onClick = { viewModel.selectSeason(season) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 4.dp, end = 16.dp, top = 6.dp, bottom = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                null,
+                                tint = Color.White,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
+                        Text(
+                            text = item.title,
+                            color = Color.White,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
                         )
+                    }
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp, bottom = 12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(state.seasons) { season ->
+                            MobileSeasonTab(
+                                season = season,
+                                isSelected = season.id == state.selectedSeason?.id,
+                                onClick = { viewModel.selectSeason(season) }
+                            )
+                        }
                     }
                 }
             }

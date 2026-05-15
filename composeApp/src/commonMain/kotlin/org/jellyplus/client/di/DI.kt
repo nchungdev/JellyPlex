@@ -55,6 +55,8 @@ val domainModule = module {
     factoryOf(::RefreshHomeContentUseCase)
     factoryOf(::RefreshMoviesUseCase)
     factoryOf(::RefreshTvShowsUseCase)
+    factoryOf(::GetMoviesPageUseCase)
+    factoryOf(::GetTvShowsPageUseCase)
     factoryOf(::GetMoviesUseCase)
     factoryOf(::GetTvShowsUseCase)
     factoryOf(::GetHomeContentUseCase)

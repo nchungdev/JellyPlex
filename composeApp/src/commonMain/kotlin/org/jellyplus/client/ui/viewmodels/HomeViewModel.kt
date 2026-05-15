@@ -2,7 +2,6 @@ package org.jellyplus.client.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -10,6 +9,9 @@ import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.usecases.*
+import org.jellyplus.client.logDebug
+import org.jellyplus.client.logError
+import kotlin.time.TimeSource
 
 data class HomeState(
     val featuredItems: List<MediaItem> = emptyList(),
@@ -17,6 +19,7 @@ data class HomeState(
     val recentlyAddedItems: List<MediaItem> = emptyList(),
     val baseUrl: String = "",
     val isLoading: Boolean = false,
+    val hasLoaded: Boolean = false,
     val error: String? = null,
 )
 
@@ -55,14 +58,22 @@ class HomeViewModel(
         if (!hasSessionUseCase() || userId.isEmpty()) return
 
         viewModelScope.launch(dispatchers.io) {
-            _state.value = _state.value.copy(isLoading = true, error = null)
+            val mark = TimeSource.Monotonic.markNow()
+            logDebug("JellyPerf", "VM Home loadHomeContent -> start")
+            _state.value = _state.value.copy(isLoading = true, hasLoaded = false, error = null)
 
             val result = refreshHomeContentUseCase(userId)
 
             result.onSuccess {
-                _state.value = _state.value.copy(isLoading = false)
+                _state.value = _state.value.copy(isLoading = false, hasLoaded = true)
+                logDebug(
+                    "JellyPerf",
+                    "VM Home loadHomeContent <- success ${mark.elapsedNow().inWholeMilliseconds}ms " +
+                        "featured=${_state.value.featuredItems.size} resume=${_state.value.resumeItems.size} recent=${_state.value.recentlyAddedItems.size}"
+                )
             }.onFailure { e ->
-                _state.value = _state.value.copy(error = e.message, isLoading = false)
+                _state.value = _state.value.copy(error = e.message, isLoading = false, hasLoaded = true)
+                logError("JellyPerf", "VM Home loadHomeContent <- failed ${mark.elapsedNow().inWholeMilliseconds}ms: ${e.message}", e)
 
                 if (e.message?.contains("401") == true || e.message?.contains("Unauthorized") == true) {
                     clearSessionUseCase()

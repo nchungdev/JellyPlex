@@ -17,6 +17,8 @@ interface IMediaRepository {
     suspend fun refreshMovies(): Result<Unit>
     suspend fun refreshTvShows(): Result<Unit>
     suspend fun refreshHomeContent(userId: String): Result<Unit>
+    suspend fun getMoviesPage(startIndex: Int, limit: Int): Result<PagedMediaItems>
+    suspend fun getTvShowsPage(startIndex: Int, limit: Int): Result<PagedMediaItems>
 
     // Other actions
     suspend fun getWatchHistory(userId: String): List<MediaItem>

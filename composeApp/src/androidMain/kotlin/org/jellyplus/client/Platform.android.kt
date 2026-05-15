@@ -47,3 +47,15 @@ actual fun getDeviceName(): String {
 }
 
 actual fun isDebug(): Boolean = BuildConfig.DEBUG
+
+actual fun logDebug(tag: String, message: String) {
+    android.util.Log.d(tag, message)
+}
+
+actual fun logError(tag: String, message: String, throwable: Throwable?) {
+    if (throwable == null) {
+        android.util.Log.e(tag, message)
+    } else {
+        android.util.Log.e(tag, message, throwable)
+    }
+}

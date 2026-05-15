@@ -159,6 +159,7 @@ fun DesktopMainScreen(
                     onMediaClick = onMediaClick,
                     onContinueWatchingClick = onContinueWatchingClick,
                     onViewAll = onViewAll,
+                    onReloadHome = { homeViewModel.loadHomeContent() },
                     onFocusExit = {
                         try { sidebarFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
                     },
@@ -219,11 +220,13 @@ private fun MainDashboard(
     onMediaClick: (MediaItem) -> Unit,
     onContinueWatchingClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit,
+    onReloadHome: () -> Unit,
     onFocusExit: () -> Unit,
 ) {
     val contentHorizontalPadding = DesktopContentLeftPadding
     val heroBottomPadding = 346.dp
     val focusedSectionBottomPadding = 86.dp
+    val isHomeLoading = homeState.isLoading || !homeState.hasLoaded
     val dashboardSections = remember(
         homeState.featuredItems,
         homeState.resumeItems,
@@ -379,23 +382,12 @@ private fun MainDashboard(
                 .fillMaxSize()
                 .padding(bottom = 20.dp),
         ) {
-            if (state.isLoading && state.items.isEmpty()) {
-                DashboardSection(
-                    title = "Movies",
-                    items = emptyList(),
-                    baseUrl = state.baseUrl,
-                    isLoading = true,
-                    onItemFocus = {},
-                    onItemClick = {},
-                    onViewAll = {},
-                    horizontalPadding = contentHorizontalPadding,
-                    sectionIndex = 0,
-                    focusedSectionIndex = focusedSectionIndex,
-                    navigator = navigator,
-                    onExitLeft = {},
-                    modifier = Modifier.align(Alignment.BottomStart),
+            if (isHomeLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Center),
                 )
-            } else if (!state.isLoading && state.items.isEmpty() && state.error != null) {
+            } else if (homeState.error != null && dashboardSections.isEmpty()) {
                 Column(
                     modifier = Modifier.align(Alignment.Center).fillMaxWidth().padding(64.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -403,10 +395,13 @@ private fun MainDashboard(
                     Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
                     Spacer(Modifier.height(16.dp))
                     Text("Connection Error", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Text(state.error ?: "Unable to connect to server", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
+                    Text(homeState.error ?: "Unable to connect to server", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
                     Spacer(Modifier.height(24.dp))
                     org.jellyplus.client.ui.components.FocusableButton(
-                        onClick = { viewModel.loadData() },
+                        onClick = {
+                            onReloadHome()
+                            viewModel.loadData()
+                        },
                         modifier = Modifier.width(160.dp).height(48.dp)
                     ) {
                         Text("Retry", color = Color.Black, fontWeight = FontWeight.Bold)

@@ -220,6 +220,15 @@ fun MainScreen(
                 title = screen.title,
                 items = if (screen.type == MediaType.MOVIE) mainState.movies else mainState.tvShows,
                 baseUrl = mainState.baseUrl,
+                isLoadingMore = if (screen.type == MediaType.MOVIE) mainState.isLoadingMoreMovies else mainState.isLoadingMoreTvShows,
+                hasMore = if (screen.type == MediaType.MOVIE) mainState.hasMoreMovies else mainState.hasMoreTvShows,
+                onLoadMore = {
+                    if (screen.type == MediaType.MOVIE) {
+                        mainViewModel.loadMoreMovies()
+                    } else {
+                        mainViewModel.loadMoreTvShows()
+                    }
+                },
                 onBack = { currentScreen = Screen.Home },
                 onMediaClick = { navigateTo(it) }
             )

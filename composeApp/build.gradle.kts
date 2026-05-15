@@ -1,5 +1,6 @@
 @file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
 
+import java.io.File
 import java.util.Properties
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -132,6 +133,12 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
+        create("staging") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -152,3 +159,63 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+fun registerAndroidRunTask(
+    taskName: String,
+    installTaskName: String,
+    applicationId: String,
+) {
+    tasks.register(taskName) {
+        group = "install"
+        description = "Install and launch the $applicationId Android variant."
+        dependsOn(installTaskName)
+
+        doLast {
+            val isWindows = System.getProperty("os.name")
+                .lowercase()
+                .contains("windows")
+            val adbName = if (isWindows) "adb.exe" else "adb"
+            val sdkDir = providers.environmentVariable("ANDROID_HOME")
+                .orElse(providers.environmentVariable("ANDROID_SDK_ROOT"))
+                .orNull
+            val adb = sdkDir
+                ?.let { File(it, "platform-tools/$adbName").absolutePath }
+                ?: adbName
+
+            val command = listOf(
+                adb,
+                "shell",
+                "monkey",
+                "-p",
+                applicationId,
+                "-c",
+                "android.intent.category.LAUNCHER",
+                "1",
+            )
+            val exitCode = ProcessBuilder(command)
+                .inheritIO()
+                .start()
+                .waitFor()
+
+            if (exitCode != 0) {
+                throw GradleException("Failed to launch $applicationId with adb.")
+            }
+        }
+    }
+}
+
+registerAndroidRunTask(
+    taskName = "runDebug",
+    installTaskName = "installDebug",
+    applicationId = "org.jellyplus.client.debug",
+)
+registerAndroidRunTask(
+    taskName = "runStaging",
+    installTaskName = "installStaging",
+    applicationId = "org.jellyplus.client.staging",
+)
+registerAndroidRunTask(
+    taskName = "runRelease",
+    installTaskName = "installRelease",
+    applicationId = "org.jellyplus.client",
+)
