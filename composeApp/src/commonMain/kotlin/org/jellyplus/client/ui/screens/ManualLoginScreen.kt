@@ -11,14 +11,15 @@ import org.jellyplus.client.ui.viewmodels.LoginState
 fun ManualLoginScreen(
     state: LoginState,
     currentUrl: String,
+    suggestedUsername: String,
     onLogin: (String, String, String) -> Unit,
     onBack: () -> Unit,
 ) {
     val uiType = LocalUiType.current
 
     if (uiType == UiType.Desktop) {
-        DesktopManualLoginScreen(state, currentUrl, onLogin, onBack)
+        DesktopManualLoginScreen(state, currentUrl, suggestedUsername, onLogin, onBack)
     } else {
-        MobileManualLoginScreen(state, currentUrl, onLogin, onBack)
+        MobileManualLoginScreen(state, currentUrl, suggestedUsername, onLogin, onBack)
     }
 }

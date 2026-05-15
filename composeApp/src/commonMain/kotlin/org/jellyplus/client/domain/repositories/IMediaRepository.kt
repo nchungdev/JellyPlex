@@ -12,6 +12,7 @@ interface IMediaRepository {
     val movies: StateFlow<List<MediaItem>?>
     val tvShows: StateFlow<List<MediaItem>?>
     val homeContent: StateFlow<HomeContent?>
+    val watchLaterIds: StateFlow<Set<String>>
 
     // Refresh actions
     suspend fun refreshMovies(): Result<Unit>
@@ -45,6 +46,8 @@ interface IMediaRepository {
 
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long)
     suspend fun markItemAsPlayed(userId: String, itemId: String)
+    suspend fun setFavorite(userId: String, itemId: String, favorite: Boolean)
+    fun setWatchLater(itemId: String, enabled: Boolean)
     suspend fun saveCustomMarker(itemId: String, startTicks: Long, endTicks: Long)
     suspend fun getIntroMarkers(itemId: String): List<IntroMarker>
 }

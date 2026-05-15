@@ -19,6 +19,10 @@ fun MovieDetailScreen(
     onBack: () -> Unit,
     onPlay: (MediaItem) -> Unit,
     onRecommendedClick: (MediaItem) -> Unit = {},
+    isFavorite: (MediaItem) -> Boolean = { it.userData?.isFavorite == true },
+    onToggleFavorite: (MediaItem) -> Unit = {},
+    isWatchLater: (MediaItem) -> Boolean = { false },
+    onToggleWatchLater: (MediaItem) -> Unit = {},
 ) {
     val uiType = LocalUiType.current
     val viewModel: MovieDetailViewModel = koinViewModel()
@@ -35,6 +39,10 @@ fun MovieDetailScreen(
             viewModel = viewModel,
             onBack = onBack,
             onPlay = onPlay,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
+            isWatchLater = isWatchLater,
+            onToggleWatchLater = onToggleWatchLater,
         )
     } else {
         MobileMovieDetailScreen(
@@ -44,6 +52,10 @@ fun MovieDetailScreen(
             onBack = onBack,
             onPlay = onPlay,
             onRecommendedClick = onRecommendedClick,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
+            isWatchLater = isWatchLater,
+            onToggleWatchLater = onToggleWatchLater,
         )
     }
 }

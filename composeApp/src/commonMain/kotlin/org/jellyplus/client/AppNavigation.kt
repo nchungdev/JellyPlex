@@ -119,7 +119,7 @@ fun LoadingScreen() {
         ) {
             JellyPlusLoadingLogo(
                 modifier = Modifier
-                    .size(160.dp)
+                    .size(188.dp)
                     .offset(y = iconOffsetY),
             )
             Spacer(Modifier.height(18.dp))
@@ -216,6 +216,7 @@ fun AuthNavigation(
         AuthDestination.ServerSelection -> {
             ServerSelectionScreen(
                 state = discoveryState,
+                recentServers = sessionViewModel.uiState.value.remoteServerHistory,
                 onScan = { discoveryViewModel.handleIntent(DiscoveryIntent.Scan) },
                 onCancelScan = { discoveryViewModel.handleIntent(DiscoveryIntent.CancelScan) },
                 onServerSelected = { server ->
@@ -223,6 +224,14 @@ fun AuthNavigation(
                         DiscoveryIntent.ValidateAndConnect(server.address) {
                             sessionViewModel.updateServerUrl(server.address)
                             onLoginModeChange(AuthDestination.Home)
+                        }
+                    )
+                },
+                onRecentServerSelected = { server ->
+                    discoveryViewModel.handleIntent(
+                        DiscoveryIntent.ValidateAndConnect(server.url) {
+                            sessionViewModel.updateServerUrl(server.url)
+                            onLoginModeChange(AuthDestination.Manual)
                         }
                     )
                 },
@@ -289,9 +298,11 @@ fun AuthNavigation(
         }
 
         AuthDestination.Manual -> {
+            val currentUrl = sessionViewModel.getBaseUrl()
             ManualLoginScreen(
                 state = loginState,
-                currentUrl = sessionViewModel.getBaseUrl(),
+                currentUrl = currentUrl,
+                suggestedUsername = sessionViewModel.getSuggestedUsername(currentUrl),
                 onLogin = { url, user, pass ->
                     loginViewModel.handleIntent(LoginIntent.Login(url, user, pass))
                 },

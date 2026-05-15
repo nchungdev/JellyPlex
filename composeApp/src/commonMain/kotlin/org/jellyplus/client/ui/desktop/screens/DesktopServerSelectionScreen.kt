@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.discovery.DiscoveredServer
+import org.jellyplus.client.domain.models.RemoteServerLogin
 import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
 import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
 import org.jellyplus.client.ui.mobile.screens.MobileAuthLogo
@@ -59,9 +60,11 @@ import org.jellyplus.client.ui.viewmodels.DiscoveryState
 @Composable
 fun DesktopServerSelectionScreen(
     state: DiscoveryState,
+    recentServers: List<RemoteServerLogin>,
     onScan: () -> Unit,
     onCancelScan: () -> Unit,
     onServerSelected: (DiscoveredServer) -> Unit,
+    onRecentServerSelected: (RemoteServerLogin) -> Unit,
     onManualInput: (String) -> Unit,
     onTryDemo: () -> Unit,
 ) {
@@ -132,6 +135,14 @@ fun DesktopServerSelectionScreen(
                 // Try Demo Card
                 item {
                     DemoServerCard(onClick = onTryDemo)
+                }
+
+                items(recentServers) { server ->
+                    ServerCard(
+                        name = server.url.toServerName(),
+                        address = "${server.url} - ${server.username}",
+                        onClick = { onRecentServerSelected(server) }
+                    )
                 }
 
                 // Discovered Servers
@@ -302,4 +313,14 @@ fun AddServerCard(onClick: () -> Unit) {
             Text("Add Server Manually", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
         }
     }
+}
+
+private fun String.toServerName(): String {
+    return trim()
+        .substringAfter("://", this)
+        .substringBefore("/")
+        .substringBefore("?")
+        .substringBefore("#")
+        .substringAfter("@")
+        .substringBefore(":")
 }

@@ -81,6 +81,8 @@ internal fun HomeContent(
     onContinueWatchingHeaderClick: () -> Unit,
     onViewAll: (MediaType, String) -> Unit,
     onViewAllGenre: (String) -> Unit = {},
+    onToggleWatchLater: (MediaItem) -> Unit = {},
+    isWatchLater: (MediaItem) -> Boolean = { false },
     paddingValues: PaddingValues,
     homeSectionOrder: String,
     homeEnabledSections: String,
@@ -141,7 +143,7 @@ internal fun HomeContent(
                 orderedSections.filter { it in enabledSections }.forEach { sectionId ->
                     when (sectionId) {
                         HomeSectionIdHero -> homeState.featuredItems.firstOrNull()?.let { hero ->
-                            item { HeroBanner(hero, baseUrl, onMediaClick, onContinueWatchingClick) }
+                            item { HeroBanner(hero, baseUrl, onMediaClick, onContinueWatchingClick, onToggleWatchLater, isWatchLater) }
                         }
                         HomeSectionIdContinue -> if (homeState.resumeItems.isNotEmpty()) item {
                             Spacer(Modifier.height(20.dp))
@@ -212,6 +214,8 @@ private fun HeroBanner(
     baseUrl: String,
     onMediaClick: (MediaItem) -> Unit,
     onContinueWatchingClick: (MediaItem) -> Unit,
+    onToggleWatchLater: (MediaItem) -> Unit,
+    isWatchLater: (MediaItem) -> Boolean,
 ) {
     Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
         Box(modifier = Modifier.fillMaxSize().clickable { onMediaClick(item) }) {
@@ -248,9 +252,9 @@ private fun HeroBanner(
                     Text("Play", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
                 IconButton(
-                    onClick = { /* TODO: add to watchlist */ },
+                    onClick = { onToggleWatchLater(item) },
                     modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.18f), CircleShape),
-                ) { Icon(Icons.Default.Add, null, tint = Color.White) }
+                ) { Icon(Icons.Default.Add, null, tint = if (isWatchLater(item)) MaterialTheme.colorScheme.primary else Color.White) }
                 IconButton(
                     onClick = { onMediaClick(item) },
                     modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.18f), CircleShape),

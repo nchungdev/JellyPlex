@@ -23,6 +23,12 @@ data class UserDto(
 )
 
 @Serializable
+data class RemoteServerLogin(
+    val url: String,
+    val username: String,
+)
+
+@Serializable
 data class QuickConnectResult(
     @SerialName("Secret") val secret: String? = null,
     @SerialName("Code") val code: String? = null,

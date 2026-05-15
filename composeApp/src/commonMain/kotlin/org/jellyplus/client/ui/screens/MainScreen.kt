@@ -152,7 +152,7 @@ fun MainScreen(
     }
 
     org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Settings) {
-        homeTabIndex = 3
+        homeTabIndex = 4
         currentScreen = Screen.Home
     }
 
@@ -189,7 +189,7 @@ fun MainScreen(
             MobileMainScreen(
                 viewModel = mainViewModel,
                 sessionViewModel = sessionViewModel,
-                selectedTab = homeTabIndex.coerceIn(0, 3),
+                selectedTab = homeTabIndex.coerceIn(0, 4),
                 onSelectedTabChange = { homeTabIndex = it },
                 onMediaClick = { navigateTo(it) },
                 onContinueWatchingClick = { playItem(it, homeTabIndex) },
@@ -205,7 +205,7 @@ fun MainScreen(
                 },
                 onSearch = { currentScreen = Screen.Search },
                 onSettings = {
-                    homeTabIndex = 3
+                    homeTabIndex = 4
                     currentScreen = Screen.Settings
                 },
             )
@@ -229,6 +229,10 @@ fun MainScreen(
                             currentScreen = Screen.Player(episode, playlist, parent)
                         },
                         onRecommendedClick = { navigateTo(it) },
+                        isFavorite = { mainViewModel.isFavorite(it) },
+                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                        isWatchLater = { mainViewModel.isWatchLater(it) },
+                        onToggleWatchLater = { mainViewModel.toggleWatchLater(it) },
                     )
                 } else {
                     MovieDetailScreen(
@@ -242,6 +246,10 @@ fun MainScreen(
                             currentScreen = Screen.Player(item, listOf(item))
                         },
                         onRecommendedClick = { navigateTo(it) },
+                        isFavorite = { mainViewModel.isFavorite(it) },
+                        onToggleFavorite = { mainViewModel.toggleFavorite(it) },
+                        isWatchLater = { mainViewModel.isWatchLater(it) },
+                        onToggleWatchLater = { mainViewModel.toggleWatchLater(it) },
                     )
                 }
             }
@@ -311,7 +319,7 @@ fun MainScreen(
                 SettingsScreen(
                     sessionViewModel = sessionViewModel,
                     onBack = {
-                        homeTabIndex = 3
+                        homeTabIndex = 4
                         currentScreen = Screen.Home
                     },
                 )

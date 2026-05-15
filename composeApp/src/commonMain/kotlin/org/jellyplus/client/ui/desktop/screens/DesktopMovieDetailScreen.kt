@@ -33,6 +33,10 @@ fun DesktopMovieDetailScreen(
     viewModel: MovieDetailViewModel,
     onBack: () -> Unit,
     onPlay: (MediaItem) -> Unit,
+    isFavorite: (MediaItem) -> Boolean,
+    onToggleFavorite: (MediaItem) -> Unit,
+    isWatchLater: (MediaItem) -> Boolean,
+    onToggleWatchLater: (MediaItem) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val fullItem = state.fullItem ?: item
@@ -44,6 +48,10 @@ fun DesktopMovieDetailScreen(
         metadata = fullItem.genres?.take(3)?.joinToString("   ") ?: "Movie",
         onBack = onBack,
         onPrimaryAction = { onPlay(fullItem) },
+        isFavorite = isFavorite(fullItem),
+        isWatchLater = isWatchLater(fullItem),
+        onToggleFavorite = { onToggleFavorite(fullItem) },
+        onToggleWatchLater = { onToggleWatchLater(fullItem) },
         overview = fullItem.overview,
     ) {
         if (state.cast.isNotEmpty()) {

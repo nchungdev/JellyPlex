@@ -18,6 +18,10 @@ fun SeriesDetailScreen(
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
     onRecommendedClick: (MediaItem) -> Unit = {},
+    isFavorite: (MediaItem) -> Boolean = { it.userData?.isFavorite == true },
+    onToggleFavorite: (MediaItem) -> Unit = {},
+    isWatchLater: (MediaItem) -> Boolean = { false },
+    onToggleWatchLater: (MediaItem) -> Unit = {},
 ) {
     val uiType = LocalUiType.current
     val viewModel: SeriesDetailViewModel = koinViewModel()
@@ -33,6 +37,10 @@ fun SeriesDetailScreen(
             onBack = onBack,
             onPlay = onPlay,
             onPlayEpisode = onPlayEpisode,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
+            isWatchLater = isWatchLater,
+            onToggleWatchLater = onToggleWatchLater,
         )
     } else {
         MobileSeriesDetailScreen(
@@ -43,6 +51,10 @@ fun SeriesDetailScreen(
             onPlay = onPlay,
             onPlayEpisode = onPlayEpisode,
             onRecommendedClick = onRecommendedClick,
+            isFavorite = isFavorite,
+            onToggleFavorite = onToggleFavorite,
+            isWatchLater = isWatchLater,
+            onToggleWatchLater = onToggleWatchLater,
         )
     }
 }

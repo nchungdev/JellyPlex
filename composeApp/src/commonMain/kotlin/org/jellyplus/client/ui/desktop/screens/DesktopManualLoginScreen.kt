@@ -30,11 +30,12 @@ import org.jellyplus.client.ui.components.FocusableOutlinedButton
 fun DesktopManualLoginScreen(
     state: LoginState,
     currentUrl: String,
+    suggestedUsername: String,
     onLogin: (String, String, String) -> Unit,
     onBack: () -> Unit,
 ) {
-    var url by remember { mutableStateOf(currentUrl) }
-    var username by remember { mutableStateOf("") }
+    var url by remember(currentUrl) { mutableStateOf(currentUrl) }
+    var username by remember(currentUrl, suggestedUsername) { mutableStateOf(suggestedUsername) }
     var password by remember { mutableStateOf("") }
 
     DesktopAuthScaffold(maxContentWidth = 460.dp) {

@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
@@ -76,6 +77,10 @@ internal fun DesktopHeroDetailScaffold(
     metadata: String,
     onBack: () -> Unit,
     onPrimaryAction: () -> Unit,
+    isFavorite: Boolean = item.userData?.isFavorite == true,
+    isWatchLater: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
+    onToggleWatchLater: () -> Unit = {},
     modifier: Modifier = Modifier,
     secondaryLabel: String? = "Trailer",
     overview: String? = item.overview,
@@ -205,8 +210,18 @@ internal fun DesktopHeroDetailScaffold(
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailActionIcon(Icons.Default.Add, "Add")
-                        DetailActionIcon(Icons.Default.FavoriteBorder, "Favorite")
+                        DetailActionIcon(
+                            Icons.Default.Add,
+                            "Watch Later",
+                            selected = isWatchLater,
+                            onClick = onToggleWatchLater,
+                        )
+                        DetailActionIcon(
+                            if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            "Favorite",
+                            selected = isFavorite,
+                            onClick = onToggleFavorite,
+                        )
                         DetailActionIcon(Icons.Default.Share, "Share")
                     }
                 }

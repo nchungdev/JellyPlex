@@ -38,6 +38,7 @@ interface IMediaRemoteDataSource {
 
     suspend fun reportPlaybackStopped(itemId: String, playSessionId: String, positionTicks: Long)
     suspend fun markAsPlayed(userId: String, itemId: String)
+    suspend fun setFavorite(userId: String, itemId: String, favorite: Boolean)
     suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>)
     suspend fun getMediaSegments(itemId: String): MediaSegmentQueryResult
     suspend fun getIntroSkipperTimestamps(itemId: String): IntroSkipperTimestamps
@@ -85,6 +86,9 @@ class MediaRemoteDataSource(private val api: JellyfinApi) : IMediaRemoteDataSour
 
     override suspend fun markAsPlayed(userId: String, itemId: String) =
         api.markAsPlayed(userId, itemId)
+
+    override suspend fun setFavorite(userId: String, itemId: String, favorite: Boolean) =
+        api.setFavorite(userId, itemId, favorite)
 
     override suspend fun saveChapterMarker(itemId: String, chapters: List<ChapterInfo>) =
         api.saveChapterMarker(itemId, chapters)

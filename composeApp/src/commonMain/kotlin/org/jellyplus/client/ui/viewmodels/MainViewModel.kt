@@ -3,6 +3,7 @@ package org.jellyplus.client.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,8 @@ data class MainState(
     val isLoadingMoreTvShows: Boolean = false,
     val hasMoreMovies: Boolean = true,
     val hasMoreTvShows: Boolean = true,
+    val watchLaterIds: Set<String> = emptySet(),
+    val watchLaterItems: List<MediaItem> = emptyList(),
     val error: String? = null
 )
 
@@ -32,6 +35,10 @@ class MainViewModel(
     private val getMoviesPageUseCase: GetMoviesPageUseCase,
     private val getTvShowsPageUseCase: GetTvShowsPageUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val getUserIdUseCase: GetUserIdUseCase,
+    private val getWatchLaterIdsUseCase: GetWatchLaterIdsUseCase,
+    private val setFavoriteUseCase: SetFavoriteUseCase,
+    private val setWatchLaterUseCase: SetWatchLaterUseCase,
     private val clearSessionUseCase: ClearSessionUseCase,
     private val hasSessionUseCase: HasSessionUseCase,
     private val dispatchers: AppDispatchers,
@@ -41,7 +48,19 @@ class MainViewModel(
     private val pageSize = 10
 
     init {
+        observeWatchLater()
         loadData()
+    }
+
+    private fun observeWatchLater() {
+        viewModelScope.launch(dispatchers.io) {
+            getWatchLaterIdsUseCase().collectLatest { ids ->
+                _state.value = _state.value.copy(
+                    watchLaterIds = ids,
+                    watchLaterItems = _state.value.items.filter { it.id in ids },
+                )
+            }
+        }
     }
 
     fun loadData() {
@@ -69,6 +88,7 @@ class MainViewModel(
                     items = moviesPage.items + tvShowsPage.items,
                     movies = moviesPage.items,
                     tvShows = tvShowsPage.items,
+                    watchLaterItems = (moviesPage.items + tvShowsPage.items).filter { it.id in _state.value.watchLaterIds },
                     baseUrl = getBaseUrlUseCase(),
                     isLoading = false,
                     hasLoaded = true,
@@ -108,6 +128,7 @@ class MainViewModel(
                 _state.value = _state.value.copy(
                     movies = nextMovies,
                     items = nextMovies + _state.value.tvShows,
+                    watchLaterItems = (nextMovies + _state.value.tvShows).filter { it.id in _state.value.watchLaterIds },
                     isLoadingMoreMovies = false,
                     hasMoreMovies = nextMovies.size < page.totalRecordCount,
                 )
@@ -137,6 +158,7 @@ class MainViewModel(
                 _state.value = _state.value.copy(
                     tvShows = nextShows,
                     items = _state.value.movies + nextShows,
+                    watchLaterItems = (_state.value.movies + nextShows).filter { it.id in _state.value.watchLaterIds },
                     isLoadingMoreTvShows = false,
                     hasMoreTvShows = nextShows.size < page.totalRecordCount,
                 )
@@ -149,5 +171,49 @@ class MainViewModel(
                 }
             }
         }
+    }
+
+    fun isFavorite(item: MediaItem): Boolean {
+        return findItem(item.id)?.userData?.isFavorite ?: item.userData?.isFavorite ?: false
+    }
+
+    fun isWatchLater(item: MediaItem): Boolean = item.id in _state.value.watchLaterIds
+
+    fun toggleFavorite(item: MediaItem) {
+        val userId = getUserIdUseCase() ?: return
+        val next = !isFavorite(item)
+        updateFavoriteState(item.id, next)
+        viewModelScope.launch(dispatchers.io) {
+            runCatching { setFavoriteUseCase(userId, item.id, next) }
+                .onFailure { updateFavoriteState(item.id, !next) }
+        }
+    }
+
+    fun toggleWatchLater(item: MediaItem) {
+        val next = !isWatchLater(item)
+        setWatchLaterUseCase(item.id, next)
+        val knownItem = findItem(item.id) ?: item
+        _state.value = _state.value.copy(
+            watchLaterItems = if (next) {
+                (_state.value.watchLaterItems + knownItem).distinctBy { it.id }
+            } else {
+                _state.value.watchLaterItems.filterNot { it.id == item.id }
+            }
+        )
+    }
+
+    private fun findItem(itemId: String): MediaItem? = _state.value.items.firstOrNull { it.id == itemId }
+
+    private fun updateFavoriteState(itemId: String, favorite: Boolean) {
+        fun List<MediaItem>.updated() = map { if (it.id == itemId) it.withFavorite(favorite) else it }
+        val movies = _state.value.movies.updated()
+        val tvShows = _state.value.tvShows.updated()
+        val items = movies + tvShows
+        _state.value = _state.value.copy(
+            movies = movies,
+            tvShows = tvShows,
+            items = items,
+            watchLaterItems = _state.value.watchLaterItems.updated(),
+        )
     }
 }

@@ -11,10 +11,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.Constants
+import org.jellyplus.client.domain.models.RemoteServerLogin
 import org.jellyplus.client.domain.usecases.ClearSessionUseCase
 import org.jellyplus.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplus.client.domain.usecases.GetIsAuthenticatedUseCase
 import org.jellyplus.client.domain.usecases.GetPersistDemoUseCase
+import org.jellyplus.client.domain.usecases.GetRemoteServerHistoryUseCase
 import org.jellyplus.client.domain.usecases.GetUserNameUseCase
 import org.jellyplus.client.domain.usecases.SetPersistDemoUseCase
 import org.jellyplus.client.domain.usecases.UpdateBaseUrlUseCase
@@ -23,7 +25,8 @@ import org.jellyplus.client.domain.usecases.ValidateSessionUseCase
 data class SessionState(
     val isAuthenticated: Boolean = false,
     val isValidating: Boolean = false,
-    val persistDemo: Boolean = false
+    val persistDemo: Boolean = false,
+    val remoteServerHistory: List<RemoteServerLogin> = emptyList(),
 )
 
 class SessionViewModel(
@@ -34,6 +37,7 @@ class SessionViewModel(
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
     private val getUserNameUseCase: GetUserNameUseCase,
     private val getPersistDemoUseCase: GetPersistDemoUseCase,
+    private val getRemoteServerHistoryUseCase: GetRemoteServerHistoryUseCase,
     private val setPersistDemoUseCase: SetPersistDemoUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
@@ -42,12 +46,14 @@ class SessionViewModel(
 
     val uiState: StateFlow<SessionState> = combine(
         getIsAuthenticatedUseCase(),
-        _isValidating
-    ) { authenticated, validating ->
+        _isValidating,
+        getRemoteServerHistoryUseCase(),
+    ) { authenticated, validating, remoteServerHistory ->
         SessionState(
             isAuthenticated = authenticated,
             isValidating = validating,
-            persistDemo = getPersistDemoUseCase()
+            persistDemo = getPersistDemoUseCase(),
+            remoteServerHistory = remoteServerHistory,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -57,6 +63,13 @@ class SessionViewModel(
 
     fun getBaseUrl(): String = getBaseUrlUseCase()
     fun getUserName(): String? = getUserNameUseCase()
+    fun getSuggestedUsername(url: String): String {
+        val normalizedUrl = normalizeUrl(url)
+        return uiState.value.remoteServerHistory
+            .firstOrNull { normalizeUrl(it.url).equals(normalizedUrl, ignoreCase = true) }
+            ?.username
+            .orEmpty()
+    }
 
     init {
         validateStartupSession()
@@ -98,6 +111,12 @@ class SessionViewModel(
         updateBaseUrlUseCase(url)
     }
 
+    fun switchServer() {
+        viewModelScope.launch(dispatchers.main) {
+            clearSessionUseCase()
+        }
+    }
+
     fun togglePersistDemo(enabled: Boolean) {
         viewModelScope.launch {
             setPersistDemoUseCase(enabled)
@@ -107,4 +126,6 @@ class SessionViewModel(
             }
         }
     }
+
+    private fun normalizeUrl(url: String): String = url.trim().trimEnd('/')
 }

@@ -32,14 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jellyplus.client.domain.discovery.DiscoveredServer
+import org.jellyplus.client.domain.models.RemoteServerLogin
 import org.jellyplus.client.ui.viewmodels.DiscoveryState
 
 @Composable
 fun MobileServerSelectionScreen(
     state: DiscoveryState,
+    recentServers: List<RemoteServerLogin>,
     onScan: () -> Unit,
     onCancelScan: () -> Unit,
     onServerSelected: (DiscoveredServer) -> Unit,
+    onRecentServerSelected: (RemoteServerLogin) -> Unit,
     onManualInput: (String) -> Unit,
     onTryDemo: () -> Unit,
 ) {
@@ -132,6 +135,34 @@ fun MobileServerSelectionScreen(
             Text("Try Demo Server", color = Color(0xFF00D4A8), fontWeight = FontWeight.Bold)
         }
 
+        if (recentServers.isNotEmpty() && !state.isScanning) {
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("Recent Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Spacer(modifier = Modifier.height(16.dp))
+            recentServers.forEach { server ->
+                Surface(
+                    onClick = {
+                        manualUrl = server.url
+                        selectedServerName = server.url.toServerName()
+                        onRecentServerSelected(server)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    color = Color.White.copy(alpha = 0.05f),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column {
+                            Text(server.url.toServerName(), color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("${server.url} - ${server.username}", color = Color.Gray, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
         if (state.discoveredServers.isNotEmpty() && !state.isScanning) {
             Spacer(modifier = Modifier.height(48.dp))
             Text("Discovered Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
@@ -160,4 +191,14 @@ fun MobileServerSelectionScreen(
             }
         }
     }
+}
+
+private fun String.toServerName(): String {
+    return trim()
+        .substringAfter("://", this)
+        .substringBefore("/")
+        .substringBefore("?")
+        .substringBefore("#")
+        .substringAfter("@")
+        .substringBefore(":")
 }

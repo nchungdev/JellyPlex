@@ -54,6 +54,10 @@ fun DesktopSeriesDetailScreen(
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
+    isFavorite: (MediaItem) -> Boolean,
+    onToggleFavorite: (MediaItem) -> Unit,
+    isWatchLater: (MediaItem) -> Boolean,
+    onToggleWatchLater: (MediaItem) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val baseUrl = state.baseUrl
@@ -97,6 +101,10 @@ fun DesktopSeriesDetailScreen(
             val firstEpisode = state.episodes.firstOrNull()
             if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
         },
+        isFavorite = isFavorite(item),
+        isWatchLater = isWatchLater(item),
+        onToggleFavorite = { onToggleFavorite(item) },
+        onToggleWatchLater = { onToggleWatchLater(item) },
         overview = item.overview,
         detailContentSpacing = 72.dp,
         focusScrollBottomClearance = 24.dp,

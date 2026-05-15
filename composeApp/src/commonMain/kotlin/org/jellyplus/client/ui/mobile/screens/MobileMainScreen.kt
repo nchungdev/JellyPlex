@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -78,9 +79,9 @@ fun MobileMainScreen(
     Scaffold(
         topBar = {
             MobileTopHeader(
-                title = when (selectedTab) { 1 -> "Favorites"; 2 -> "History"; 3 -> "Profile"; else -> null },
-                backgroundAlpha = when (selectedTab) { 0 -> homeHeaderAlpha; 3 -> profileHeaderAlpha; else -> 1f },
-                showSearchButton = selectedTab != 3,
+                title = when (selectedTab) { 1 -> "Favorites"; 2 -> "Watch Later"; 3 -> "History"; 4 -> "Profile"; else -> null },
+                backgroundAlpha = when (selectedTab) { 0 -> homeHeaderAlpha; 4 -> profileHeaderAlpha; else -> 1f },
+                showSearchButton = selectedTab != 4,
                 onSearch = onSearch,
             )
         },
@@ -88,8 +89,9 @@ fun MobileMainScreen(
             NavigationBar(containerColor = Color.Black.copy(alpha = 0.95f), contentColor = Color.White, tonalElevation = 0.dp) {
                 NavigationBarItem(selectedTab == 0, { onSelectedTabChange(0) }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, colors = navigationColors())
                 NavigationBarItem(selectedTab == 1, { onSelectedTabChange(1) }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favorites") }, colors = navigationColors())
-                NavigationBarItem(selectedTab == 2, { onSelectedTabChange(2) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("History") }, colors = navigationColors())
-                NavigationBarItem(selectedTab == 3, { onSelectedTabChange(3) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 2, { onSelectedTabChange(2) }, icon = { Icon(Icons.Default.Bookmark, null) }, label = { Text("Later") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 3, { onSelectedTabChange(3) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("History") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 4, { onSelectedTabChange(4) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, colors = navigationColors())
             }
         },
         containerColor = Color(0xFF181818),
@@ -102,17 +104,21 @@ fun MobileMainScreen(
                     onMediaClick = onMediaClick, onContinueWatchingClick = onContinueWatchingClick,
                     onContinueWatchingHeaderClick = { onSelectedTabChange(2) },
                     onViewAll = onViewAll, onViewAllGenre = onViewAllGenre,
+                    onToggleWatchLater = { viewModel.toggleWatchLater(it) },
+                    isWatchLater = { viewModel.isWatchLater(it) },
                     paddingValues = paddingValues,
                     homeSectionOrder = prefsState.homeSectionOrder,
                     homeEnabledSections = prefsState.homeEnabledSections,
                     onHeaderAlphaChange = { homeHeaderAlpha = it },
                 )
-                1 -> FavoritesContent(state, state.baseUrl, onMediaClick, paddingValues)
-                2 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onContinueWatchingClick)
-                3 -> ProfileContent(
+                1 -> MediaCollectionContent("No favorites yet", state.items.filter { viewModel.isFavorite(it) }, state.baseUrl, onMediaClick, paddingValues)
+                2 -> MediaCollectionContent("Nothing saved for later", state.watchLaterItems, state.baseUrl, onMediaClick, paddingValues)
+                3 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onContinueWatchingClick)
+                4 -> ProfileContent(
                     state = state, baseUrl = state.baseUrl, sessionViewModel = sessionViewModel,
                     onMediaClick = onMediaClick, onFavorites = { onSelectedTabChange(1) },
-                    onHistory = { onSelectedTabChange(2) }, onSettings = onSettings,
+                    onHistory = { onSelectedTabChange(3) }, onSettings = onSettings,
+                    onSwitchServer = { sessionViewModel.switchServer() },
                     onHeaderAlphaChange = { profileHeaderAlpha = it },
                     onLogout = { sessionViewModel.logout() }, paddingValues = paddingValues,
                 )
@@ -161,21 +167,21 @@ private fun MobileTopHeader(
 // ── Favorites tab ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun FavoritesContent(
-    state: org.jellyplus.client.ui.viewmodels.MainState,
+private fun MediaCollectionContent(
+    emptyText: String,
+    items: List<MediaItem>,
     baseUrl: String,
     onMediaClick: (MediaItem) -> Unit,
     paddingValues: PaddingValues,
 ) {
-    val favorites = state.items.filter { it.userData?.isFavorite == true }
     Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
-        if (favorites.isEmpty()) {
+        if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No favorites yet", color = Color.White.copy(alpha = 0.5f))
+                Text(emptyText, color = Color.White.copy(alpha = 0.5f))
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(favorites) { item -> FavoriteItemCard(item, baseUrl, onMediaClick) }
+                items(items) { item -> FavoriteItemCard(item, baseUrl, onMediaClick) }
             }
         }
     }

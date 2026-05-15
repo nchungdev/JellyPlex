@@ -82,6 +82,9 @@ val domainModule = module {
     factoryOf(::ReportPlaybackProgressUseCase)
     factoryOf(::ReportPlaybackStoppedUseCase)
     factoryOf(::MarkItemAsPlayedUseCase)
+    factoryOf(::SetFavoriteUseCase)
+    factoryOf(::GetWatchLaterIdsUseCase)
+    factoryOf(::SetWatchLaterUseCase)
     factoryOf(::SaveCustomMarkerUseCase)
     factoryOf(::GetWatchHistoryUseCase)
     factoryOf(::GetIntroMarkersUseCase)
@@ -90,6 +93,7 @@ val domainModule = module {
     // Auth / session helpers
     factoryOf(::GetUserNameUseCase)
     factoryOf(::GetPersistDemoUseCase)
+    factoryOf(::GetRemoteServerHistoryUseCase)
     factoryOf(::SetPersistDemoUseCase)
     factoryOf(::ChangePasswordUseCase)
     factoryOf(::AuthorizeQuickConnectUseCase)

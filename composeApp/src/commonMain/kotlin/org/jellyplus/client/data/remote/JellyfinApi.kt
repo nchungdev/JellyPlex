@@ -9,6 +9,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -470,6 +471,14 @@ class JellyfinApi(
 
     suspend fun markAsPlayed(userId: String, itemId: String) {
         client.post { apiUrl("Users", userId, "PlayedItems", itemId) }
+    }
+
+    suspend fun setFavorite(userId: String, itemId: String, favorite: Boolean) {
+        if (favorite) {
+            client.post { apiUrl("Users", userId, "FavoriteItems", itemId) }
+        } else {
+            client.delete { apiUrl("Users", userId, "FavoriteItems", itemId) }
+        }
     }
 
     // Native Jellyfin MediaSegments API (plugin-agnostic)

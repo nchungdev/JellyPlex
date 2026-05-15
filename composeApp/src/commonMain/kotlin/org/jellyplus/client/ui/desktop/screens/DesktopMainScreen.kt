@@ -35,6 +35,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
@@ -107,7 +108,7 @@ import org.jellyplus.client.ui.viewmodels.SessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.compose.foundation.lazy.itemsIndexed as lazyListItemsIndexed
 
-private enum class NavDestination { Home, Search, History, Favorites, Profile }
+private enum class NavDestination { Home, Search, History, Favorites, WatchLater, Profile }
 
 private enum class DashboardSectionClickMode { Detail, Play }
 
@@ -159,7 +160,7 @@ fun DesktopMainScreen(
 
     val favoriteItems = remember(state.movies, state.tvShows, state.items) {
         (state.movies + state.tvShows + state.items)
-            .filter { it.userData?.isFavorite == true }
+            .filter { viewModel.isFavorite(it) }
             .distinctBy { it.id }
     }
 
@@ -184,6 +185,7 @@ fun DesktopMainScreen(
                     onMediaClick = onMediaClick,
                 )
                 NavDestination.Favorites -> MediaGrid("Favorites", favoriteItems, state.baseUrl, onMediaClick)
+                NavDestination.WatchLater -> MediaGrid("Watch Later", state.watchLaterItems, state.baseUrl, onMediaClick)
                 NavDestination.Profile -> {
                     val sv = sessionViewModel ?: koinViewModel()
                     org.jellyplus.client.ui.screens.SettingsScreen(
@@ -225,6 +227,7 @@ fun DesktopMainScreen(
                 NavIcon(Icons.Default.Search, selectedNav == NavDestination.Search, sidebarFocusRequester) { onSelectedNavIndexChange(NavDestination.Search.ordinal) }
                 NavIcon(Icons.Default.History, selectedNav == NavDestination.History, sidebarFocusRequester) { onSelectedNavIndexChange(NavDestination.History.ordinal) }
                 NavIcon(Icons.Default.Favorite, selectedNav == NavDestination.Favorites, sidebarFocusRequester) { onSelectedNavIndexChange(NavDestination.Favorites.ordinal) }
+                NavIcon(Icons.Default.Bookmark, selectedNav == NavDestination.WatchLater, sidebarFocusRequester) { onSelectedNavIndexChange(NavDestination.WatchLater.ordinal) }
             }
             Spacer(Modifier.weight(1f))
             NavIcon(Icons.Default.Person, selectedNav == NavDestination.Profile, sidebarFocusRequester) { onSelectedNavIndexChange(NavDestination.Profile.ordinal) }

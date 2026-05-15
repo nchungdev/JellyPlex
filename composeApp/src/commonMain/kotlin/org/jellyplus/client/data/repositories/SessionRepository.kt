@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.combine
 import org.jellyplus.client.data.datasource.local.InMemorySessionLocalDataSource
 import org.jellyplus.client.data.datasource.local.PersistentSessionLocalDataSource
 import org.jellyplus.client.domain.models.Constants
+import org.jellyplus.client.domain.models.RemoteServerLogin
 import org.jellyplus.client.domain.repositories.ISessionRepository
 
 class SessionRepository(
@@ -33,6 +34,7 @@ class SessionRepository(
     override val deviceId: String get() = persistentDataSource.deviceId
     override val deviceName: String get() = persistentDataSource.deviceName
     override val persistDemo: Boolean get() = persistentDataSource.persistDemo
+    override val remoteServerHistory: Flow<List<RemoteServerLogin>> = persistentDataSource.remoteServerHistory
 
     override fun saveSession(url: String, token: String, userId: String?, userName: String?, password: String?) {
         // 1. Always save to Memory (Active state)
@@ -100,10 +102,40 @@ class SessionRepository(
         }
     }
 
+    override fun rememberRemoteServer(url: String, username: String?) {
+        if (isRemoteServerUrl(url)) {
+            persistentDataSource.rememberRemoteServer(url, username)
+        }
+    }
+
     override fun clear() {
         persistentDataSource.clear()
         inMemoryDataSource.clear()
     }
 
     override fun hasSession(): Boolean = persistentDataSource.hasSession() || inMemoryDataSource.hasSession()
+
+    private fun isRemoteServerUrl(url: String): Boolean {
+        val host = extractHost(url)?.lowercase() ?: return false
+        if (host == "localhost" || host.endsWith(".local")) return false
+        if (host.contains(":")) return false
+        if (host.matches(Regex("""\d{1,3}(\.\d{1,3}){3}"""))) return false
+        if (!host.contains(".")) return false
+        return host.any { it.isLetter() }
+    }
+
+    private fun extractHost(url: String): String? {
+        val authority = url.trim()
+            .substringAfter("://", url.trim())
+            .substringBefore("/")
+            .substringBefore("?")
+            .substringBefore("#")
+            .substringAfter("@")
+
+        return if (authority.startsWith("[")) {
+            authority.substringAfter("[").substringBefore("]").takeIf { it.isNotBlank() }
+        } else {
+            authority.substringBefore(":").takeIf { it.isNotBlank() }
+        }
+    }
 }

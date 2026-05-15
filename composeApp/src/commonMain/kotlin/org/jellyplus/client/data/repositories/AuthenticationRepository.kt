@@ -33,6 +33,7 @@ class AuthenticationRepository(
             userName = result.user?.name,
             password = password
         )
+        sessionRepository.rememberRemoteServer(remoteDataSource.getBaseUrl(), result.user?.name ?: username)
 
         result
     }

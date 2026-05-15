@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -61,6 +62,7 @@ internal fun ProfileContent(
     onFavorites: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onSwitchServer: () -> Unit,
     onHeaderAlphaChange: (Float) -> Unit,
     onLogout: () -> Unit,
     paddingValues: PaddingValues,
@@ -112,6 +114,8 @@ internal fun ProfileContent(
         // App settings
         item {
             ProfileSectionLabel("APP")
+            AppActionRow(Icons.Default.Dns, "Switch server",
+                "Choose another server and sign in again", onSwitchServer)
             AppActionRow(Icons.Default.Settings, "Settings",
                 "Playback, subtitles, display, home and controls", onSettings)
             Spacer(Modifier.height(20.dp))

@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.SetSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import org.jellyplus.client.domain.models.HomeContent
 import org.jellyplus.client.domain.models.MediaItem
@@ -17,6 +19,7 @@ class MediaLocalDataSource(
         private const val KEY_CACHE_HOME = "cache_home"
         private const val KEY_CACHE_MOVIES = "cache_movies"
         private const val KEY_CACHE_TVSHOWS = "cache_tvshows"
+        private const val KEY_WATCH_LATER_IDS = "watch_later_ids"
     }
 
     private val _homeContent = MutableStateFlow<HomeContent?>(null)
@@ -27,6 +30,9 @@ class MediaLocalDataSource(
 
     private val _tvShows = MutableStateFlow<List<MediaItem>?>(null)
     override val tvShows: StateFlow<List<MediaItem>?> = _tvShows.asStateFlow()
+
+    private val _watchLaterIds = MutableStateFlow(loadWatchLaterIds())
+    val watchLaterIds: StateFlow<Set<String>> = _watchLaterIds.asStateFlow()
 
     init {
         loadFromCache()
@@ -66,5 +72,17 @@ class MediaLocalDataSource(
         _homeContent.value = null
         _movies.value = null
         _tvShows.value = null
+    }
+
+    fun setWatchLater(itemId: String, enabled: Boolean) {
+        val next = if (enabled) _watchLaterIds.value + itemId else _watchLaterIds.value - itemId
+        settings.putString(KEY_WATCH_LATER_IDS, json.encodeToString(SetSerializer(String.serializer()), next))
+        _watchLaterIds.value = next
+    }
+
+    private fun loadWatchLaterIds(): Set<String> {
+        return settings.getStringOrNull(KEY_WATCH_LATER_IDS)?.let {
+            runCatching { json.decodeFromString(SetSerializer(String.serializer()), it) }.getOrNull()
+        } ?: emptySet()
     }
 }

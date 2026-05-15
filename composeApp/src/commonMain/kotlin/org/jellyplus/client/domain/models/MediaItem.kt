@@ -38,6 +38,11 @@ data class MediaItem(
     val isPlayed: Boolean get() = userData?.played ?: false
     val playbackPositionTicks: Long get() = userData?.playbackPositionTicks ?: 0L
 
+    fun withFavorite(favorite: Boolean): MediaItem {
+        val nextUserData = (userData ?: UserData()).copy(isFavorite = favorite)
+        return copy(userData = nextUserData)
+    }
+
     fun getImageUrl(baseUrl: String): String? {
         return if (imageTags?.containsKey("Primary") == true) {
             "$baseUrl/Items/$id/Images/Primary"

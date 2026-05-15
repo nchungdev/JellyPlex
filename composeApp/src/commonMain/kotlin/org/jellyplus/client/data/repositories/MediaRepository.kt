@@ -34,6 +34,7 @@ class MediaRepository(
     override val movies: StateFlow<List<MediaItem>?> = localDataSource.movies
     override val tvShows: StateFlow<List<MediaItem>?> = localDataSource.tvShows
     override val homeContent: StateFlow<HomeContent?> = localDataSource.homeContent
+    override val watchLaterIds: StateFlow<Set<String>> = localDataSource.watchLaterIds
 
     override suspend fun refreshMovies(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
@@ -197,6 +198,14 @@ class MediaRepository(
 
     override suspend fun markItemAsPlayed(userId: String, itemId: String) = withContext(dispatchers.io) {
         remoteDataSource.markAsPlayed(userId, itemId)
+    }
+
+    override suspend fun setFavorite(userId: String, itemId: String, favorite: Boolean) = withContext(dispatchers.io) {
+        remoteDataSource.setFavorite(userId, itemId, favorite)
+    }
+
+    override fun setWatchLater(itemId: String, enabled: Boolean) {
+        localDataSource.setWatchLater(itemId, enabled)
     }
 
     override suspend fun saveCustomMarker(itemId: String, startTicks: Long, endTicks: Long) = withContext(dispatchers.io) {

@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -74,11 +75,16 @@ fun MobileSeriesDetailScreen(
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
     onRecommendedClick: (MediaItem) -> Unit = {},
+    isFavorite: (MediaItem) -> Boolean,
+    onToggleFavorite: (MediaItem) -> Unit,
+    isWatchLater: (MediaItem) -> Boolean,
+    onToggleWatchLater: (MediaItem) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val baseUrl = state.baseUrl
     var overviewExpanded by remember { mutableStateOf(false) }
-    var isFavorite by remember { mutableStateOf(item.userData?.isFavorite == true) }
+    val favorite = isFavorite(item)
+    val watchLater = isWatchLater(item)
     val listState = rememberLazyListState()
     val collapseProgress by remember {
         derivedStateOf {
@@ -183,10 +189,16 @@ fun MobileSeriesDetailScreen(
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
                         DetailActionButton(
-                            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            label = "My List",
-                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
-                            onClick = { isFavorite = !isFavorite }
+                            icon = Icons.Default.Add,
+                            label = "Later",
+                            tint = if (watchLater) MaterialTheme.colorScheme.primary else Color.White,
+                            onClick = { onToggleWatchLater(item) }
+                        )
+                        DetailActionButton(
+                            icon = if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            label = "Favorite",
+                            tint = if (favorite) MaterialTheme.colorScheme.primary else Color.White,
+                            onClick = { onToggleFavorite(item) }
                         )
                         DetailActionButton(Icons.Default.Share, "Share")
                         DetailActionButton(Icons.Default.Download, "Download")

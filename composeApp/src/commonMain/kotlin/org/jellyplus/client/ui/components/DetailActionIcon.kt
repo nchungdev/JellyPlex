@@ -26,6 +26,7 @@ fun DetailActionIcon(
     icon: ImageVector,
     description: String,
     modifier: Modifier = Modifier,
+    selected: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -41,12 +42,16 @@ fun DetailActionIcon(
                 onClick = onClick
             )
             .background(
-                if (isFocused) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
+                when {
+                    selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    isFocused -> Color.White.copy(alpha = 0.2f)
+                    else -> Color.White.copy(alpha = 0.05f)
+                },
                 CircleShape
             )
             .border(
                 width = 2.dp,
-                color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                color = if (isFocused || selected) MaterialTheme.colorScheme.primary else Color.Transparent,
                 shape = CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -54,7 +59,7 @@ fun DetailActionIcon(
         Icon(
             icon,
             description,
-            tint = if (isFocused) MaterialTheme.colorScheme.primary else Color.White,
+            tint = if (isFocused || selected) MaterialTheme.colorScheme.primary else Color.White,
             modifier = Modifier.size(24.dp)
         )
     }
