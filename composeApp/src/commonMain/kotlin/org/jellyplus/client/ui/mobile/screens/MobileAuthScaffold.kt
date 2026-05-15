@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 private val AuthButtonShape = RoundedCornerShape(14.dp)
-private val AuthAccent = Color(0xFFFFB300)
+private val AuthAccent = Color(0xFF00D4A8)
 
 @Composable
 internal fun MobileAuthScaffold(

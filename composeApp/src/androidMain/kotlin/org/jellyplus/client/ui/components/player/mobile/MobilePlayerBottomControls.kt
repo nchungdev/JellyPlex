@@ -1,6 +1,5 @@
 package org.jellyplus.client.ui.components.player.mobile
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,41 +50,56 @@ internal fun MobilePlayerBottomControls(
 ) {
     var draggingValue by remember { mutableStateOf<Float?>(null) }
     val displayPosition = draggingValue?.toLong() ?: currentPosition
+    val isInteractingWithSeekbar = draggingValue != null
+    val seekbarHorizontalInset = 14.dp
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, bottom = 0.dp),
+            .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
     ) {
-        Surface(
-            shape = RoundedCornerShape(22.dp),
-            color = Color(0xFF1F2430).copy(alpha = 0.72f),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(38.dp)
-                    .padding(start = 14.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xFF1F2430).copy(alpha = 0.72f),
             ) {
-                Text(formatPlayerTime(displayPosition), color = Color.White, fontSize = 13.sp)
-                Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
-                Text(formatPlayerTime(duration), color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp)
-                Spacer(modifier = Modifier.weight(1f))
-
-                IconButton(onClick = onShowCaptionDialog, modifier = Modifier.size(38.dp)) {
-                    Icon(
-                        Icons.Default.Subtitles,
-                        null,
-                        tint = if (selectedTextTrackIndex >= 0) Color(0xFF24D366) else Color.White,
-                        modifier = Modifier.size(21.dp),
-                    )
+                Row(
+                    modifier = Modifier
+                        .height(38.dp)
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(formatPlayerTime(displayPosition), color = Color.White, fontSize = 13.sp)
+                    Text(" / ", color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+                    Text(formatPlayerTime(duration), color = Color.White.copy(alpha = 0.72f), fontSize = 13.sp)
                 }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = Color(0xFF1F2430).copy(alpha = 0.72f),
+            ) {
+                Row(
+                    modifier = Modifier.height(38.dp).padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = onShowCaptionDialog, modifier = Modifier.size(38.dp)) {
+                        Icon(
+                            Icons.Default.Subtitles,
+                            null,
+                            tint = if (selectedTextTrackIndex >= 0) Color(0xFF00D4A8) else Color.White,
+                            modifier = Modifier.size(21.dp),
+                        )
+                    }
 
-                Spacer(modifier = Modifier.size(10.dp))
+                    Spacer(modifier = Modifier.size(10.dp))
 
-                IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(38.dp)) {
-                    Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(21.dp))
+                    IconButton(onClick = onShowAudioDialog, modifier = Modifier.size(38.dp)) {
+                        Icon(Icons.Default.Audiotrack, null, tint = Color.White, modifier = Modifier.size(21.dp))
+                    }
                 }
             }
         }
@@ -99,33 +111,27 @@ internal fun MobilePlayerBottomControls(
                 .height(24.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
-            // Background track
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
-            )
-
-            // Marker highlights and start indicator using Canvas
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
+                    .padding(horizontal = seekbarHorizontalInset),
+                contentAlignment = Alignment.CenterStart,
             ) {
-                val width = size.width
-                val height = size.height
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(2.dp)),
+                )
 
+                val progress = if (duration > 0) (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress)
+                        .height(4.dp)
+                        .background(Color(0xFF00D4A8), RoundedCornerShape(2.dp)),
+                )
             }
-
-            val progress = if (duration > 0) (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-            // Active track (Green) - Uses displayPosition to follow finger during drag
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(4.dp)
-                    .background(Color(0xFF24D366), RoundedCornerShape(2.dp)),
-            )
 
             if (duration > 0) {
                 Slider(
@@ -141,7 +147,7 @@ internal fun MobilePlayerBottomControls(
                         }
                     },
                     valueRange = 0f..duration.toFloat(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = seekbarHorizontalInset),
                     colors = SliderDefaults.colors(
                         thumbColor = Color.White,
                         activeTrackColor = Color.Transparent,
@@ -150,7 +156,7 @@ internal fun MobilePlayerBottomControls(
                     thumb = {
                         Box(
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(if (isInteractingWithSeekbar) 20.dp else 4.dp)
                                 .background(Color.White, CircleShape)
                         )
                     },

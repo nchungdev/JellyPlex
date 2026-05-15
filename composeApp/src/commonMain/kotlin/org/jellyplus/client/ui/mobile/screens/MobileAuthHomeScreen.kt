@@ -55,7 +55,7 @@ fun MobileAuthHomeScreen(
 
         Text(
             "Change Server",
-            color = Color(0xFFFFB300),
+            color = Color(0xFF00D4A8),
             modifier = Modifier.clickable { onChangeServer() }.padding(8.dp),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,

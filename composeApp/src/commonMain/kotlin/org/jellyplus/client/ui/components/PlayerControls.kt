@@ -156,8 +156,8 @@ fun PlayerControls(
                     colors =
                         SliderDefaults.colors(
                             // Plex Gold
-                            thumbColor = Color(0xFFFFB300),
-                            activeTrackColor = Color(0xFFFFB300),
+                            thumbColor = Color(0xFF00D4A8),
+                            activeTrackColor = Color(0xFF00D4A8),
                         ),
                 )
 

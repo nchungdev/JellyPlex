@@ -3,6 +3,7 @@ package org.jellyplus.client.ui.desktop.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,7 +56,7 @@ fun DesktopSearchScreen(
                     unfocusedTextColor = Color.White,
                     focusedContainerColor = Color.DarkGray.copy(alpha = 0.5f),
                     unfocusedContainerColor = Color.DarkGray.copy(alpha = 0.3f),
-                    focusedIndicatorColor = Color(0xFFFFB300),
+                    focusedIndicatorColor = Color(0xFF00D4A8),
                 ),
         )
 
@@ -63,7 +64,7 @@ fun DesktopSearchScreen(
 
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFFFB300), modifier = Modifier.size(64.dp))
+                CircularProgressIndicator(color = Color(0xFF00D4A8), modifier = Modifier.size(64.dp))
             }
         } else if (state.results.isEmpty() && state.query.isNotEmpty()) {
             Text("No results found for '${state.query}'", color = Color.Gray, fontSize = 20.sp)
@@ -71,6 +72,7 @@ fun DesktopSearchScreen(
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 180.dp),
                 modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalArrangement = Arrangement.spacedBy(32.dp),
             ) {
@@ -79,7 +81,7 @@ fun DesktopSearchScreen(
                         item = item,
                         baseUrl = state.baseUrl,
                         onClick = { onMediaClick(item) },
-                        modifier = Modifier.width(180.dp)
+                        modifier = Modifier.width(192.dp)
                     )
                 }
             }

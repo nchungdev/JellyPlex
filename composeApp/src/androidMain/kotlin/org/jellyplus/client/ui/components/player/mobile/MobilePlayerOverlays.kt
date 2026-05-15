@@ -183,7 +183,7 @@ internal fun BoxScope.MobilePlayerOverlays(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Next episode in ${autoNextCountdown}s", color = Color.White, fontSize = 14.sp)
                 TextButton(onClick = onCancelAutoNext) {
-                    Text("Cancel", color = Color(0xFF24D366), fontSize = 13.sp)
+                    Text("Cancel", color = Color(0xFF00D4A8), fontSize = 13.sp)
                 }
             }
         }

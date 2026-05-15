@@ -89,7 +89,7 @@ fun AppContent() {
     CompositionLocalProvider(LocalUiType provides uiType) {
         MaterialTheme(
             colorScheme = darkColorScheme(
-                primary = Color(0xFFFFB300),
+                primary = Color(0xFF00D4A8),
                 surface = Color(0xFF121212),
                 background = Color(0xFF121212),
                 onSurface = Color.White,

@@ -51,7 +51,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +85,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun MobileMainScreen(
     viewModel: MainViewModel,
     sessionViewModel: SessionViewModel,
+    selectedTab: Int,
+    onSelectedTabChange: (Int) -> Unit,
     onMediaClick: (MediaItem) -> Unit,
     onContinueWatchingClick: (MediaItem) -> Unit,
     onViewAll: (MediaType, String) -> Unit
@@ -93,11 +94,6 @@ fun MobileMainScreen(
     val state by viewModel.state.collectAsState()
     val sessionState by sessionViewModel.uiState.collectAsState()
     val homeViewModel: HomeViewModel = koinViewModel()
-    var selectedTab by remember { mutableStateOf(0) }
-
-    LaunchedEffect(selectedTab) {
-        if (selectedTab == 0) homeViewModel.loadHomeContent()
-    }
 
     Scaffold(
         topBar = {
@@ -108,6 +104,7 @@ fun MobileMainScreen(
                     3 -> "Profile"
                     else -> null
                 },
+                transparent = selectedTab == 0,
             )
         },
         bottomBar = {
@@ -118,28 +115,28 @@ fun MobileMainScreen(
             ) {
                 NavigationBarItem(
                     selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 },
+                    onClick = { onSelectedTabChange(0) },
                     icon = { Icon(Icons.Default.Home, null) },
                     label = { Text("Home") },
                     colors = navigationColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 },
+                    onClick = { onSelectedTabChange(1) },
                     icon = { Icon(Icons.Default.Search, null) },
                     label = { Text("Search") },
                     colors = navigationColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
-                    onClick = { selectedTab = 2 },
+                    onClick = { onSelectedTabChange(2) },
                     icon = { Icon(Icons.Default.History, null) },
                     label = { Text("History") },
                     colors = navigationColors()
                 )
                 NavigationBarItem(
                     selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
+                    onClick = { onSelectedTabChange(3) },
                     icon = { Icon(Icons.Default.Person, null) },
                     label = { Text("Profile") },
                     colors = navigationColors()
@@ -157,7 +154,7 @@ fun MobileMainScreen(
                     state.baseUrl,
                     onMediaClick,
                     onContinueWatchingClick,
-                    onContinueWatchingHeaderClick = { selectedTab = 2 },
+                    onContinueWatchingHeaderClick = { onSelectedTabChange(2) },
                     onViewAll,
                     paddingValues,
                 )
@@ -198,7 +195,7 @@ private fun HomeContent(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            top = paddingValues.calculateTopPadding(),
+            top = 0.dp,
             bottom = paddingValues.calculateBottomPadding(),
         )
     ) {
@@ -253,7 +250,7 @@ private fun HomeContent(
             val heroItem = homeState.featuredItems.firstOrNull()
 
             if (heroItem != null || homeState.isLoading) item {
-                Box(modifier = Modifier.fillMaxWidth().height(320.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
                     if (heroItem != null) {
                         val item = heroItem
                         Box(
@@ -271,8 +268,8 @@ private fun HomeContent(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp)
-                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)))
+                                .height(150.dp)
+                                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Black.copy(alpha = 0.36f), Color.Transparent)))
                         )
                         Box(
                             modifier = Modifier
@@ -280,20 +277,42 @@ private fun HomeContent(
                                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF0F1113)), startY = 300f))
                         )
                         Column(
-                            modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp),
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 28.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(item.title, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Spacer(Modifier.height(24.dp))
-                            Button(
-                                onClick = { onMediaClick(item) },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.height(52.dp).fillMaxWidth(0.8f)
+                            Text(
+                                item.title,
+                                color = Color.White,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                lineHeight = 31.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 3,
+                            )
+                            Spacer(Modifier.height(18.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(0.84f),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(Icons.Default.Info, null, tint = Color.Black)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Details", color = Color.Black, fontWeight = FontWeight.Bold)
+                                Button(
+                                    onClick = { onContinueWatchingClick(item) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    shape = RoundedCornerShape(999.dp),
+                                    modifier = Modifier.height(48.dp).weight(1f)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Xem ngay", color = Color.Black, fontWeight = FontWeight.Bold)
+                                }
+                                IconButton(
+                                    onClick = { onMediaClick(item) },
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .background(Color.White.copy(alpha = 0.18f), CircleShape),
+                                ) {
+                                    Icon(Icons.Default.Info, null, tint = Color.White)
+                                }
                             }
                         }
                     } else if (homeState.isLoading) {
@@ -378,11 +397,20 @@ private fun AppLogoText() {
 @Composable
 private fun MobileTopHeader(
     title: String?,
+    transparent: Boolean = false,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF0F1113).copy(alpha = 0.96f))
+            .background(
+                if (transparent) {
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.76f), Color.Black.copy(alpha = 0.34f), Color.Transparent)
+                    )
+                } else {
+                    Brush.verticalGradient(listOf(Color(0xFF0F1113), Color(0xFF0F1113)))
+                }
+            )
             .statusBarsPadding()
             .height(56.dp)
             .padding(start = 16.dp, end = 4.dp),
@@ -392,7 +420,7 @@ private fun MobileTopHeader(
         if (title == null) {
             AppLogoText()
         } else {
-            Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.size(48.dp))
     }
@@ -887,9 +915,9 @@ internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClic
     } else 0f
 
     Column(
-        modifier = Modifier.width(240.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
+        modifier = Modifier.width(256.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.05f))
             .clickable { onClick() }) {
-        Box(modifier = Modifier.height(135.dp).fillMaxWidth()) {
+        Box(modifier = Modifier.height(144.dp).fillMaxWidth()) {
             AsyncImage(
                 model = item.getBackdropUrl(baseUrl),
                 contentDescription = null,
@@ -911,13 +939,13 @@ internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClic
             }
         }
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(item.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
             val subText = if (item.type == MediaType.EPISODE) {
                 "S${item.parentIndexNumber ?: 0}E${item.index ?: 0}"
             } else {
                 "Resume watching"
             }
-            Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp, maxLines = 1)
+            Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, maxLines = 1)
         }
     }
 }

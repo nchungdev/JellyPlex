@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.Person
 
-private val FocusColor = Color(0xFFFFB300)
+private val FocusColor = Color(0xFF00D4A8)
 
 @Composable
 fun CastChip(

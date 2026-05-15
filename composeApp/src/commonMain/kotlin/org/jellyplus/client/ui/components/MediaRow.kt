@@ -41,7 +41,7 @@ fun MediaRow(
             if (!actionLabel.isNullOrBlank() && onActionClick != null) {
                 Text(
                     text = actionLabel,
-                    color = Color(0xFFFFB300),
+                    color = Color(0xFF00D4A8),
                     fontSize = 14.sp,
                     modifier = Modifier.clickable(onClick = onActionClick),
                 )

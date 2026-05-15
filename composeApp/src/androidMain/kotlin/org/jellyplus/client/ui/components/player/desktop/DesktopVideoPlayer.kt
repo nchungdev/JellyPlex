@@ -39,13 +39,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.C
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -57,6 +63,8 @@ import org.jellyplus.client.domain.models.IntroMarker
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.domain.models.PlaybackConfig
 import org.jellyplus.client.media.CustomHlsPlaylistParserFactory
+import org.jellyplus.client.ui.common.components.player.PlayerAudioDialog
+import org.jellyplus.client.ui.common.components.player.PlayerCaptionDialog
 import org.jellyplus.client.ui.common.components.player.PlayerSettingsPopup
 
 @OptIn(UnstableApi::class)
@@ -97,6 +105,7 @@ fun DesktopVideoPlayer(
     onToggleAutoSkipOutro: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val playFocusRequester = remember { FocusRequester() }
 
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -107,7 +116,15 @@ fun DesktopVideoPlayer(
     var seekValue by remember { mutableStateOf(0) }
     var showSeekIndicator by remember { mutableStateOf(false) }
     var showSettingsPopup by remember { mutableStateOf(false) }
+    var showCaptionDialog by remember { mutableStateOf(false) }
+    var showAudioDialog by remember { mutableStateOf(false) }
     var seekIndicatorJob by remember { mutableStateOf<Job?>(null) }
+    var availableTextTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var availableTextTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
+    var selectedTextTrackIndex by remember { mutableStateOf(-1) }
+    var availableAudioTracks by remember { mutableStateOf<List<Pair<Int, String>>>(emptyList()) }
+    var availableAudioTrackLanguages by remember { mutableStateOf<List<String?>>(emptyList()) }
+    var selectedAudioTrackIndex by remember { mutableStateOf(0) }
     
     var resolvedUrl by remember { mutableStateOf(url) }
     val scope = rememberCoroutineScope()
@@ -130,15 +147,43 @@ fun DesktopVideoPlayer(
     val hlsMediaSourceFactory = remember(httpDataSourceFactory) {
         HlsMediaSource.Factory(httpDataSourceFactory).setPlaylistParserFactory(CustomHlsPlaylistParserFactory())
     }
+    val trackSelector = remember { DefaultTrackSelector(context) }
 
     val exoPlayer = remember(url, accessToken, mimeType) {
         ExoPlayer.Builder(context)
             .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(httpDataSourceFactory))
+            .setTrackSelector(trackSelector)
             .build().apply {
                 playWhenReady = true
                 addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
                     override fun onPlaybackStateChanged(state: Int) { duration = this@apply.duration.coerceAtLeast(0L) }
+                    override fun onTracksChanged(tracks: Tracks) {
+                        val textTracks = mutableListOf<Pair<Int, String>>()
+                        val textLanguages = mutableListOf<String?>()
+                        val audioTracks = mutableListOf<Pair<Int, String>>()
+                        val audioLanguages = mutableListOf<String?>()
+                        var textIndex = 0
+                        var audioIndex = 0
+                        for (group in tracks.groups) {
+                            when (group.type) {
+                                C.TRACK_TYPE_TEXT -> for (i in 0 until group.length) {
+                                    val format = group.getTrackFormat(i)
+                                    textTracks += textIndex++ to (format.label?.takeIf { it.isNotBlank() } ?: format.language?.takeIf { it.isNotBlank() } ?: "Sub $textIndex")
+                                    textLanguages += format.language
+                                }
+                                C.TRACK_TYPE_AUDIO -> for (i in 0 until group.length) {
+                                    val format = group.getTrackFormat(i)
+                                    audioTracks += audioIndex++ to (format.label?.takeIf { it.isNotBlank() } ?: format.language?.takeIf { it.isNotBlank() } ?: "Audio $audioIndex")
+                                    audioLanguages += format.language
+                                }
+                            }
+                        }
+                        availableTextTracks = textTracks
+                        availableTextTrackLanguages = textLanguages
+                        availableAudioTracks = audioTracks
+                        availableAudioTrackLanguages = audioLanguages
+                    }
                 })
             }
     }
@@ -158,6 +203,8 @@ fun DesktopVideoPlayer(
         duration = 0L
         seekValue = 0
         showSeekIndicator = false
+        selectedTextTrackIndex = -1
+        selectedAudioTrackIndex = 0
         
         isControlsVisible = true
     }
@@ -175,12 +222,20 @@ fun DesktopVideoPlayer(
     }
 
     DisposableEffect(Unit) {
-        val activity = context as? android.app.Activity
-        activity?.window?.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        activity?.window?.let { window ->
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
         onDispose {
             val sessionId = playSessionId
             if (sessionId != null) onPlaybackStopped(item.id, sessionId, exoPlayer.currentPosition * 10000L)
-            activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            activity?.window?.let { window ->
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                WindowCompat.getInsetsController(window, window.decorView).show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
     DisposableEffect(exoPlayer) {
@@ -260,7 +315,7 @@ fun DesktopVideoPlayer(
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(24.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Text("2X Speed", color = Color(0xFF24D366), fontWeight = FontWeight.Bold)
+                Text("2X Speed", color = Color(0xFF00D4A8), fontWeight = FontWeight.Bold)
             }
         }
 
@@ -277,7 +332,52 @@ fun DesktopVideoPlayer(
             onPrevEpisode = onPrevEpisode, onNextEpisode = onNextEpisode,
             onSeekLeft = { exoPlayer.seekTo((currentPosition - seekBackSeconds.coerceAtLeast(1) * 1000L).coerceAtLeast(0)) },
             onSeekRight = { exoPlayer.seekTo((currentPosition + seekForwardSeconds.coerceAtLeast(1) * 1000L).coerceAtMost(duration)) },
+            selectedTextTrackIndex = selectedTextTrackIndex,
+            onShowCaptionDialog = { showCaptionDialog = true },
+            onShowAudioDialog = { showAudioDialog = true },
             onMoreClick = { showSettingsPopup = true },
+        )
+
+        if (showCaptionDialog) PlayerCaptionDialog(
+            availableTextTracks = availableTextTracks,
+            selectedTextTrackIndex = selectedTextTrackIndex,
+            onSelectOff = {
+                selectedTextTrackIndex = -1
+                trackSelector.setParameters(
+                    trackSelector.buildUponParameters()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                        .setPreferredTextLanguage(null)
+                        .build()
+                )
+                showCaptionDialog = false
+            },
+            onSelectTrack = { index ->
+                selectedTextTrackIndex = index
+                trackSelector.setParameters(
+                    trackSelector.buildUponParameters()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                        .setPreferredTextLanguage(availableTextTrackLanguages.getOrNull(index))
+                        .build()
+                )
+                showCaptionDialog = false
+            },
+            onDismiss = { showCaptionDialog = false },
+        )
+
+        if (showAudioDialog) PlayerAudioDialog(
+            availableAudioTracks = availableAudioTracks,
+            selectedAudioTrackIndex = selectedAudioTrackIndex,
+            onSelectTrack = { index ->
+                selectedAudioTrackIndex = index
+                trackSelector.setParameters(
+                    trackSelector.buildUponParameters()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                        .setPreferredAudioLanguage(availableAudioTrackLanguages.getOrNull(index))
+                        .build()
+                )
+                showAudioDialog = false
+            },
+            onDismiss = { showAudioDialog = false },
         )
 
         if (showSettingsPopup) PlayerSettingsPopup(

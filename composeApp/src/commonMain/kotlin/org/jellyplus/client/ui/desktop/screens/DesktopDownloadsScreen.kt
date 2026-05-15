@@ -53,7 +53,7 @@ fun DesktopDownloadsScreen(state: DownloadsState) {
                         LinearProgressIndicator(
                             progress = { task.progress },
                             modifier = Modifier.fillMaxWidth().height(12.dp),
-                            color = Color(0xFFFFB300),
+                            color = Color(0xFF00D4A8),
                             trackColor = Color.DarkGray.copy(alpha = 0.5f),
                         )
                         Row(

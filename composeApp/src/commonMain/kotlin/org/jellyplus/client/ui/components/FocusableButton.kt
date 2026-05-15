@@ -1,12 +1,12 @@
 package org.jellyplus.client.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
@@ -40,14 +40,13 @@ fun FocusableButton(
     Button(
         onClick = onClick,
         modifier = modifier
-            .scale(scale)
-            .border(
-                width = 2.dp,
-                color = if (isFocused) Color.White else Color.Transparent,
-                shape = shape
-            ),
+            .scale(scale),
         enabled = enabled,
         shape = shape,
+        border = BorderStroke(
+            width = 2.dp,
+            color = if (isFocused) Color.White else Color.Transparent,
+        ),
         colors = colors,
         interactionSource = interactionSource,
         content = content
@@ -69,14 +68,13 @@ fun FocusableOutlinedButton(
     OutlinedButton(
         onClick = onClick,
         modifier = modifier
-            .scale(scale)
-            .border(
-                width = 2.dp,
-                color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
-                shape = shape
-            ),
+            .scale(scale),
         enabled = enabled,
         shape = shape,
+        border = BorderStroke(
+            width = 2.dp,
+            color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+        ),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
         interactionSource = interactionSource,
         content = content

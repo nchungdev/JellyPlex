@@ -1,9 +1,10 @@
 package org.jellyplus.client.ui.desktop.screens
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,10 +37,11 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.ui.components.MediaPoster
@@ -59,11 +60,17 @@ fun DesktopSeriesDetailScreen(
     val scope = rememberCoroutineScope()
     val seasonListState = rememberLazyListState()
     val episodeListState = rememberLazyListState()
-    val episodeRowHeight = 166.dp
-    val episodePosterWidth = 132.dp
-    val episodeItemSpacing = 14.dp
-    val episodeWideItemWidth = episodePosterWidth * 2 + episodeItemSpacing
-    val episodeCardWidthPx = with(LocalDensity.current) { episodeWideItemWidth.roundToPx() }
+    val episodeRowHeight = 180.dp
+    val episodeWideItemWidth = 232.dp
+    val episodeItemSpacing = 12.dp
+    var episodeCenterJob by remember { mutableStateOf<Job?>(null) }
+    fun alignEpisodeToStart(index: Int) {
+        episodeCenterJob?.cancel()
+        episodeCenterJob = scope.launch {
+            delay(35)
+            episodeListState.animateScrollToItem(index)
+        }
+    }
 
     LaunchedEffect(state.seasons) {
         if (state.selectedSeason == null && state.seasons.isNotEmpty()) {
@@ -91,6 +98,8 @@ fun DesktopSeriesDetailScreen(
             if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
         },
         overview = item.overview,
+        detailContentSpacing = 72.dp,
+        focusScrollBottomClearance = 24.dp,
     ) {
         if (state.seasons.isNotEmpty() || state.episodes.isNotEmpty()) {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -111,7 +120,7 @@ fun DesktopSeriesDetailScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(8.dp))
                 }
 
                 Box(
@@ -125,19 +134,17 @@ fun DesktopSeriesDetailScreen(
                             LazyRow(
                                 modifier = Modifier.fillMaxSize(),
                                 state = episodeListState,
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                contentPadding = PaddingValues(top = 18.dp, bottom = 22.dp),
+                                horizontalArrangement = Arrangement.spacedBy(episodeItemSpacing),
                             ) {
                                 itemsIndexed(state.episodes, key = { _, episode -> episode.id }) { index, episode ->
                                     MediaPoster(
                                         item = episode,
                                         baseUrl = baseUrl,
                                         onClick = { onPlayEpisode(episode, item, state.episodes) },
-                                        onFocus = {
-                                            scope.launch {
-                                                episodeListState.animateScrollToCenteredItem(index, episodeCardWidthPx)
-                                            }
-                                        },
+                                        onFocus = { alignEpisodeToStart(index) },
                                         aspectRatio = 16f / 9f,
+                                        showLabel = true,
                                         modifier = Modifier
                                             .width(episodeWideItemWidth)
                                             .onKeyEvent { event ->
@@ -155,16 +162,6 @@ fun DesktopSeriesDetailScreen(
             }
         }
     }
-}
-
-private suspend fun LazyListState.animateScrollToCenteredItem(
-    index: Int,
-    fallbackItemWidthPx: Int,
-) {
-    val viewportWidth = layoutInfo.viewportSize.width
-    val itemWidth = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.size ?: fallbackItemWidthPx
-    val centerOffset = ((viewportWidth - itemWidth) / 2).coerceAtLeast(0)
-    animateScrollToItem(index, scrollOffset = -centerOffset)
 }
 
 @Composable
@@ -212,6 +209,14 @@ private fun SeasonChip(
             else -> Color.White.copy(alpha = 0.08f)
         },
         shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(
+            width = 2.dp,
+            color = when {
+                focused -> MaterialTheme.colorScheme.primary
+                selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                else -> Color.Transparent
+            },
+        ),
         modifier = Modifier
             .onFocusChanged {
                 focused = it.isFocused
@@ -219,16 +224,7 @@ private fun SeasonChip(
                     onFocus()
                     if (!selected) onClick()
                 }
-            }
-            .border(
-                width = 2.dp,
-                color = when {
-                    focused -> MaterialTheme.colorScheme.primary
-                    selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                    else -> Color.Transparent
-                },
-                shape = RoundedCornerShape(999.dp),
-            ),
+            },
     ) {
         Box(modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp)) {
             Text(

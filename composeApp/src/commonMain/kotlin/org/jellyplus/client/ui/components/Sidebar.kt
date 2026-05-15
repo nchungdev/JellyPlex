@@ -56,7 +56,7 @@ fun Sidebar(
         Text(
             "JellyPlus",
             // Plex Gold
-            color = Color(0xFFFFB300),
+            color = Color(0xFF00D4A8),
             fontSize = 24.sp,
             modifier = Modifier.padding(bottom = 32.dp),
         )

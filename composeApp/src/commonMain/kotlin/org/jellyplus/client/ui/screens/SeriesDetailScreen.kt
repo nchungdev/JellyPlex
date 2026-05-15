@@ -13,9 +13,11 @@ import org.koin.compose.viewmodel.koinViewModel
 fun SeriesDetailScreen(
     item: MediaItem,
     focusSeasonId: String? = null,
+    recommendedItems: List<MediaItem> = emptyList(),
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val uiType = LocalUiType.current
     val viewModel: SeriesDetailViewModel = koinViewModel()
@@ -36,9 +38,11 @@ fun SeriesDetailScreen(
         MobileSeriesDetailScreen(
             item = item,
             viewModel = viewModel,
+            recommendedItems = recommendedItems,
             onBack = onBack,
             onPlay = onPlay,
             onPlayEpisode = onPlayEpisode,
+            onRecommendedClick = onRecommendedClick,
         )
     }
 }

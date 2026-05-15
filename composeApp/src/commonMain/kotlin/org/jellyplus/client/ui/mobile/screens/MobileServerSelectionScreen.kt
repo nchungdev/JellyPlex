@@ -83,15 +83,15 @@ fun MobileServerSelectionScreen(
             singleLine = true,
             colors =
                 OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFFFB300),
-                    focusedLabelColor = Color(0xFFFFB300),
-                    cursorColor = Color(0xFFFFB300),
+                    focusedBorderColor = Color(0xFF00D4A8),
+                    focusedLabelColor = Color(0xFF00D4A8),
+                    cursorColor = Color(0xFF00D4A8),
                 ),
             trailingIcon = {
                 if (state.isScanning) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color(0xFFFFB300),
+                        color = Color(0xFF00D4A8),
                         strokeWidth = 2.dp,
                     )
                 } else {
@@ -129,7 +129,7 @@ fun MobileServerSelectionScreen(
             onClick = onTryDemo,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Try Demo Server", color = Color(0xFFFFB300), fontWeight = FontWeight.Bold)
+            Text("Try Demo Server", color = Color(0xFF00D4A8), fontWeight = FontWeight.Bold)
         }
 
         if (state.discoveredServers.isNotEmpty() && !state.isScanning) {

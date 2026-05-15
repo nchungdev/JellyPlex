@@ -23,7 +23,7 @@ fun DesktopQuickConnectScreen(
 ) {
     DesktopAuthScaffold(maxContentWidth = 420.dp) {
         if (state.isLoading) {
-            CircularProgressIndicator(color = Color(0xFFFFB300), modifier = Modifier.size(42.dp))
+            CircularProgressIndicator(color = Color(0xFF00D4A8), modifier = Modifier.size(42.dp))
             Text("Requesting Code...", modifier = Modifier.padding(top = 12.dp), color = Color.Gray, fontSize = 15.sp)
         } else if (state.code != null) {
             Text("Quick Connect PIN", fontSize = 20.sp, color = Color.White)
@@ -31,7 +31,7 @@ fun DesktopQuickConnectScreen(
                 text = state.code!!,
                 fontSize = 56.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFB300),
+                color = Color(0xFF00D4A8),
                 modifier = Modifier.padding(vertical = 22.dp),
             )
             Text("Enter this code on your mobile device to login.", color = Color.Gray, fontSize = 14.sp)

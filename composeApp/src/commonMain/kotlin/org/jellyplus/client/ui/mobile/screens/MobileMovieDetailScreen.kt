@@ -24,7 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -56,14 +56,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.MediaItem
+import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.viewmodels.MovieDetailViewModel
 
 @Composable
 fun MobileMovieDetailScreen(
     item: MediaItem,
     viewModel: MovieDetailViewModel,
+    recommendedItems: List<MediaItem> = emptyList(),
     onBack: () -> Unit,
     onPlay: (MediaItem) -> Unit,
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val fullItem = state.fullItem ?: item
@@ -109,11 +112,11 @@ fun MobileMovieDetailScreen(
                         )
                     )
             )
-            // X close button
+            // Back button
             IconButton(
                 onClick = onBack,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.TopStart)
                     .statusBarsPadding()
                     .padding(8.dp)
             ) {
@@ -123,7 +126,7 @@ fun MobileMovieDetailScreen(
                         .background(Color.Black.copy(alpha = 0.55f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
             }
             // Info overlay at bottom
@@ -230,6 +233,24 @@ fun MobileMovieDetailScreen(
             ) {
                 items(state.cast) { person ->
                     MobileCastCard(person, baseUrl)
+                }
+            }
+        }
+
+        if (recommendedItems.isNotEmpty()) {
+            Spacer(Modifier.height(20.dp))
+            DetailSectionHeader("Similar")
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(recommendedItems) { related ->
+                    MediaPoster(
+                        item = related,
+                        baseUrl = baseUrl,
+                        onClick = { onRecommendedClick(related) },
+                        modifier = Modifier.width(118.dp)
+                    )
                 }
             }
         }

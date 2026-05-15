@@ -3,7 +3,10 @@ package org.jellyplus.client.ui.desktop.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,21 +44,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.ui.components.DetailActionIcon
 import org.jellyplus.client.ui.components.FocusableButton
 import org.jellyplus.client.ui.components.FocusableOutlinedButton
+import org.jellyplus.client.ui.desktop.DesktopContentLeftPadding
+import org.jellyplus.client.ui.desktop.DesktopContentRightPadding
+import org.jellyplus.client.ui.desktop.DesktopSidebarLogoSize
+import org.jellyplus.client.ui.desktop.DesktopSidebarTopPadding
+import org.jellyplus.client.ui.desktop.DesktopSidebarWidth
+import kotlin.math.abs
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 internal fun DesktopHeroDetailScaffold(
     item: MediaItem,
     baseUrl: String,
@@ -65,9 +79,13 @@ internal fun DesktopHeroDetailScaffold(
     modifier: Modifier = Modifier,
     secondaryLabel: String? = "Trailer",
     overview: String? = item.overview,
+    detailContentSpacing: Dp = 34.dp,
+    focusScrollBottomClearance: Dp = 0.dp,
     bottomContent: @Composable () -> Unit = {},
 ) {
+    val backFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
+    val bottomClearancePx = with(LocalDensity.current) { focusScrollBottomClearance.toPx() }
 
     LaunchedEffect(item.id) {
         kotlinx.coroutines.delay(120)
@@ -106,100 +124,136 @@ internal fun DesktopHeroDetailScaffold(
                 )
         )
 
-        HeroBackButton(onBack = onBack, modifier = Modifier.align(Alignment.TopStart).padding(32.dp))
+        HeroBackButton(
+            onBack = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(
+                    start = (DesktopSidebarWidth - DesktopSidebarLogoSize) / 2,
+                    top = DesktopSidebarTopPadding,
+                )
+                .focusRequester(backFocusRequester)
+                .focusProperties { down = playFocusRequester },
+        )
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 96.dp, end = 28.dp, top = 132.dp, bottom = 64.dp),
-            verticalArrangement = Arrangement.spacedBy(34.dp),
-        ) {
-            item(key = "hero") {
-                Column(modifier = Modifier.widthIn(max = 560.dp)) {
-                    if (metadata.isNotBlank()) {
-                        Text(
-                            metadata,
-                            color = Color.White.copy(alpha = 0.72f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                    }
-
+        @Composable
+        fun HeroContent(modifier: Modifier = Modifier) {
+            Column(modifier = modifier.widthIn(max = 560.dp)) {
+                if (metadata.isNotBlank()) {
                     Text(
-                        item.title,
-                        color = Color.White,
-                        fontSize = 44.sp,
-                        lineHeight = 50.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 2,
+                        metadata,
+                        color = Color.White.copy(alpha = 0.72f),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Spacer(Modifier.height(10.dp))
+                }
 
-                    Row(
-                        modifier = Modifier.padding(top = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Surface(color = Color(0xFFFFB300), shape = RoundedCornerShape(4.dp)) {
-                            Text("IMDb", color = Color.Black, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                        item.rating?.let { Text(it.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp) }
-                        item.year?.let { Text(it.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp) }
-                        item.runTimeTicks?.let { ticks ->
-                            val minutes = ticks / 10_000_000 / 60
-                            if (minutes > 0) Text("${minutes / 60}h ${minutes % 60}m", color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp)
-                        }
+                Text(
+                    item.title,
+                    color = Color.White,
+                    fontSize = 44.sp,
+                    lineHeight = 50.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                Row(
+                    modifier = Modifier.padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Surface(color = Color(0xFFFFB300), shape = RoundedCornerShape(4.dp)) {
+                        Text("IMDb", color = Color.Black, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
+                    item.rating?.let { Text(it.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp) }
+                    item.year?.let { Text(it.toString(), color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp) }
+                    item.runTimeTicks?.let { ticks ->
+                        val minutes = ticks / 10_000_000 / 60
+                        if (minutes > 0) Text("${minutes / 60}h ${minutes % 60}m", color = Color.White.copy(alpha = 0.78f), fontSize = 14.sp)
+                    }
+                }
 
-                    Row(
-                        modifier = Modifier.padding(top = 26.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                Row(
+                    modifier = Modifier.padding(top = 26.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    FocusableButton(
+                        onClick = onPrimaryAction,
+                        modifier = Modifier
+                            .height(50.dp)
+                            .width(150.dp)
+                            .focusRequester(playFocusRequester)
+                            .focusProperties { up = backFocusRequester },
+                        shape = RoundedCornerShape(25.dp),
                     ) {
-                        FocusableButton(
-                            onClick = onPrimaryAction,
-                            modifier = Modifier.height(50.dp).width(150.dp).focusRequester(playFocusRequester),
+                        Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
+                        Spacer(Modifier.width(8.dp))
+                        Text(primaryLabel, color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                    if (secondaryLabel != null) {
+                        FocusableOutlinedButton(
+                            onClick = {},
+                            modifier = Modifier.height(50.dp).width(140.dp),
                             shape = RoundedCornerShape(25.dp),
                         ) {
-                            Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                            Spacer(Modifier.width(8.dp))
-                            Text(primaryLabel, color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                        if (secondaryLabel != null) {
-                            FocusableOutlinedButton(
-                                onClick = {},
-                                modifier = Modifier.height(50.dp).width(140.dp),
-                                shape = RoundedCornerShape(25.dp),
-                            ) {
-                                Text(secondaryLabel, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            DetailActionIcon(Icons.Default.Add, "Add")
-                            DetailActionIcon(Icons.Default.FavoriteBorder, "Favorite")
-                            DetailActionIcon(Icons.Default.Share, "Share")
+                            Text(secondaryLabel, color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DetailActionIcon(Icons.Default.Add, "Add")
+                        DetailActionIcon(Icons.Default.FavoriteBorder, "Favorite")
+                        DetailActionIcon(Icons.Default.Share, "Share")
+                    }
+                }
 
-                    overview?.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            text = it,
-                            color = Color.White.copy(alpha = 0.72f),
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
-                            maxLines = 4,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(top = 24.dp),
-                        )
+                overview?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        color = Color.White.copy(alpha = 0.72f),
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 24.dp),
+                    )
+                }
+            }
+        }
+
+        CompositionLocalProvider(
+            LocalBringIntoViewSpec provides remember(bottomClearancePx) {
+                object : BringIntoViewSpec {
+                    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                        val trailingEdge = offset + size
+                        if (offset >= 0f && trailingEdge <= containerSize) return 0f
+                        return when {
+                            offset >= 0f && trailingEdge <= containerSize -> 0f
+                            offset < 0f && trailingEdge > containerSize -> 0f
+                            abs(offset) < abs(trailingEdge - containerSize) -> offset
+                            else -> trailingEdge - containerSize + bottomClearancePx
+                        }
                     }
                 }
             }
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = DesktopContentLeftPadding, end = DesktopContentRightPadding, top = 132.dp, bottom = 64.dp),
+                verticalArrangement = Arrangement.spacedBy(detailContentSpacing),
+            ) {
+                item(key = "hero") {
+                    HeroContent()
+                }
 
-            item(key = "detail-content") {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    bottomContent()
+                item(key = "detail-content") {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        bottomContent()
+                    }
                 }
             }
         }
@@ -211,7 +265,7 @@ private fun HeroBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
     var isBackFocused by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
-            .size(48.dp)
+            .size(DesktopSidebarLogoSize)
             .onFocusChanged { isBackFocused = it.isFocused }
             .focusable()
             .clickable { onBack() }
@@ -226,6 +280,7 @@ private fun HeroBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "Back",
             tint = if (isBackFocused) Color.Black else Color.White,
+            modifier = Modifier.size(24.dp),
         )
     }
 }

@@ -68,14 +68,18 @@ fun Modifier.sectionItemDpadHandler(
     sectionIndex: Int,
     navigator: DpadSectionNavigator,
     onExitLeft: (() -> Unit)? = null,
+    onNavigateUp: (() -> Unit)? = null,
+    onNavigateDown: (() -> Unit)? = null,
 ): Modifier = this.onKeyEvent { event ->
     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
     when (event.key) {
         Key.DirectionDown -> {
+            onNavigateDown?.invoke()
             navigator.navigateDown(sectionIndex); true
         }
 
         Key.DirectionUp -> {
+            onNavigateUp?.invoke()
             navigator.navigateUp(sectionIndex); true
         }
 

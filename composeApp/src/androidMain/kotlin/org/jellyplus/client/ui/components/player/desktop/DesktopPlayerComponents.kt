@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -31,12 +33,18 @@ fun DesktopPlayerIconButton(
     onClick: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(size)
+            .clip(CircleShape)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
-            .clickable { onClick() }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
             .background(if (isFocused) Color.White else Color.White.copy(alpha = 0.1f), CircleShape)
             .border(2.dp, if (isFocused) Color.White else Color.Transparent, CircleShape),
         contentAlignment = Alignment.Center,
@@ -53,13 +61,19 @@ fun DesktopPlayerButton(
     content: @Composable () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(size)
+            .clip(CircleShape)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
-            .clickable { onClick() }
-            .background(if (isFocused) Color(0xFF24D366) else Color.White.copy(alpha = 0.2f), CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .background(if (isFocused) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.2f), CircleShape)
             .border(if (isFocused) 4.dp else 0.dp, Color.White.copy(alpha = 0.5f), CircleShape),
         contentAlignment = Alignment.Center,
     ) {

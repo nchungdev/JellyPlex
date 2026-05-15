@@ -21,7 +21,7 @@ fun MobileQuickConnectScreen(
 ) {
     MobileAuthScaffold {
         if (state.isLoading) {
-            CircularProgressIndicator(color = Color(0xFFFFB300))
+            CircularProgressIndicator(color = Color(0xFF00D4A8))
             Text("Requesting Code...", modifier = Modifier.padding(top = 8.dp), color = Color.Gray)
         } else if (state.code != null) {
             Text("Quick Connect PIN", fontSize = 18.sp, color = Color.White)
@@ -29,7 +29,7 @@ fun MobileQuickConnectScreen(
                 text = state.code!!,
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFB300),
+                color = Color(0xFF00D4A8),
                 modifier = Modifier.padding(vertical = 16.dp),
             )
             Text("Enter this code on your mobile device to login.", color = Color.Gray)

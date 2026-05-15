@@ -80,7 +80,7 @@ fun PlayerSettingsPopup(
                 ) {
                     Text("Settings", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     TextButton(onClick = onDismiss) {
-                        Text("Close", color = Color(0xFF24D366), fontSize = 12.sp)
+                        Text("Close", color = Color(0xFF00D4A8), fontSize = 12.sp)
                     }
                 }
                 HorizontalDivider(color = Color.White.copy(alpha = 0.15f))
@@ -128,7 +128,7 @@ fun PlayerSettingsPopup(
                             val isSelected = currentSpeed == speed
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
+                                color = if (isSelected) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.1f),
                                 modifier = Modifier.clickable { onSpeedChange(speed) },
                             ) {
                                 Text(
@@ -158,7 +158,7 @@ fun PlayerSettingsToggleRow(label: String, checked: Boolean, onToggle: () -> Uni
             .onFocusChanged { isFocused = it.isFocused }
             .border(
                 width = if (isFocused) 1.dp else 0.dp,
-                color = if (isFocused) Color(0xFF24D366) else Color.Transparent,
+                color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
                 shape = RoundedCornerShape(8.dp),
             )
             .clickable { onToggle() }
@@ -173,7 +173,7 @@ fun PlayerSettingsToggleRow(label: String, checked: Boolean, onToggle: () -> Uni
             modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF24D366),
+                checkedTrackColor = Color(0xFF00D4A8),
                 uncheckedThumbColor = Color.Gray,
                 uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
             ),
@@ -197,7 +197,7 @@ fun SectionHeader(title: String) {
 fun PlayerSettingsChipToggle(label: String, checked: Boolean, onToggle: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(10.dp),
-        color = if (checked) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
+        color = if (checked) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.1f),
         modifier = Modifier
             .height(36.dp)
             .clickable { onToggle() },
@@ -219,7 +219,7 @@ fun PlayerSettingsChipToggle(label: String, checked: Boolean, onToggle: () -> Un
                 modifier = Modifier.scale(0.65f),
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = Color(0xFF24D366),
+                    checkedTrackColor = Color(0xFF00D4A8),
                     uncheckedThumbColor = Color.Gray,
                     uncheckedTrackColor = Color.White.copy(alpha = 0.2f),
                 ),

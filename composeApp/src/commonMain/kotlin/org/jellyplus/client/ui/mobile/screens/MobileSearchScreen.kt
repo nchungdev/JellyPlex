@@ -49,7 +49,7 @@ fun MobileSearchScreen(
                     unfocusedTextColor = Color.White,
                     focusedContainerColor = Color.DarkGray,
                     unfocusedContainerColor = Color.DarkGray,
-                    focusedIndicatorColor = Color(0xFFFFB300),
+                    focusedIndicatorColor = Color(0xFF00D4A8),
                 ),
         )
 
@@ -57,7 +57,7 @@ fun MobileSearchScreen(
 
         if (state.isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFFFFB300))
+                CircularProgressIndicator(color = Color(0xFF00D4A8))
             }
         } else if (state.results.isEmpty() && state.query.isNotEmpty()) {
             Text("No results found for '${state.query}'", color = Color.Gray)

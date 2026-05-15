@@ -43,7 +43,7 @@ fun PlayerCaptionDialog(
                 ) {
                     Text("Off")
                     if (selectedTextTrackIndex == -1)
-                        Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Check, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(18.dp))
                 }
                 if (availableTextTracks.isEmpty()) {
                     Text("No subtitles available", color = Color.Gray, fontSize = 13.sp)
@@ -59,7 +59,7 @@ fun PlayerCaptionDialog(
                         ) {
                             Text(label)
                             if (selectedTextTrackIndex == idx)
-                                Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Check, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(18.dp))
                         }
                     }
                 }

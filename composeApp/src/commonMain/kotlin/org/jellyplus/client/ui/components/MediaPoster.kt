@@ -4,14 +4,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,16 +19,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.MediaItem
+import org.jellyplus.client.domain.models.MediaType
 
-import androidx.compose.material3.MaterialTheme
 
 private enum class PosterImageState {
     Loading,
@@ -44,17 +50,20 @@ fun MediaPoster(
     onClick: () -> Unit,
     onFocus: () -> Unit = {},
     aspectRatio: Float = 2f / 3f,
+    @Suppress("UNUSED_PARAMETER") focusGutter: Dp = 0.dp,
+    showLabel: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
+    val focusedScale = if (aspectRatio > 1f) 7f / 6f else 1.2f
+    val scale by animateFloatAsState(if (isFocused) focusedScale else 1.0f)
     val interactionSource = remember { MutableInteractionSource() }
     val imageUrl = item.getImageUrl(baseUrl)
     var imageState by remember(imageUrl) {
         mutableStateOf(if (imageUrl.isNullOrBlank()) PosterImageState.Failed else PosterImageState.Loading)
     }
 
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(8.dp)
 
     Surface(
         onClick = onClick,
@@ -66,11 +75,12 @@ fun MediaPoster(
                 isFocused = it.isFocused
                 if (it.isFocused) onFocus()
             }
-            .scale(scale),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 3.dp,
-            color = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent
-        ),
+            .zIndex(if (isFocused) 10f else 0f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0.5f)
+            },
         interactionSource = interactionSource
     ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.05f))) {
@@ -98,31 +108,80 @@ fun MediaPoster(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f)),
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.36f)),
                             )
                         )
                 )
+            }
 
-                // Circular Play Button in center
+            if (showLabel) {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colorStops = arrayOf(
+                                    0.00f to Color.Transparent,
+                                    0.54f to Color.Transparent,
+                                    1.00f to Color.Black.copy(alpha = 0.82f),
+                                )
+                            )
+                        )
+                )
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(MaterialTheme.colorScheme.primary, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(32.dp)
+                    Text(
+                        text = item.title,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.SansSerif,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    mediaPosterSubtitle(item)?.let { subtitle ->
+                        Text(
+                            text = subtitle,
+                            color = Color.White.copy(alpha = 0.72f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = FontFamily.SansSerif,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
     }
+}
+
+private fun mediaPosterSubtitle(item: MediaItem): String? {
+    val subtitle = when (item.type) {
+        MediaType.EPISODE -> buildString {
+            item.seriesName?.let { append(it) }
+            val season = item.parentIndexNumber?.let { "S${it.toString().padStart(2, '0')}" }
+            val episode = item.index?.let { "E${it.toString().padStart(2, '0')}" }
+            val episodeLabel = listOfNotNull(season, episode).joinToString(" ")
+            if (episodeLabel.isNotBlank()) {
+                if (isNotEmpty()) append(" · ")
+                append(episodeLabel)
+            }
+        }
+        else -> buildString {
+            item.year?.let { append(it) }
+            item.runTimeTicks?.let { ticks ->
+                val minutes = ticks / 10_000_000 / 60
+                if (minutes > 0) {
+                    if (isNotEmpty()) append(" · ")
+                    append("${minutes / 60}h ${minutes % 60}m")
+                }
+            }
+        }
+    }
+    return subtitle.takeIf { it.isNotBlank() }
 }

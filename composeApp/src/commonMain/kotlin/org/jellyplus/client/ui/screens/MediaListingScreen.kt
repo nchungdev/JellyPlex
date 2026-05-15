@@ -105,7 +105,7 @@ fun MediaListingScreen(
                         unfocusedContainerColor = Color.Transparent,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
-                        cursorColor = Color(0xFF24D366)
+                        cursorColor = Color(0xFF00D4A8)
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )

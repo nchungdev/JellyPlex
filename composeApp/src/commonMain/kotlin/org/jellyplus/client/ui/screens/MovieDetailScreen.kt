@@ -15,8 +15,10 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun MovieDetailScreen(
     item: MediaItem,
+    recommendedItems: List<MediaItem> = emptyList(),
     onBack: () -> Unit,
     onPlay: (MediaItem) -> Unit,
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val uiType = LocalUiType.current
     val viewModel: MovieDetailViewModel = koinViewModel()
@@ -38,8 +40,10 @@ fun MovieDetailScreen(
         MobileMovieDetailScreen(
             item = item,
             viewModel = viewModel,
+            recommendedItems = recommendedItems,
             onBack = onBack,
             onPlay = onPlay,
+            onRecommendedClick = onRecommendedClick,
         )
     }
 }

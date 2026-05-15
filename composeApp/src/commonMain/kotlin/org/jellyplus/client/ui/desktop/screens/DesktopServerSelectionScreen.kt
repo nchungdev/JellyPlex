@@ -95,7 +95,7 @@ fun DesktopServerSelectionScreen(
                     color = Color.White
                 )
                 if (state.isScanning) {
-                    CircularProgressIndicator(color = Color(0xFF24D366), modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = Color(0xFF00D4A8), modifier = Modifier.size(24.dp))
                 } else {
                     IconButton(onClick = onScan) {
                         Icon(Icons.Default.Refresh, "Rescan", tint = Color.White.copy(alpha = 0.6f))
@@ -178,7 +178,7 @@ fun DesktopServerSelectionScreen(
                             onManualInput("")
                             showManualDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF24D366))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00D4A8))
                     ) {
                         Text("Connect", color = Color.Black)
                     }
@@ -196,7 +196,7 @@ fun DesktopServerSelectionScreen(
                 modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xFF24D366))
+                CircularProgressIndicator(color = Color(0xFF00D4A8))
             }
         }
     }
@@ -216,11 +216,11 @@ fun DemoServerCard(onClick: () -> Unit) {
             .clickable { onClick() }
             .border(
                 width = 2.dp,
-                color = if (isFocused) Color(0xFFFFB300) else Color.Transparent,
+                color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
                 shape = RoundedCornerShape(12.dp)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) Color(0xFFFFB300).copy(alpha = 0.2f) else Color(0xFFFFB300).copy(alpha = 0.1f)
+            containerColor = if (isFocused) Color(0xFF00D4A8).copy(alpha = 0.2f) else Color(0xFF00D4A8).copy(alpha = 0.1f)
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -228,7 +228,7 @@ fun DemoServerCard(onClick: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Dns, null, tint = Color(0xFFFFB300), modifier = Modifier.size(24.dp))
+            Icon(Icons.Default.Dns, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(12.dp))
             Text("Try Demo", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text("Official Jellyfin Demo Server", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
@@ -250,7 +250,7 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
             .clickable { onClick() }
             .border(
                 width = 2.dp,
-                color = if (isFocused) Color(0xFF24D366) else Color.Transparent,
+                color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
                 shape = RoundedCornerShape(12.dp)
             ),
         colors = CardDefaults.cardColors(
@@ -262,7 +262,7 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Default.Dns, null, tint = Color(0xFF24D366), modifier = Modifier.size(24.dp))
+            Icon(Icons.Default.Dns, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(12.dp))
             Text(name, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Text(address, color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
@@ -284,7 +284,7 @@ fun AddServerCard(onClick: () -> Unit) {
             .clickable { onClick() }
             .border(
                 width = 2.dp,
-                color = if (isFocused) Color(0xFF24D366) else Color.White.copy(alpha = 0.1f),
+                color = if (isFocused) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.1f),
                 shape = RoundedCornerShape(12.dp)
             ),
         colors = CardDefaults.cardColors(

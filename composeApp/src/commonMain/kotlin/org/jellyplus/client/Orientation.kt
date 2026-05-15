@@ -15,3 +15,6 @@ expect fun OrientationEffectImpl(orientation: ScreenOrientation)
 fun OrientationEffect(orientation: ScreenOrientation) {
     OrientationEffectImpl(orientation)
 }
+
+@Composable
+expect fun PlayerFullscreenEffect(enabled: Boolean)

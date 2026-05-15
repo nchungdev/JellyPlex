@@ -45,7 +45,7 @@ fun MobileManualLoginScreen(
                 TextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedIndicatorColor = Color(0xFFFFB300),
+                    focusedIndicatorColor = Color(0xFF00D4A8),
                     unfocusedIndicatorColor = Color.Gray,
                 ),
         )
@@ -59,7 +59,7 @@ fun MobileManualLoginScreen(
                 TextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedIndicatorColor = Color(0xFFFFB300),
+                    focusedIndicatorColor = Color(0xFF00D4A8),
                     unfocusedIndicatorColor = Color.Gray,
                 ),
         )
@@ -74,13 +74,13 @@ fun MobileManualLoginScreen(
                 TextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedIndicatorColor = Color(0xFFFFB300),
+                    focusedIndicatorColor = Color(0xFF00D4A8),
                     unfocusedIndicatorColor = Color.Gray,
                 ),
         )
         Spacer(modifier = Modifier.height(24.dp))
         if (state.isLoading) {
-            CircularProgressIndicator(color = Color(0xFFFFB300))
+            CircularProgressIndicator(color = Color(0xFF00D4A8))
         } else {
             MobileAuthPrimaryButton(
                 text = "Login",

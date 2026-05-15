@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -73,6 +72,9 @@ internal fun DesktopPlayerControls(
     onNextEpisode: () -> Unit,
     onSeekLeft: () -> Unit,
     onSeekRight: () -> Unit,
+    selectedTextTrackIndex: Int,
+    onShowCaptionDialog: () -> Unit,
+    onShowAudioDialog: () -> Unit,
     onMoreClick: () -> Unit,
 ) {
     AnimatedVisibility(visible = isVisible, enter = fadeIn(), exit = fadeOut()) {
@@ -80,7 +82,7 @@ internal fun DesktopPlayerControls(
 
             // Top bar
             Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 32.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 DesktopPlayerIconButton(
@@ -133,7 +135,7 @@ internal fun DesktopPlayerControls(
 
             // Bottom controls
             Column(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(start = 32.dp, end = 32.dp, bottom = 20.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(start = 32.dp, end = 32.dp, bottom = 16.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -153,9 +155,15 @@ internal fun DesktopPlayerControls(
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    DesktopPlayerIconButton(Icons.Default.Subtitles, size = 38.dp, iconSize = 21.dp) {}
+                    DesktopPlayerIconButton(
+                        Icons.Default.Subtitles,
+                        size = 38.dp,
+                        iconSize = 21.dp,
+                        tint = if (selectedTextTrackIndex >= 0) Color(0xFF00D4A8) else Color.White,
+                        onClick = onShowCaptionDialog,
+                    )
                     Spacer(modifier = Modifier.width(18.dp))
-                    DesktopPlayerIconButton(Icons.Default.Audiotrack, size = 38.dp, iconSize = 21.dp) {}
+                    DesktopPlayerIconButton(Icons.Default.Audiotrack, size = 38.dp, iconSize = 21.dp, onClick = onShowAudioDialog)
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 DesktopSeekbar(
@@ -177,6 +185,7 @@ private fun DesktopSeekbar(
     onSeekRight: () -> Unit,
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val horizontalInset = 0.dp
     Box(
         modifier = Modifier.fillMaxWidth().height(30.dp)
             .onFocusChanged { isFocused = it.isFocused }
@@ -191,10 +200,38 @@ private fun DesktopSeekbar(
         contentAlignment = Alignment.Center,
     ) {
         val barHeight = if (isFocused) 10.dp else 6.dp
+        val thumbSize = if (isFocused) 18.dp else 4.dp
         val progress = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-        Box(modifier = Modifier.fillMaxWidth().height(barHeight).background(Color.White.copy(alpha = if (isFocused) 0.3f else 0.2f), RoundedCornerShape(5.dp)))
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-            Box(modifier = Modifier.fillMaxWidth(progress).height(barHeight).background(if (isFocused) Color.White else Color(0xFF24D366), RoundedCornerShape(5.dp)))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalInset),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(barHeight)
+                    .background(Color.White.copy(alpha = if (isFocused) 0.3f else 0.2f), RoundedCornerShape(5.dp)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(barHeight)
+                    .background(if (isFocused) Color.White else Color(0xFF00D4A8), RoundedCornerShape(5.dp)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(30.dp),
+                contentAlignment = Alignment.CenterEnd,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(thumbSize)
+                        .background(Color.White, RoundedCornerShape(thumbSize / 2)),
+                )
+            }
         }
     }
 }

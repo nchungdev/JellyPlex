@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jellyplus.client.domain.models.MediaItem
+import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.viewmodels.SeriesDetailViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -64,9 +65,11 @@ import org.jellyplus.client.ui.viewmodels.SeriesDetailViewModel
 fun MobileSeriesDetailScreen(
     item: MediaItem,
     viewModel: SeriesDetailViewModel,
+    recommendedItems: List<MediaItem> = emptyList(),
     onBack: () -> Unit,
     onPlay: () -> Unit,
     onPlayEpisode: (MediaItem, MediaItem?, List<MediaItem>) -> Unit,
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val baseUrl = state.baseUrl
@@ -111,11 +114,11 @@ fun MobileSeriesDetailScreen(
                             )
                         )
                 )
-                // X close button
+                // Back button
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
+                        .align(Alignment.TopStart)
                         .statusBarsPadding()
                         .padding(8.dp)
                 ) {
@@ -125,9 +128,9 @@ fun MobileSeriesDetailScreen(
                             .background(Color.Black.copy(alpha = 0.55f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        }
                     }
-                }
                 // Info overlay at bottom
                 Column(
                     modifier = Modifier
@@ -270,6 +273,26 @@ fun MobileSeriesDetailScreen(
                     onClick = { onPlayEpisode(episode, item, state.episodes) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
+            }
+        }
+
+        if (recommendedItems.isNotEmpty()) {
+            item {
+                Spacer(Modifier.height(20.dp))
+                DetailSectionHeader("Similar")
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(recommendedItems) { related ->
+                        MediaPoster(
+                            item = related,
+                            baseUrl = baseUrl,
+                            onClick = { onRecommendedClick(related) },
+                            modifier = Modifier.width(118.dp)
+                        )
+                    }
+                }
             }
         }
 

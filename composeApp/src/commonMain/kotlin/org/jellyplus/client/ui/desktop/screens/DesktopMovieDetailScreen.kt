@@ -49,7 +49,7 @@ fun DesktopMovieDetailScreen(
         if (state.cast.isNotEmpty()) {
             Column {
                 Text("Cast", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     items(state.cast.take(10)) { person ->
                         CastCard(person, baseUrl)

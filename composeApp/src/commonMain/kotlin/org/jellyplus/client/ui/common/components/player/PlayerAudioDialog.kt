@@ -46,7 +46,7 @@ fun PlayerAudioDialog(
                         ) {
                             Text(label)
                             if (selectedAudioTrackIndex == idx)
-                                Icon(Icons.Default.Check, null, tint = Color(0xFF24D366), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Check, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(18.dp))
                         }
                     }
                 }
