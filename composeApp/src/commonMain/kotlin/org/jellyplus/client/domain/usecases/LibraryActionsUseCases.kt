@@ -13,6 +13,12 @@ class GetWatchLaterIdsUseCase(private val repository: IMediaRepository) {
     operator fun invoke(): Flow<Set<String>> = repository.watchLaterIds
 }
 
+class RefreshWatchLaterIdsUseCase(private val repository: IMediaRepository) {
+    operator fun invoke() {
+        repository.refreshWatchLaterIds()
+    }
+}
+
 class SetWatchLaterUseCase(private val repository: IMediaRepository) {
     operator fun invoke(itemId: String, enabled: Boolean) {
         repository.setWatchLater(itemId, enabled)

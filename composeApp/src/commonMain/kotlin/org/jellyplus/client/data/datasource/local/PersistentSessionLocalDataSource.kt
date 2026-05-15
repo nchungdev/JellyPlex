@@ -3,10 +3,7 @@ package org.jellyplus.client.data.datasource.local
 import com.russhwolf.settings.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
 import org.jellyplus.client.getDeviceName
-import org.jellyplus.client.domain.models.RemoteServerLogin
 import org.jellyplus.client.utils.generateUuid
 
 class PersistentSessionLocalDataSource(private val settings: Settings = Settings()) {
@@ -19,14 +16,10 @@ class PersistentSessionLocalDataSource(private val settings: Settings = Settings
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_DEVICE_NAME = "device_name"
         private const val KEY_PERSIST_DEMO = "persist_demo"
-        private const val KEY_REMOTE_SERVER_HISTORY = "remote_server_history"
     }
 
-    private val json = Json { ignoreUnknownKeys = true }
     private val _isAuthenticated = MutableStateFlow(hasSession())
     val isAuthenticated: StateFlow<Boolean> = _isAuthenticated
-    private val _remoteServerHistory = MutableStateFlow(loadRemoteServerHistory())
-    val remoteServerHistory: StateFlow<List<RemoteServerLogin>> = _remoteServerHistory
 
     var persistDemo: Boolean
         get() = settings.getBoolean(KEY_PERSIST_DEMO, false)
@@ -89,33 +82,6 @@ class PersistentSessionLocalDataSource(private val settings: Settings = Settings
         settings.remove(KEY_PASSWORD)
         settings.remove(KEY_BASE_URL)
         updateAuthState()
-    }
-
-    fun rememberRemoteServer(url: String, username: String?) {
-        val normalizedUrl = url.trim().trimEnd('/')
-        val normalizedUsername = username?.trim().orEmpty()
-        if (normalizedUrl.isEmpty() || normalizedUsername.isEmpty()) return
-
-        val nextHistory = listOf(RemoteServerLogin(normalizedUrl, normalizedUsername))
-            .plus(loadRemoteServerHistory().filterNot { it.url.equals(normalizedUrl, ignoreCase = true) })
-            .take(8)
-
-        settings.putString(KEY_REMOTE_SERVER_HISTORY, json.encodeToString(ListSerializer(RemoteServerLogin.serializer()), nextHistory))
-        _remoteServerHistory.value = nextHistory
-    }
-
-    private fun loadRemoteServerHistory(): List<RemoteServerLogin> {
-        val encoded = settings.getStringOrNull(KEY_REMOTE_SERVER_HISTORY) ?: return emptyList()
-        return runCatching {
-            json.decodeFromString(ListSerializer(RemoteServerLogin.serializer()), encoded)
-        }.getOrElse {
-            encoded.lineSequence()
-                .map { it.trim() }
-                .filter { it.isNotEmpty() }
-                .map { RemoteServerLogin(it, "") }
-                .toList()
-        }.filter { it.url.isNotBlank() && it.username.isNotBlank() }
-            .distinctBy { it.url.lowercase() }
     }
 
     private fun updateAuthState() {

@@ -37,6 +37,7 @@ class MainViewModel(
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
     private val getUserIdUseCase: GetUserIdUseCase,
     private val getWatchLaterIdsUseCase: GetWatchLaterIdsUseCase,
+    private val refreshWatchLaterIdsUseCase: RefreshWatchLaterIdsUseCase,
     private val setFavoriteUseCase: SetFavoriteUseCase,
     private val setWatchLaterUseCase: SetWatchLaterUseCase,
     private val clearSessionUseCase: ClearSessionUseCase,
@@ -74,6 +75,7 @@ class MainViewModel(
             val mark = TimeSource.Monotonic.markNow()
             logDebug("JellyPerf", "VM Main loadData -> start pageSize=$pageSize")
             _state.value = _state.value.copy(isLoading = true, hasLoaded = false, error = null)
+            refreshWatchLaterIdsUseCase()
 
             val moviesDeferred = async { getMoviesPageUseCase(startIndex = 0, limit = pageSize) }
             val tvShowsDeferred = async { getTvShowsPageUseCase(startIndex = 0, limit = pageSize) }

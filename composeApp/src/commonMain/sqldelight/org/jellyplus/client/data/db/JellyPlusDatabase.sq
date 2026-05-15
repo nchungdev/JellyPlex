@@ -1,0 +1,36 @@
+CREATE TABLE server_login_history (
+  url TEXT NOT NULL PRIMARY KEY,
+  username TEXT NOT NULL,
+  last_login_at INTEGER NOT NULL
+);
+
+CREATE TABLE watch_later (
+  server_url TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  added_at INTEGER NOT NULL,
+  PRIMARY KEY (server_url, user_id, item_id)
+);
+
+selectServerLoginHistory:
+SELECT url, username, last_login_at
+FROM server_login_history
+ORDER BY last_login_at DESC;
+
+upsertServerLogin:
+INSERT OR REPLACE INTO server_login_history(url, username, last_login_at)
+VALUES (:url, :username, :last_login_at);
+
+selectWatchLaterIds:
+SELECT item_id
+FROM watch_later
+WHERE server_url = :server_url AND user_id = :user_id
+ORDER BY added_at DESC;
+
+insertWatchLater:
+INSERT OR REPLACE INTO watch_later(server_url, user_id, item_id, added_at)
+VALUES (:server_url, :user_id, :item_id, :added_at);
+
+deleteWatchLater:
+DELETE FROM watch_later
+WHERE server_url = :server_url AND user_id = :user_id AND item_id = :item_id;

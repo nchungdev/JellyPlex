@@ -3,6 +3,7 @@ package org.jellyplus.client.di
 import org.jellyplus.client.data.datasource.local.*
 import org.jellyplus.client.data.datasource.remote.*
 import org.jellyplus.client.data.discovery.PlatformServerDiscovery
+import org.jellyplus.client.data.local.DatabaseDriverFactory
 import org.jellyplus.client.data.local.createSecureSettings
 import org.jellyplus.client.data.remote.JellyfinApi
 import org.jellyplus.client.data.repositories.*
@@ -22,8 +23,10 @@ val dataModule = module {
     single { AppDispatchers() }
     single { Json { ignoreUnknownKeys = true; isLenient = true; prettyPrint = true } }
     single { createSecureSettings() }
+    single { DatabaseDriverFactory() }
     
     // 1. Storage Helpers (Concrete Classes)
+    singleOf(::AppDatabaseLocalDataSource)
     singleOf(::PersistentSessionLocalDataSource)
     singleOf(::InMemorySessionLocalDataSource)
     singleOf(::MediaLocalDataSource)
@@ -34,7 +37,8 @@ val dataModule = module {
     single<ISessionRepository> {
         SessionRepository(
             persistentDataSource = get(),
-            inMemoryDataSource = get()
+            inMemoryDataSource = get(),
+            databaseDataSource = get(),
         ) 
     }
     
@@ -47,7 +51,7 @@ val dataModule = module {
 
     // 4. Repositories (Standardized)
     single<IAuthenticationRepository> { AuthenticationRepository(get(), get(), get(), get()) }
-    single<IMediaRepository> { MediaRepository(get(), get(), get(), get()) }
+    single<IMediaRepository> { MediaRepository(get(), get(), get(), get(), get()) }
     single<IQuickConnectRepository> { QuickConnectRepository(get(), get(), get()) }
     single<IServerDiscovery> { PlatformServerDiscovery() }
 }
@@ -84,6 +88,7 @@ val domainModule = module {
     factoryOf(::MarkItemAsPlayedUseCase)
     factoryOf(::SetFavoriteUseCase)
     factoryOf(::GetWatchLaterIdsUseCase)
+    factoryOf(::RefreshWatchLaterIdsUseCase)
     factoryOf(::SetWatchLaterUseCase)
     factoryOf(::SaveCustomMarkerUseCase)
     factoryOf(::GetWatchHistoryUseCase)

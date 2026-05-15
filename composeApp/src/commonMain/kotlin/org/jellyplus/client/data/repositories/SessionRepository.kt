@@ -2,6 +2,7 @@ package org.jellyplus.client.data.repositories
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import org.jellyplus.client.data.datasource.local.AppDatabaseLocalDataSource
 import org.jellyplus.client.data.datasource.local.InMemorySessionLocalDataSource
 import org.jellyplus.client.data.datasource.local.PersistentSessionLocalDataSource
 import org.jellyplus.client.domain.models.Constants
@@ -11,6 +12,7 @@ import org.jellyplus.client.domain.repositories.ISessionRepository
 class SessionRepository(
     private val persistentDataSource: PersistentSessionLocalDataSource,
     private val inMemoryDataSource: InMemorySessionLocalDataSource,
+    private val databaseDataSource: AppDatabaseLocalDataSource,
 ) : ISessionRepository {
 
     private fun isDemo(url: String?): Boolean {
@@ -34,7 +36,7 @@ class SessionRepository(
     override val deviceId: String get() = persistentDataSource.deviceId
     override val deviceName: String get() = persistentDataSource.deviceName
     override val persistDemo: Boolean get() = persistentDataSource.persistDemo
-    override val remoteServerHistory: Flow<List<RemoteServerLogin>> = persistentDataSource.remoteServerHistory
+    override val remoteServerHistory: Flow<List<RemoteServerLogin>> = databaseDataSource.remoteServerHistory
 
     override fun saveSession(url: String, token: String, userId: String?, userName: String?, password: String?) {
         // 1. Always save to Memory (Active state)
@@ -103,8 +105,9 @@ class SessionRepository(
     }
 
     override fun rememberRemoteServer(url: String, username: String?) {
-        if (isRemoteServerUrl(url)) {
-            persistentDataSource.rememberRemoteServer(url, username)
+        val normalizedUsername = username?.trim().orEmpty()
+        if (isRemoteServerUrl(url) && normalizedUsername.isNotEmpty()) {
+            databaseDataSource.rememberRemoteServer(url, normalizedUsername)
         }
     }
 

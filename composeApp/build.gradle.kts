@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.sqldelight)
 }
 
 kotlin {
@@ -46,6 +47,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
                 implementation(libs.multiplatform.settings)
+                implementation(libs.sqldelight.runtime)
                 implementation(libs.ktor.client.core)
                 implementation(libs.ktor.client.content.negotiation)
                 implementation(libs.ktor.serialization.kotlinx.json)
@@ -73,6 +75,7 @@ kotlin {
                 implementation(libs.androidx.media3.ui)
                 implementation(libs.androidx.media3.session)
                 implementation(libs.androidx.security.crypto)
+                implementation(libs.sqldelight.android.driver)
                 implementation(libs.koin.android)
             }
         }
@@ -81,7 +84,16 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.ktor.network)
+                implementation(libs.sqldelight.sqlite.driver)
             }
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("JellyPlusDatabase") {
+            packageName.set("org.jellyplus.client.data.db")
         }
     }
 }

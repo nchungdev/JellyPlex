@@ -4,9 +4,12 @@ import io.ktor.http.appendPathSegments
 import io.ktor.http.takeFrom
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.jellyplus.client.data.datasource.local.MediaLocalDataSource
+import org.jellyplus.client.data.datasource.local.AppDatabaseLocalDataSource
 import org.jellyplus.client.data.datasource.remote.IMediaRemoteDataSource
 import org.jellyplus.client.data.remote.models.ChapterInfo
 import org.jellyplus.client.data.remote.models.IntroSkipperSegment
@@ -27,6 +30,7 @@ import kotlin.time.TimeSource
 class MediaRepository(
     private val remoteDataSource: IMediaRemoteDataSource,
     private val localDataSource: MediaLocalDataSource,
+    private val databaseDataSource: AppDatabaseLocalDataSource,
     private val sessionRepository: ISessionRepository,
     private val dispatchers: AppDispatchers,
 ) : IMediaRepository {
@@ -34,7 +38,8 @@ class MediaRepository(
     override val movies: StateFlow<List<MediaItem>?> = localDataSource.movies
     override val tvShows: StateFlow<List<MediaItem>?> = localDataSource.tvShows
     override val homeContent: StateFlow<HomeContent?> = localDataSource.homeContent
-    override val watchLaterIds: StateFlow<Set<String>> = localDataSource.watchLaterIds
+    private val _watchLaterIds = MutableStateFlow<Set<String>>(emptySet())
+    override val watchLaterIds: StateFlow<Set<String>> = _watchLaterIds.asStateFlow()
 
     override suspend fun refreshMovies(): Result<Unit> = withContext(dispatchers.io) {
         runCatching {
@@ -204,8 +209,20 @@ class MediaRepository(
         remoteDataSource.setFavorite(userId, itemId, favorite)
     }
 
+    override fun refreshWatchLaterIds() {
+        val serverUrl = sessionRepository.baseUrl.orEmpty()
+        val userId = sessionRepository.userId.orEmpty()
+        _watchLaterIds.value = databaseDataSource.loadWatchLaterIds(serverUrl, userId)
+    }
+
     override fun setWatchLater(itemId: String, enabled: Boolean) {
-        localDataSource.setWatchLater(itemId, enabled)
+        databaseDataSource.setWatchLater(
+            serverUrl = sessionRepository.baseUrl.orEmpty(),
+            userId = sessionRepository.userId.orEmpty(),
+            itemId = itemId,
+            enabled = enabled,
+        )
+        refreshWatchLaterIds()
     }
 
     override suspend fun saveCustomMarker(itemId: String, startTicks: Long, endTicks: Long) = withContext(dispatchers.io) {
