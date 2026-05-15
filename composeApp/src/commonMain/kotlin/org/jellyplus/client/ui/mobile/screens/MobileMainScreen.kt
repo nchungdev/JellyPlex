@@ -190,7 +190,11 @@ private fun HomeContent(
     paddingValues: PaddingValues,
 ) {
     val homeState by homeViewModel.state.collectAsState()
-    val isHomeLoading = homeState.isLoading || !homeState.hasLoaded
+    val hasHomeContent = homeState.featuredItems.isNotEmpty() ||
+        homeState.resumeItems.isNotEmpty() ||
+        homeState.recentlyAddedItems.isNotEmpty()
+    val hasMainContent = state.movies.isNotEmpty() || state.tvShows.isNotEmpty()
+    val isHomeLoading = !hasHomeContent && !hasMainContent && (homeState.isLoading || state.isLoading)
 
     if (isHomeLoading) {
         Box(
@@ -214,7 +218,7 @@ private fun HomeContent(
             bottom = paddingValues.calculateBottomPadding(),
         )
     ) {
-        if (homeState.error != null && homeState.featuredItems.isEmpty() && homeState.resumeItems.isEmpty() && homeState.recentlyAddedItems.isEmpty()) {
+        if (homeState.error != null && !hasHomeContent && !hasMainContent) {
             // ERROR STATE
             item {
                 Column(
@@ -237,12 +241,7 @@ private fun HomeContent(
                     }
                 }
             }
-        } else if (
-            homeState.featuredItems.isEmpty() &&
-            homeState.resumeItems.isEmpty() &&
-            homeState.recentlyAddedItems.isEmpty() &&
-            state.items.isEmpty()
-        ) {
+        } else if (!hasHomeContent && !hasMainContent) {
             // EMPTY STATE
             item {
                 Column(

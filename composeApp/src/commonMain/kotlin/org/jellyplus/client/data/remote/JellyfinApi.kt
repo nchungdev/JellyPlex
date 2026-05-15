@@ -68,7 +68,7 @@ class JellyfinApi(
                 )
             }
             install(Logging) {
-                level = LogLevel.BODY
+                level = LogLevel.INFO
             }
             install(Auth) {
                 bearer {

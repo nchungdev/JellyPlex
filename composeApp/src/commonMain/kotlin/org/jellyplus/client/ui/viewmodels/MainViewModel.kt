@@ -46,6 +46,10 @@ class MainViewModel(
 
     fun loadData() {
         if (!hasSessionUseCase()) return
+        if (_state.value.isLoading) {
+            logDebug("JellyPerf", "VM Main loadData skipped: already loading")
+            return
+        }
 
         viewModelScope.launch(dispatchers.io) {
             val mark = TimeSource.Monotonic.markNow()

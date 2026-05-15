@@ -226,7 +226,11 @@ private fun MainDashboard(
     val contentHorizontalPadding = DesktopContentLeftPadding
     val heroBottomPadding = 346.dp
     val focusedSectionBottomPadding = 86.dp
-    val isHomeLoading = homeState.isLoading || !homeState.hasLoaded
+    val hasHomeContent = homeState.featuredItems.isNotEmpty() ||
+        homeState.resumeItems.isNotEmpty() ||
+        homeState.recentlyAddedItems.isNotEmpty()
+    val hasMainContent = state.movies.isNotEmpty() || state.tvShows.isNotEmpty()
+    val isHomeLoading = !hasHomeContent && !hasMainContent && (homeState.isLoading || state.isLoading)
     val dashboardSections = remember(
         homeState.featuredItems,
         homeState.resumeItems,
