@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -200,7 +199,6 @@ fun MobileSeriesDetailScreen(
                             tint = if (favorite) MaterialTheme.colorScheme.primary else Color.White,
                             onClick = { onToggleFavorite(item) }
                         )
-                        DetailActionButton(Icons.Default.Share, "Share")
                         DetailActionButton(Icons.Default.Download, "Download")
                     }
                     Spacer(Modifier.height(10.dp))

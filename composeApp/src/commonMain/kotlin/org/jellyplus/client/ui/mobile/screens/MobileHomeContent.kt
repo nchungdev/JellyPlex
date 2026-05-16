@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -95,9 +97,10 @@ internal fun HomeContent(
     val isHomeLoading = !hasHomeContent && !hasMainContent && (homeState.isLoading || state.isLoading)
     val listState = rememberLazyListState()
     val density = LocalDensity.current
+    val configuration = LocalConfiguration.current
     val orderedSections = remember(homeSectionOrder) { orderedHomeSectionIds(homeSectionOrder) }
     val enabledSections = remember(homeEnabledSections) { parseHomeSectionIds(homeEnabledSections).toSet() }
-    val heroCollapseDistancePx = with(density) { 420.dp.toPx() }
+    val heroCollapseDistancePx = with(density) { configuration.screenWidthDp.dp.toPx() }
     val headerAlpha by remember {
         derivedStateOf {
             when {
@@ -217,48 +220,67 @@ private fun HeroBanner(
     onToggleWatchLater: (MediaItem) -> Unit,
     isWatchLater: (MediaItem) -> Boolean,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().height(420.dp)) {
-        Box(modifier = Modifier.fillMaxSize().clickable { onMediaClick(item) }) {
-            AsyncImage(
-                model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        }
-        // Top gradient (darkens top edge under status bar)
-        Box(modifier = Modifier.fillMaxWidth().height(150.dp)
-            .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.82f), Color.Black.copy(alpha = 0.36f), Color.Transparent))))
-        // Bottom gradient (blends into the page background)
-        Box(modifier = Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF181818)), startY = 300f)))
-
+    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable { onMediaClick(item) }) {
+        AsyncImage(
+            model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        // Top gradient — status bar readability
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.3f)
+                .align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)))
+        )
+        // Bottom scrim — blends into page background
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.65f)
+                .align(Alignment.BottomCenter)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF181818))))
+        )
         Column(
-            modifier = Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp, vertical = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
-            Text(item.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold,
-                lineHeight = 31.sp, textAlign = TextAlign.Center, maxLines = 3)
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = { onContinueWatchingClick(item) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.height(48.dp),
-                ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Play", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-                IconButton(
+            Text(
+                item.title,
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 28.sp,
+                maxLines = 3,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+                DetailActionButton(
+                    icon = Icons.Default.Add,
+                    label = "Later",
+                    tint = if (isWatchLater(item)) MaterialTheme.colorScheme.primary else Color.White,
                     onClick = { onToggleWatchLater(item) },
-                    modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.18f), CircleShape),
-                ) { Icon(Icons.Default.Add, null, tint = if (isWatchLater(item)) MaterialTheme.colorScheme.primary else Color.White) }
-                IconButton(
+                )
+                DetailActionButton(
+                    icon = Icons.Default.Info,
+                    label = "Info",
                     onClick = { onMediaClick(item) },
-                    modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.18f), CircleShape),
-                ) { Icon(Icons.Default.Info, null, tint = Color.White) }
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = { onContinueWatchingClick(item) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+            ) {
+                Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }

@@ -60,7 +60,67 @@ fun MobileServerSelectionScreen(
         }
     }
 
-    MobileAuthScaffold {
+    val hasBottomContent = (recentServers.isNotEmpty() || state.discoveredServers.isNotEmpty()) && !state.isScanning
+
+    MobileAuthScaffold(
+        bottomContent = if (hasBottomContent) {
+            {
+                if (recentServers.isNotEmpty()) {
+                    Text("Recent Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    recentServers.forEach { server ->
+                        Surface(
+                            onClick = {
+                                manualUrl = server.url
+                                selectedServerName = server.url.toServerName()
+                                onRecentServerSelected(server)
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column {
+                                    Text(server.url.toServerName(), color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text("${server.url} - ${server.username}", color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (state.discoveredServers.isNotEmpty()) {
+                    if (recentServers.isNotEmpty()) Spacer(modifier = Modifier.height(16.dp))
+                    Text("Discovered Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    state.discoveredServers.forEach { server ->
+                        Surface(
+                            onClick = {
+                                manualUrl = server.address
+                                selectedServerName = server.name
+                                onServerSelected(server)
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column {
+                                    Text(server.name, color = Color.White, fontWeight = FontWeight.Bold)
+                                    Text(server.address, color = Color.Gray, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else null,
+    ) {
         Text(
             text = "Jellyfin Server",
             fontSize = 26.sp,
@@ -133,62 +193,6 @@ fun MobileServerSelectionScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Try Demo Server", color = Color(0xFF00D4A8), fontWeight = FontWeight.Bold)
-        }
-
-        if (recentServers.isNotEmpty() && !state.isScanning) {
-            Spacer(modifier = Modifier.height(32.dp))
-            Text("Recent Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(16.dp))
-            recentServers.forEach { server ->
-                Surface(
-                    onClick = {
-                        manualUrl = server.url
-                        selectedServerName = server.url.toServerName()
-                        onRecentServerSelected(server)
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    color = Color.White.copy(alpha = 0.05f),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(server.url.toServerName(), color = Color.White, fontWeight = FontWeight.Bold)
-                            Text("${server.url} - ${server.username}", color = Color.Gray, fontSize = 12.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (state.discoveredServers.isNotEmpty() && !state.isScanning) {
-            Spacer(modifier = Modifier.height(48.dp))
-            Text("Discovered Servers", color = Color.Gray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(modifier = Modifier.height(16.dp))
-            state.discoveredServers.forEach { server ->
-                Surface(
-                    onClick = {
-                        manualUrl = server.address
-                        selectedServerName = server.name
-                        onServerSelected(server)
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    color = Color.White.copy(alpha = 0.05f),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column {
-                            Text(server.name, color = Color.White, fontWeight = FontWeight.Bold)
-                            Text(server.address, color = Color.Gray, fontSize = 12.sp)
-                        }
-                    }
-                }
-            }
         }
     }
 }
