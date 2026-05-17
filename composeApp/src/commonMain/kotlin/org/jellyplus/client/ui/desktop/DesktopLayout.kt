@@ -5,11 +5,11 @@ import androidx.compose.ui.unit.dp
 
 // Google-TV style layout: no sidebar, a top navigation bar, and a uniform
 // horizontal content gutter on both sides.
-val DesktopContentHorizontalPadding: Dp = 48.dp
+val DesktopContentHorizontalPadding: Dp = 58.dp
 val DesktopContentLeftPadding: Dp = DesktopContentHorizontalPadding
 val DesktopContentRightPadding: Dp = DesktopContentHorizontalPadding
-val DesktopTopNavHeight: Dp = 64.dp
-val DesktopSidebarLogoSize: Dp = 36.dp
+val DesktopTopNavHeight: Dp = 75.dp
+val DesktopSidebarLogoSize: Dp = 41.dp
 
 // Retained for the detail hero scaffold's back-button placement.
 val DesktopSidebarWidth: Dp = 64.dp

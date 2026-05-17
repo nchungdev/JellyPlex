@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -75,13 +77,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil3.compose.AsyncImage
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -132,7 +140,7 @@ private val DashboardPosterWidth = 110.dp
 private val DashboardItemSpacing = 12.dp
 private val DashboardFocusGutter = 6.dp
 private val DashboardWideItemWidth = DashboardPosterWidth * 2 + DashboardItemSpacing
-private val DashboardSectionHeaderHeight = 30.dp
+private val DashboardSectionHeaderHeight = 22.dp
 private val DashboardSectionRowTopPadding = 18.dp
 private val DashboardSectionRowBottomPadding = 22.dp
 private val DashboardSectionGap = 38.dp
@@ -226,48 +234,102 @@ private fun DesktopTopNav(
     onSelect: (NavDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    var clockText by remember { mutableStateOf(currentTopNavClockText()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            clockText = currentTopNavClockText()
+            delay(30_000)
+        }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .height(DesktopTopNavHeight)
             .background(
                 Brush.verticalGradient(
                     colorStops = arrayOf(
-                        0.0f to Color.Black.copy(alpha = 0.55f),
+                        0.0f to Color.Black.copy(alpha = 0.54f),
                         1.0f to Color.Transparent,
                     )
                 )
             )
             .padding(horizontal = DesktopContentHorizontalPadding),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        MobileAuthLogo(modifier = Modifier.size(DesktopSidebarLogoSize))
-        Spacer(Modifier.width(16.dp))
-        NavTab(
-            label = "For you",
-            selected = selected == NavDestination.ForYou,
-            focusRequester = navFocusRequester,
-            onClick = { onSelect(NavDestination.ForYou) },
-        )
-        NavTab(
-            label = "Library",
-            selected = selected == NavDestination.Library,
-            onClick = { onSelect(NavDestination.Library) },
-        )
-        Spacer(Modifier.weight(1f))
-        NavTab(
-            label = "Search",
-            icon = Icons.Default.Search,
-            selected = selected == NavDestination.Search,
-            onClick = { onSelect(NavDestination.Search) },
-        )
-        NavTab(
-            label = "Settings",
-            selected = selected == NavDestination.Settings,
-            onClick = { onSelect(NavDestination.Settings) },
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = Color(0xFF7B1FC8),
+                modifier = Modifier.size(DesktopSidebarLogoSize),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text("J", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+
+            Surface(
+                color = Color(0xFF2A2F34).copy(alpha = 0.88f),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    NavIconTab(
+                        icon = Icons.Default.Search,
+                        selected = selected == NavDestination.Search,
+                        onClick = { onSelect(NavDestination.Search) },
+                    )
+                    NavTab(
+                        label = "Home",
+                        selected = selected == NavDestination.ForYou,
+                        focusRequester = navFocusRequester,
+                        onClick = { onSelect(NavDestination.ForYou) },
+                    )
+                    NavTab(
+                        label = "Library",
+                        selected = selected == NavDestination.Library,
+                        onClick = { onSelect(NavDestination.Library) },
+                    )
+                }
+            }
+
+            NavIconTab(
+                icon = Icons.Default.Settings,
+                selected = selected == NavDestination.Settings,
+                onClick = { onSelect(NavDestination.Settings) },
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            Text(
+                text = buildAnnotatedString {
+                    append("$clockText | ")
+                    withStyle(SpanStyle(color = Color.White.copy(alpha = 0.82f))) {
+                        append("Jelly")
+                    }
+                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                        append("Plus")
+                    }
+                },
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
     }
+}
+
+private fun currentTopNavClockText(): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${now.hour.toString().padStart(2, '0')}:${now.minute.toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -279,12 +341,8 @@ private fun NavTab(
     focusRequester: FocusRequester? = null,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val bg = when {
-        isFocused -> Color.White
-        selected -> Color.White.copy(alpha = 0.18f)
-        else -> Color.Transparent
-    }
-    val fg = if (isFocused) Color.Black else Color.White.copy(alpha = if (selected) 1f else 0.7f)
+    val bg = if (isFocused || selected) Color(0xFF3B4246) else Color.Transparent
+    val fg = Color.White.copy(alpha = if (isFocused || selected) 0.95f else 0.72f)
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(999.dp),
@@ -294,12 +352,35 @@ private fun NavTab(
             .onFocusChangedCompat { isFocused = it },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (icon != null) Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
-            Text(label, color = fg, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            if (icon != null) Icon(icon, null, tint = fg, modifier = Modifier.size(14.dp))
+            Text(label, color = fg, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun NavIconTab(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val bg = if (isFocused || selected) Color(0xFF3B4246) else Color.Transparent
+    val fg = Color.White.copy(alpha = if (isFocused || selected) 0.95f else 0.78f)
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = bg,
+        modifier = Modifier
+            .size(43.dp)
+            .onFocusChangedCompat { isFocused = it },
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -343,17 +424,38 @@ private fun MainDashboard(
             .map { it.key to it.value }
     }
 
-    var heroItem by remember { mutableStateOf<MediaItem?>(null) }
+    var heroIndex by remember(featured) { mutableStateOf(0) }
+    val heroCurrent = featured.getOrNull(heroIndex)
+    var heroPaused by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val heroButtonFocus = remember { FocusRequester() }
     val firstRowFocus = remember { FocusRequester() }
 
-    if (!isHomeLoading) RequestInitialFocus(firstRowFocus, suggested.size to hotTopics.size)
+    if (!isHomeLoading) RequestInitialFocus(heroButtonFocus, featured.size)
+
+    LaunchedEffect(Unit) {
+        scrollState.scrollTo(0)
+    }
+
+    // State 1: rotate the featured hero every 5s of inactivity. Pauses while
+    // the hero action is focused so the user can act on it.
+    LaunchedEffect(heroIndex, heroPaused, featured.size) {
+        if (!heroPaused && featured.size > 1) {
+            delay(5000)
+            heroIndex = (heroIndex + 1) % featured.size
+        }
+    }
+
+    val focusHero: () -> Unit = {
+        scope.launch { scrollState.animateScrollTo(0) }
+        try { heroButtonFocus.requestFocus() } catch (_: IllegalStateException) {}
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Hero backdrop — only while focus is inside the Hot topics row.
         Crossfade(
-            targetState = heroItem,
-            animationSpec = tween(durationMillis = 300),
+            targetState = heroCurrent,
+            animationSpec = tween(durationMillis = 420),
             label = "desktopHero",
         ) { item ->
             if (item != null) {
@@ -368,9 +470,10 @@ private fun MainDashboard(
                         modifier = Modifier.fillMaxSize().background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
-                                    0.0f to Color.Black.copy(alpha = 0.30f),
-                                    0.45f to Color.Black.copy(alpha = 0.45f),
-                                    1.0f to Color(0xFF181818),
+                                    0.0f to Color.Black.copy(alpha = 0.12f),
+                                    0.45f to Color.Black.copy(alpha = 0.36f),
+                                    0.82f to Color(0xFF101418).copy(alpha = 0.92f),
+                                    1.0f to Color(0xFF0E1013),
                                 )
                             )
                         )
@@ -379,8 +482,9 @@ private fun MainDashboard(
                         modifier = Modifier.fillMaxSize().background(
                             Brush.horizontalGradient(
                                 colorStops = arrayOf(
-                                    0.0f to Color.Black.copy(alpha = 0.60f),
-                                    0.45f to Color.Black.copy(alpha = 0.25f),
+                                    0.0f to Color.Black.copy(alpha = 0.86f),
+                                    0.34f to Color.Black.copy(alpha = 0.58f),
+                                    0.58f to Color.Black.copy(alpha = 0.18f),
                                     1.0f to Color.Transparent,
                                 )
                             )
@@ -412,132 +516,195 @@ private fun MainDashboard(
                 ) { Text("Reload", color = Color.Black, fontWeight = FontWeight.Bold) }
             }
 
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(top = DesktopTopNavHeight + 12.dp, bottom = 48.dp),
-                verticalArrangement = Arrangement.spacedBy(28.dp),
-            ) {
-                // Hero info text — shown only when a Hot topics item is focused.
-                Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
-                    heroItem?.let { item ->
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = hPad)
-                                .fillMaxWidth(0.6f),
-                        ) {
-                            val metadata = buildDesktopHeroMetadata(item)
-                            if (metadata.isNotBlank()) {
+            else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                // Hero expands when focused, collapses a bit otherwise so more
+                // rows show through (Google-TV behaviour).
+                val heroFraction by animateFloatAsState(
+                    targetValue = if (heroPaused) 1f else 0.62f,
+                    animationSpec = tween(durationMillis = 260),
+                    label = "heroHeightFraction",
+                )
+                val heroHeight = maxHeight * heroFraction
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(bottom = 44.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().height(heroHeight)) {
+                        heroCurrent?.let { item ->
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(start = hPad, bottom = 56.dp)
+                                    .fillMaxWidth(0.46f),
+                            ) {
                                 Text(
-                                    metadata,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontSize = 14.sp,
+                                    "Jellyfin Plus",
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    fontSize = 22.sp,
                                     fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    item.title,
+                                    color = Color.White,
+                                    fontSize = 36.sp,
+                                    lineHeight = 44.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    maxLines = 2,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(Modifier.height(8.dp))
+                                item.genres?.firstOrNull()?.let { g ->
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        g,
+                                        color = Color.White.copy(alpha = 0.92f),
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
+                                    Spacer(Modifier.height(16.dp))
+                                    Text(
+                                        ov,
+                                        color = Color.White.copy(alpha = 0.74f),
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Spacer(Modifier.height(26.dp))
+                                org.jellyplus.client.ui.components.FocusableButton(
+                                    onClick = { onMediaClick(item) },
+                                    modifier = Modifier
+                                        .height(54.dp)
+                                        .focusRequester(heroButtonFocus)
+                                        .onFocusChanged {
+                                            heroPaused = it.isFocused
+                                            if (it.isFocused) scope.launch { scrollState.animateScrollTo(0) }
+                                        }
+                                        .onKeyEvent { e ->
+                                            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) {
+                                                onFocusExit(); true
+                                            } else false
+                                        }
+                                        .width(176.dp),
+                                    shape = RoundedCornerShape(999.dp),
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFE4F3FF),
+                                        contentColor = Color(0xFF111820),
+                                    ),
+                                ) {
+                                    Text(
+                                        if (item.type == MediaType.SERIES) "View seasons" else "Watch now",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 16.sp,
+                                    )
+                                }
                             }
-                            Text(
-                                item.title,
-                                color = Color.White,
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            DesktopHeroInfoRow(item)
+
+                            if (featured.size > 1) {
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(end = hPad, bottom = 20.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                ) {
+                                    featured.indices.forEach { i ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(if (i == heroIndex) 9.dp else 7.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (i == heroIndex) Color.White
+                                                    else Color.White.copy(alpha = 0.24f)
+                                                ),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
-                }
 
-                var rowIndex = 0
-                if (suggested.isNotEmpty()) {
-                    DesktopMediaRow(
-                        title = "Suggested",
-                        items = suggested,
-                        baseUrl = state.baseUrl,
-                        horizontalPadding = hPad,
-                        cardWidth = 360.dp,
-                        captionMode = CaptionMode.Always,
-                        rowFocusRequester = firstRowFocus.takeIf { rowIndex == 0 },
-                        isFirstRow = rowIndex == 0,
-                        onExitUp = onFocusExit,
-                        onItemFocus = { heroItem = null },
-                        onItemClick = onMediaClick,
-                    ).also { rowIndex++ }
-                }
-                if (hotTopics.isNotEmpty()) {
-                    val isFirst = rowIndex == 0
-                    DesktopMediaRow(
-                        title = "Hot topics",
-                        items = hotTopics,
-                        baseUrl = state.baseUrl,
-                        horizontalPadding = hPad,
-                        cardWidth = 280.dp,
-                        captionMode = CaptionMode.None,
-                        rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                        isFirstRow = isFirst,
-                        onExitUp = onFocusExit,
-                        onItemFocus = { heroItem = it },
-                        onItemClick = onMediaClick,
-                    ).also { rowIndex++ }
-                }
-                if (homeState.resumeItems.isNotEmpty()) {
-                    val isFirst = rowIndex == 0
-                    DesktopMediaRow(
-                        title = "Continue watching",
-                        items = homeState.resumeItems,
-                        baseUrl = state.baseUrl,
-                        horizontalPadding = hPad,
-                        cardWidth = 248.dp,
-                        captionMode = CaptionMode.OnFocus,
-                        rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                        isFirstRow = isFirst,
-                        onExitUp = onFocusExit,
-                        onItemFocus = { heroItem = null },
-                        onItemClick = onContinueWatchingClick,
-                    ).also { rowIndex++ }
-                }
-                if (homeState.recentlyAddedItems.isNotEmpty()) {
-                    val isFirst = rowIndex == 0
-                    DesktopMediaRow(
-                        title = "Recently added",
-                        items = homeState.recentlyAddedItems,
-                        baseUrl = state.baseUrl,
-                        horizontalPadding = hPad,
-                        cardWidth = 248.dp,
-                        captionMode = CaptionMode.OnFocus,
-                        rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                        isFirstRow = isFirst,
-                        onExitUp = onFocusExit,
-                        onItemFocus = { heroItem = null },
-                        onItemClick = onMediaClick,
-                    ).also { rowIndex++ }
-                }
-                genreRows.forEach { (genre, items) ->
-                    val isFirst = rowIndex == 0
-                    DesktopMediaRow(
-                        title = genre,
-                        items = items,
-                        baseUrl = state.baseUrl,
-                        horizontalPadding = hPad,
-                        cardWidth = 248.dp,
-                        captionMode = CaptionMode.OnFocus,
-                        rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                        isFirstRow = isFirst,
-                        onExitUp = onFocusExit,
-                        onItemFocus = { heroItem = null },
-                        onItemClick = onMediaClick,
-                    )
-                    rowIndex++
+                    if (featured.isNotEmpty()) {
+                        DesktopMediaRow(
+                            title = "Top picks for you",
+                            items = featured,
+                            baseUrl = state.baseUrl,
+                            horizontalPadding = hPad,
+                            cardWidth = 248.dp,
+                            captionMode = CaptionMode.Always,
+                            rowFocusRequester = firstRowFocus,
+                            isFirstRow = true,
+                            onExitUp = focusHero,
+                            onItemFocus = {},
+                            onItemClick = onMediaClick,
+                        )
+                    }
+
+                    var rowIndex = if (featured.isNotEmpty()) 1 else 0
+                    if (homeState.resumeItems.isNotEmpty()) {
+                        val isFirst = rowIndex == 0
+                        DesktopMediaRow(
+                            title = "Continue watching",
+                            items = homeState.resumeItems,
+                            baseUrl = state.baseUrl,
+                            horizontalPadding = hPad,
+                            cardWidth = 153.dp,
+                            captionMode = CaptionMode.OnFocus,
+                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
+                            isFirstRow = isFirst,
+                            onExitUp = focusHero,
+                            onItemFocus = {},
+                            onItemClick = onContinueWatchingClick,
+                        )
+                        rowIndex++
+                    }
+                    if (homeState.recentlyAddedItems.isNotEmpty()) {
+                        val isFirst = rowIndex == 0
+                        DesktopMediaRow(
+                            title = "Recently added",
+                            items = homeState.recentlyAddedItems,
+                            baseUrl = state.baseUrl,
+                            horizontalPadding = hPad,
+                            cardWidth = 153.dp,
+                            captionMode = CaptionMode.OnFocus,
+                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
+                            isFirstRow = isFirst,
+                            onExitUp = focusHero,
+                            onItemFocus = {},
+                            onItemClick = onMediaClick,
+                        )
+                        rowIndex++
+                    }
+                    genreRows.forEach { (genre, items) ->
+                        val isFirst = rowIndex == 0
+                        DesktopMediaRow(
+                            title = genre,
+                            items = items,
+                            baseUrl = state.baseUrl,
+                            horizontalPadding = hPad,
+                            cardWidth = 153.dp,
+                            captionMode = CaptionMode.OnFocus,
+                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
+                            isFirstRow = isFirst,
+                            onExitUp = focusHero,
+                            onItemFocus = {},
+                            onItemClick = onMediaClick,
+                        )
+                        rowIndex++
+                    }
                 }
             }
         }
     }
 }
+
 
 private enum class CaptionMode { None, OnFocus, Always }
 
@@ -554,6 +721,7 @@ private fun DesktopMediaRow(
     onExitUp: () -> Unit,
     onItemFocus: (MediaItem) -> Unit,
     onItemClick: (MediaItem) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -566,13 +734,13 @@ private fun DesktopMediaRow(
         }
     }
     val visible = items.take(DashboardMaxVisibleItems)
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth()) {
         SectionHeader(title = title, horizontalPadding = horizontalPadding)
         Spacer(Modifier.height(12.dp))
         LazyRow(
             state = listState,
-            contentPadding = PaddingValues(start = horizontalPadding, end = horizontalPadding, top = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(DashboardItemSpacing),
+            contentPadding = PaddingValues(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .then(if (rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
@@ -614,8 +782,8 @@ private fun DesktopLandscapeCard(
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "cardScale")
-    val shape = RoundedCornerShape(10.dp)
+    val scale by animateFloatAsState(if (isFocused) 1.06f else 1f, label = "cardScale")
+    val shape = RoundedCornerShape(8.dp)
     val showCaption = captionMode == CaptionMode.Always ||
         (captionMode == CaptionMode.OnFocus && isFocused)
     Column(modifier = modifier) {
@@ -694,7 +862,7 @@ private fun DesktopLandscapeCard(
             Text(
                 item.title,
                 color = Color.White.copy(alpha = if (isFocused) 1f else 0.85f),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -878,9 +1046,9 @@ private fun SectionHeader(
     ) {
         Text(
             text = title,
-            color = Color.White.copy(alpha = 0.92f),
+            color = Color.White.copy(alpha = 0.64f),
             fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             fontFamily = FontFamily.SansSerif,
         )
     }
