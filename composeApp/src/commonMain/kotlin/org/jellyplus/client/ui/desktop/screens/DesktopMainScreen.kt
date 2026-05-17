@@ -641,21 +641,11 @@ private fun MainDashboard(
             }
 
             else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val heroExpanded = heroPaused || topPickHeroItem != null
-                // Hero is tall when focused, shorter when focus moves down to the
-                // rows (so more rows show — Google-TV behaviour). Content is
-                // top-anchored so shrinking the height never pushes the title
-                // under the nav; it only raises the rows below.
-                // Hero wraps its content + a FIXED gap to the rows (Google-TV
-                // keeps ~40dp between the hero block and "Top picks" in every
-                // state). A min height keeps the collapsed hero looking like a
-                // hero (dark area) instead of hugging the short title.
-                val heroMinFraction by animateFloatAsState(
-                    targetValue = if (heroExpanded) 0.74f else 0.50f,
-                    animationSpec = tween(durationMillis = 260),
-                    label = "heroMinFraction",
-                )
-                val heroMinHeight = maxHeight * heroMinFraction
+                // Hero wraps its content + a FIXED ~40dp gap to "Top picks" in
+                // every state (Google-TV). Content is top-anchored (122dp) so it
+                // never slides under the nav. No viewport-fraction min height —
+                // that forced the box taller than the content and left a big
+                // empty band below it.
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -666,7 +656,7 @@ private fun MainDashboard(
                     DebugBoundsFrame(
                         label = "section-0 hero",
                         color = Color(0xFFFFD54F),
-                        modifier = Modifier.fillMaxWidth().heightIn(min = heroMinHeight),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         heroCurrent?.let { item ->
                             DebugBoundsFrame(
@@ -679,7 +669,7 @@ private fun MainDashboard(
                                     // keeps it stable when overview/CTA appear.
                                     .align(Alignment.TopStart)
                                     .fillMaxWidth()
-                                    .padding(start = hPad, end = hPad, top = 122.dp, bottom = 40.dp),
+                                    .padding(start = hPad, end = hPad, top = 122.dp),
                             ) {
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     // Title/eyebrow keep a CONSTANT size in both
