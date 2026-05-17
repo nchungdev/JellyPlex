@@ -31,19 +31,22 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -69,14 +72,13 @@ fun DesktopServerSelectionScreen(
 ) {
     var showManualDialog by remember { mutableStateOf(false) }
     var manualUrl by remember { mutableStateOf("http://") }
+    val scanFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        runCatching { scanFocusRequester.requestFocus() }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818)).padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp)) {
-        MobileAuthLogo(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(104.dp),
-        )
-
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -84,26 +86,19 @@ fun DesktopServerSelectionScreen(
                 .widthIn(max = 860.dp),
             horizontalAlignment = Alignment.Start,
         ) {
+            MobileAuthLogo(
+                modifier = Modifier.size(104.dp),
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
             // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    "Select Server",
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                if (state.isScanning) {
-                    CircularProgressIndicator(color = Color(0xFF00D4A8), modifier = Modifier.size(24.dp))
-                } else {
-                    IconButton(onClick = onScan) {
-                        Icon(Icons.Default.Refresh, "Rescan", tint = Color.White.copy(alpha = 0.6f))
-                    }
-                }
-            }
+            Text(
+                "Select Server",
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
             Text(
                 "Choose a server from your network or add one manually",
@@ -125,15 +120,19 @@ fun DesktopServerSelectionScreen(
 
             // Server Grid
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 220.dp),
+                columns = GridCells.Adaptive(minSize = 200.dp),
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
                 contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth().height(320.dp)
+                modifier = Modifier.fillMaxWidth().height(146.dp)
             ) {
-                // Try Demo Card
+                // Scan / Rescan Card
                 item {
-                    DemoServerCard(onClick = onTryDemo)
+                    ScanServerCard(
+                        isScanning = state.isScanning,
+                        onClick = onScan,
+                        focusRequester = scanFocusRequester,
+                    )
                 }
 
                 items(recentServers) { server ->
@@ -158,6 +157,18 @@ fun DesktopServerSelectionScreen(
                     AddServerCard(onClick = { onManualInput("") })
                 }
             }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                "Try demo server",
+                color = Color(0xFF00D4A8),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .clickable { onTryDemo() }
+                    .padding(vertical = 4.dp),
+            )
         }
 
         // Manual Input Dialog
@@ -213,39 +224,6 @@ fun DesktopServerSelectionScreen(
 }
 
 @Composable
-fun DemoServerCard(onClick: () -> Unit) {
-    var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
-
-    Card(
-        modifier = Modifier
-            .height(130.dp)
-            .scale(scale)
-            .clickable { onClick() }
-            .onFocusChanged { isFocused = it.isFocused }
-            .border(
-                width = 2.dp,
-                color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
-                shape = RoundedCornerShape(12.dp)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) Color(0xFF00D4A8).copy(alpha = 0.2f) else Color(0xFF00D4A8).copy(alpha = 0.1f)
-        ),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(Icons.Default.Dns, null, tint = Color(0xFF00D4A8), modifier = Modifier.size(24.dp))
-            Spacer(Modifier.height(12.dp))
-            Text("Try Demo", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Text("Official Jellyfin Demo Server", color = Color.White.copy(alpha = 0.5f), fontSize = 12.sp)
-        }
-    }
-}
-
-@Composable
 fun ServerCard(name: String, address: String, onClick: () -> Unit) {
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
@@ -254,6 +232,7 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
         modifier = Modifier
             .height(130.dp)
             .scale(scale)
+            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .onFocusChanged { isFocused = it.isFocused }
             .border(
@@ -279,6 +258,47 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
 }
 
 @Composable
+fun ScanServerCard(isScanning: Boolean, onClick: () -> Unit, focusRequester: FocusRequester) {
+    var isFocused by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
+
+    Card(
+        modifier = Modifier
+            .height(130.dp)
+            .scale(scale)
+            .clip(RoundedCornerShape(12.dp))
+            .focusRequester(focusRequester)
+            .clickable(enabled = !isScanning) { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
+            .border(
+                width = 2.dp,
+                color = if (isFocused) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.1f),
+                shape = RoundedCornerShape(12.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (isScanning) {
+                CircularProgressIndicator(color = Color(0xFF00D4A8), modifier = Modifier.size(32.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Scanning…", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            } else {
+                Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Scan Network", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
 fun AddServerCard(onClick: () -> Unit) {
     var isFocused by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (isFocused) 1.05f else 1.0f)
@@ -287,6 +307,7 @@ fun AddServerCard(onClick: () -> Unit) {
         modifier = Modifier
             .height(130.dp)
             .scale(scale)
+            .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .onFocusChanged { isFocused = it.isFocused }
             .border(

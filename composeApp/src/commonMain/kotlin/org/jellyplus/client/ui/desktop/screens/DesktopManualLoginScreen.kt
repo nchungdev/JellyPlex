@@ -1,10 +1,14 @@
 package org.jellyplus.client.ui.desktop.screens
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -15,9 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,14 +45,28 @@ fun DesktopManualLoginScreen(
     var url by remember(currentUrl) { mutableStateOf(currentUrl) }
     var username by remember(currentUrl, suggestedUsername) { mutableStateOf(suggestedUsername) }
     var password by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
 
-    DesktopAuthScaffold(maxContentWidth = 460.dp) {
-        Text("Manual Login", fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    val formWidth = 380.dp
+
+    DesktopAuthScaffold(maxContentWidth = 4000.dp) {
+      Column(
+          modifier = Modifier.width(formWidth).align(Alignment.CenterHorizontally),
+      ) {
+        Text(
+            "Manual Login",
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
         Spacer(modifier = Modifier.height(22.dp))
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
             label = { Text("Server URL") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(
@@ -59,6 +81,9 @@ fun DesktopManualLoginScreen(
             value = username,
             onValueChange = { username = it },
             label = { Text("Username") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(
@@ -74,6 +99,12 @@ fun DesktopManualLoginScreen(
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                focusManager.clearFocus()
+                onLogin(url, username, password)
+            }),
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(
@@ -85,7 +116,10 @@ fun DesktopManualLoginScreen(
         )
         Spacer(modifier = Modifier.height(26.dp))
         if (state.isLoading) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(42.dp).align(androidx.compose.ui.Alignment.CenterHorizontally),
+            )
         } else {
             FocusableButton(
                 onClick = { onLogin(url, username, password) },
@@ -107,9 +141,10 @@ fun DesktopManualLoginScreen(
             Text(
                 "Error: ${state.error}",
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 18.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
                 fontSize = 14.sp,
             )
         }
+      }
     }
 }

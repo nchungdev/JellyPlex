@@ -3,8 +3,10 @@ package org.jellyplus.client.ui.desktop.screens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -28,19 +30,20 @@ internal fun DesktopAuthScaffold(
             .fillMaxSize()
             .padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp),
     ) {
-        MobileAuthLogo(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(logoSize),
-        )
-
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .fillMaxWidth()
                 .widthIn(max = maxContentWidth),
             horizontalAlignment = Alignment.Start,
-            content = content,
-        )
+        ) {
+            MobileAuthLogo(
+                modifier = Modifier.size(logoSize),
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            content()
+        }
     }
 }
