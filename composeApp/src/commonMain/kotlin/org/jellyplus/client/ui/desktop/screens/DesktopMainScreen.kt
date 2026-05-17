@@ -589,9 +589,18 @@ private fun MainDashboard(
                                             if (it.isFocused) scope.launch { scrollState.animateScrollTo(0) }
                                         }
                                         .onKeyEvent { e ->
-                                            if (e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp) {
-                                                onFocusExit(); true
-                                            } else false
+                                            if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                            when (e.key) {
+                                                Key.DirectionUp -> {
+                                                    onFocusExit()
+                                                    true
+                                                }
+                                                Key.DirectionDown -> {
+                                                    try { firstRowFocus.requestFocus() } catch (_: IllegalStateException) {}
+                                                    true
+                                                }
+                                                else -> false
+                                            }
                                         }
                                         .width(176.dp),
                                     shape = RoundedCornerShape(999.dp),
@@ -743,7 +752,6 @@ private fun DesktopMediaRow(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
                 .focusGroup(),
         ) {
             lazyListItemsIndexed(visible) { index, item ->
@@ -758,6 +766,7 @@ private fun DesktopMediaRow(
                     },
                     modifier = Modifier
                         .width(cardWidth)
+                        .then(if (index == 0 && rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
                         .onKeyEvent { e ->
                             if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                             when (e.key) {
