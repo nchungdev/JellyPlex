@@ -31,7 +31,8 @@ fun DesktopAuthHomeScreen(
 
         FocusableButton(
             onClick = onQuickConnect,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.height(56.dp).padding(horizontal = 40.dp),
+            shape = RoundedCornerShape(28.dp),
         ) {
             Text("Login with QuickConnect", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
@@ -40,7 +41,8 @@ fun DesktopAuthHomeScreen(
 
         FocusableOutlinedButton(
             onClick = onManualLogin,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.height(56.dp).padding(horizontal = 40.dp),
+            shape = RoundedCornerShape(28.dp),
         ) {
             Text("Manual Login", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }

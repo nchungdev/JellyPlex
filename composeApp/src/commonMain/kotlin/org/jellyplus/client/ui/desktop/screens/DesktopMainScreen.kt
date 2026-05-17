@@ -1,14 +1,17 @@
 package org.jellyplus.client.ui.desktop.screens
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -93,6 +97,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jellyplus.client.isDebug
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.navigation.DpadSectionNavigator
@@ -102,6 +107,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import org.jellyplus.client.logDebug
+import org.jellyplus.client.utils.format
 import org.jellyplus.client.ui.navigation.RequestInitialFocus
 import org.jellyplus.client.ui.navigation.gridItemDpadHandler
 import org.jellyplus.client.ui.navigation.rememberDpadGridNavigator
@@ -126,6 +132,42 @@ import androidx.compose.foundation.lazy.itemsIndexed as lazyListItemsIndexed
 private enum class NavDestination { ForYou, Library, Search, Settings }
 
 private enum class DashboardSectionClickMode { Detail, Play }
+
+@Composable
+private fun DebugBoundsFrame(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(modifier = modifier) {
+        content()
+        if (isDebug()) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .zIndex(999f)
+                    .border(1.dp, color),
+            )
+            Surface(
+                color = color.copy(alpha = 0.88f),
+                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .zIndex(1000f),
+            ) {
+                Text(
+                    text = label,
+                    color = Color.Black,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
 
 private data class DashboardSectionSpec(
     val title: String,
@@ -172,6 +214,11 @@ fun DesktopMainScreen(
     val homeState by homeViewModel.state.collectAsState()
     val selectedNav = NavDestination.entries.getOrElse(selectedNavIndex) { NavDestination.ForYou }
     val navFocusRequester = remember { FocusRequester() }
+    val homeScrollState = rememberScrollState()
+    var homeHeroFocusRequest by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+
+    RequestInitialFocus(navFocusRequester, selectedNav)
 
     LaunchedEffect(homeState.featuredItems, homeState.resumeItems, homeState.recentlyAddedItems) {
         viewModel.registerItems(
@@ -190,6 +237,8 @@ fun DesktopMainScreen(
                     onMediaClick = onMediaClick,
                     onContinueWatchingClick = onContinueWatchingClick,
                     onReloadHome = { homeViewModel.loadHomeContent() },
+                    scrollState = homeScrollState,
+                    heroFocusRequest = homeHeroFocusRequest,
                     onFocusExit = {
                         try { navFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
                     },
@@ -222,6 +271,19 @@ fun DesktopMainScreen(
             selected = selectedNav,
             navFocusRequester = navFocusRequester,
             onSelect = { onSelectedNavIndexChange(it.ordinal) },
+            onNavFocused = {
+                if (selectedNav == NavDestination.ForYou && homeScrollState.value != 0) {
+                    scope.launch { homeScrollState.scrollTo(0) }
+                }
+            },
+            onNavigateDown = {
+                if (selectedNav == NavDestination.ForYou) {
+                    homeHeroFocusRequest++
+                    true
+                } else {
+                    false
+                }
+            },
             modifier = Modifier.align(Alignment.TopStart),
         )
     }
@@ -232,6 +294,8 @@ private fun DesktopTopNav(
     selected: NavDestination,
     navFocusRequester: FocusRequester,
     onSelect: (NavDestination) -> Unit,
+    onNavFocused: () -> Unit,
+    onNavigateDown: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     var clockText by remember { mutableStateOf(currentTopNavClockText()) }
@@ -242,7 +306,9 @@ private fun DesktopTopNav(
         }
     }
 
-    Box(
+    DebugBoundsFrame(
+        label = "top-nav",
+        color = Color(0xFF64B5F6),
         modifier = modifier
             .fillMaxWidth()
             .height(DesktopTopNavHeight)
@@ -266,7 +332,9 @@ private fun DesktopTopNav(
             Surface(
                 shape = CircleShape,
                 color = Color(0xFF7B1FC8),
-                modifier = Modifier.size(DesktopSidebarLogoSize),
+                modifier = Modifier
+                    .size(DesktopSidebarLogoSize)
+                    .onFocusChanged { if (it.isFocused) onNavFocused() },
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text("J", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
@@ -286,17 +354,23 @@ private fun DesktopTopNav(
                         icon = Icons.Default.Search,
                         selected = selected == NavDestination.Search,
                         onClick = { onSelect(NavDestination.Search) },
+                        onFocus = onNavFocused,
+                        onNavigateDown = onNavigateDown,
                     )
                     NavTab(
                         label = "Home",
                         selected = selected == NavDestination.ForYou,
                         focusRequester = navFocusRequester,
                         onClick = { onSelect(NavDestination.ForYou) },
+                        onFocus = onNavFocused,
+                        onNavigateDown = onNavigateDown,
                     )
                     NavTab(
                         label = "Library",
                         selected = selected == NavDestination.Library,
                         onClick = { onSelect(NavDestination.Library) },
+                        onFocus = onNavFocused,
+                        onNavigateDown = onNavigateDown,
                     )
                 }
             }
@@ -305,6 +379,8 @@ private fun DesktopTopNav(
                 icon = Icons.Default.Settings,
                 selected = selected == NavDestination.Settings,
                 onClick = { onSelect(NavDestination.Settings) },
+                onFocus = onNavFocused,
+                onNavigateDown = onNavigateDown,
             )
 
             Spacer(Modifier.weight(1f))
@@ -337,6 +413,8 @@ private fun NavTab(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    onFocus: () -> Unit = {},
+    onNavigateDown: () -> Boolean = { false },
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     focusRequester: FocusRequester? = null,
 ) {
@@ -349,7 +427,13 @@ private fun NavTab(
         color = bg,
         modifier = Modifier
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChangedCompat { isFocused = it },
+            .onFocusChangedCompat {
+                isFocused = it
+                if (it) onFocus()
+            }
+            .onKeyEvent { e ->
+                e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && onNavigateDown()
+            },
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 7.dp),
@@ -367,6 +451,8 @@ private fun NavIconTab(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
+    onFocus: () -> Unit = {},
+    onNavigateDown: () -> Boolean = { false },
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val bg = if (isFocused || selected) Color(0xFF3B4246) else Color.Transparent
@@ -377,7 +463,13 @@ private fun NavIconTab(
         color = bg,
         modifier = Modifier
             .size(43.dp)
-            .onFocusChangedCompat { isFocused = it },
+            .onFocusChangedCompat {
+                isFocused = it
+                if (it) onFocus()
+            }
+            .onKeyEvent { e ->
+                e.type == KeyEventType.KeyDown && e.key == Key.DirectionDown && onNavigateDown()
+            },
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = fg, modifier = Modifier.size(18.dp))
@@ -396,6 +488,8 @@ private fun MainDashboard(
     onMediaClick: (MediaItem) -> Unit,
     onContinueWatchingClick: (MediaItem) -> Unit,
     onReloadHome: () -> Unit,
+    scrollState: androidx.compose.foundation.ScrollState,
+    heroFocusRequest: Int,
     onFocusExit: () -> Unit,
 ) {
     val hPad = DesktopContentHorizontalPadding
@@ -425,31 +519,58 @@ private fun MainDashboard(
     }
 
     var heroIndex by remember(featured) { mutableStateOf(0) }
+    // Section 0 is ALWAYS the auto-sliding featured hero — fully independent
+    // from the Top picks row (which is just a normal section).
+    val topPickHeroItem: MediaItem? = null
     val heroCurrent = featured.getOrNull(heroIndex)
+    val heroDotIndex = heroIndex
     var heroPaused by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val heroButtonFocus = remember { FocusRequester() }
     val firstRowFocus = remember { FocusRequester() }
-
-    if (!isHomeLoading) RequestInitialFocus(heroButtonFocus, featured.size)
 
     LaunchedEffect(Unit) {
         scrollState.scrollTo(0)
     }
 
+    LaunchedEffect(heroPaused) {
+        if (heroPaused) scrollState.scrollTo(0)
+    }
+
+    LaunchedEffect(heroFocusRequest, featured.size) {
+        if (heroFocusRequest <= 0 || featured.isEmpty()) return@LaunchedEffect
+        heroPaused = true
+        scrollState.scrollTo(0)
+        repeat(10) {
+            try {
+                heroButtonFocus.requestFocus()
+                delay(24)
+                scrollState.scrollTo(0)
+                return@LaunchedEffect
+            } catch (_: IllegalStateException) {
+                delay(24)
+            }
+        }
+    }
+
     // State 1: rotate the featured hero every 5s of inactivity. Pauses while
     // the hero action is focused so the user can act on it.
-    LaunchedEffect(heroIndex, heroPaused, featured.size) {
-        if (!heroPaused && featured.size > 1) {
+    LaunchedEffect(heroIndex, heroPaused, featured.size, topPickHeroItem) {
+        if (!heroPaused && topPickHeroItem == null && featured.size > 1) {
             delay(5000)
             heroIndex = (heroIndex + 1) % featured.size
         }
     }
 
     val focusHero: () -> Unit = {
-        scope.launch { scrollState.animateScrollTo(0) }
-        try { heroButtonFocus.requestFocus() } catch (_: IllegalStateException) {}
+        heroPaused = true
+        scope.launch {
+            scrollState.scrollTo(0)
+            delay(16)
+            try { heroButtonFocus.requestFocus() } catch (_: IllegalStateException) {}
+            delay(16)
+            scrollState.scrollTo(0)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -458,7 +579,7 @@ private fun MainDashboard(
             animationSpec = tween(durationMillis = 420),
             label = "desktopHero",
         ) { item ->
-            if (item != null) {
+            if (item != null && topPickHeroItem == null) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
                         model = item.getBackdropUrl(state.baseUrl) ?: item.getImageUrl(state.baseUrl),
@@ -466,13 +587,16 @@ private fun MainDashboard(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                     )
+                    // Flat base dim — Google TV keeps the whole backdrop quite
+                    // dark, even the visible part on the right.
+                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.38f)))
                     Box(
                         modifier = Modifier.fillMaxSize().background(
                             Brush.verticalGradient(
                                 colorStops = arrayOf(
-                                    0.0f to Color.Black.copy(alpha = 0.12f),
-                                    0.45f to Color.Black.copy(alpha = 0.36f),
-                                    0.82f to Color(0xFF101418).copy(alpha = 0.92f),
+                                    0.0f to Color.Black.copy(alpha = 0.45f),
+                                    0.45f to Color.Black.copy(alpha = 0.30f),
+                                    0.80f to Color(0xFF0E1013).copy(alpha = 0.94f),
                                     1.0f to Color(0xFF0E1013),
                                 )
                             )
@@ -482,9 +606,9 @@ private fun MainDashboard(
                         modifier = Modifier.fillMaxSize().background(
                             Brush.horizontalGradient(
                                 colorStops = arrayOf(
-                                    0.0f to Color.Black.copy(alpha = 0.86f),
-                                    0.34f to Color.Black.copy(alpha = 0.58f),
-                                    0.58f to Color.Black.copy(alpha = 0.18f),
+                                    0.0f to Color(0xFF0E1013).copy(alpha = 0.96f),
+                                    0.40f to Color.Black.copy(alpha = 0.82f),
+                                    0.68f to Color.Black.copy(alpha = 0.42f),
                                     1.0f to Color.Transparent,
                                 )
                             )
@@ -517,14 +641,21 @@ private fun MainDashboard(
             }
 
             else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                // Hero expands when focused, collapses a bit otherwise so more
-                // rows show through (Google-TV behaviour).
-                val heroFraction by animateFloatAsState(
-                    targetValue = if (heroPaused) 1f else 0.62f,
+                val heroExpanded = heroPaused || topPickHeroItem != null
+                // Hero is tall when focused, shorter when focus moves down to the
+                // rows (so more rows show — Google-TV behaviour). Content is
+                // top-anchored so shrinking the height never pushes the title
+                // under the nav; it only raises the rows below.
+                // Hero wraps its content + a FIXED gap to the rows (Google-TV
+                // keeps ~40dp between the hero block and "Top picks" in every
+                // state). A min height keeps the collapsed hero looking like a
+                // hero (dark area) instead of hugging the short title.
+                val heroMinFraction by animateFloatAsState(
+                    targetValue = if (heroExpanded) 0.74f else 0.50f,
                     animationSpec = tween(durationMillis = 260),
-                    label = "heroHeightFraction",
+                    label = "heroMinFraction",
                 )
-                val heroHeight = maxHeight * heroFraction
+                val heroMinHeight = maxHeight * heroMinFraction
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -532,108 +663,211 @@ private fun MainDashboard(
                         .padding(bottom = 44.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
-                    Box(modifier = Modifier.fillMaxWidth().height(heroHeight)) {
+                    DebugBoundsFrame(
+                        label = "section-0 hero",
+                        color = Color(0xFFFFD54F),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = heroMinHeight),
+                    ) {
                         heroCurrent?.let { item ->
-                            Column(
+                            DebugBoundsFrame(
+                                label = "hero-content",
+                                color = Color(0xFFFF8A65),
                                 modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(start = hPad, bottom = 56.dp)
-                                    .fillMaxWidth(0.46f),
+                                    // Google-TV places the hero block in the
+                                    // upper-middle (eyebrow ~122dp from the top),
+                                    // NOT pinned to the bottom. Top-anchored also
+                                    // keeps it stable when overview/CTA appear.
+                                    .align(Alignment.TopStart)
+                                    .fillMaxWidth()
+                                    .padding(start = hPad, end = hPad, top = 122.dp, bottom = 40.dp),
                             ) {
-                                Text(
-                                    "Jellyfin Plus",
-                                    color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                                Spacer(Modifier.height(16.dp))
-                                Text(
-                                    item.title,
-                                    color = Color.White,
-                                    fontSize = 36.sp,
-                                    lineHeight = 44.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                item.genres?.firstOrNull()?.let { g ->
-                                    Spacer(Modifier.height(16.dp))
-                                    Text(
-                                        g,
-                                        color = Color.White.copy(alpha = 0.92f),
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
-                                    Spacer(Modifier.height(16.dp))
-                                    Text(
-                                        ov,
-                                        color = Color.White.copy(alpha = 0.74f),
-                                        fontSize = 14.sp,
-                                        lineHeight = 20.sp,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                                Spacer(Modifier.height(26.dp))
-                                org.jellyplus.client.ui.components.FocusableButton(
-                                    onClick = { onMediaClick(item) },
-                                    modifier = Modifier
-                                        .height(54.dp)
-                                        .focusRequester(heroButtonFocus)
-                                        .onFocusChanged {
-                                            heroPaused = it.isFocused
-                                            if (it.isFocused) scope.launch { scrollState.animateScrollTo(0) }
-                                        }
-                                        .onKeyEvent { e ->
-                                            if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
-                                            when (e.key) {
-                                                Key.DirectionUp -> {
-                                                    onFocusExit()
-                                                    true
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    // Title/eyebrow keep a CONSTANT size in both
+                                    // collapsed and expanded states (Google-TV
+                                    // behaviour) — the only difference on expand
+                                    // is that the genre, overview and CTA appear.
+                                    val eyebrowSp = 20f
+                                    val titleSp = 38f
+                                    val titleLhSp = 46f
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(
+                                            if (topPickHeroItem != null) 0.5f else 0.42f
+                                        )
+                                    ) {
+                                        if (topPickHeroItem != null) {
+                                            // Top-pick focused preview: no backdrop,
+                                            // large title → source → overview →
+                                            // IMDb·genre·year·runtime meta row.
+                                            Text(
+                                                item.title,
+                                                color = Color.White,
+                                                fontSize = 48.sp,
+                                                lineHeight = 54.sp,
+                                                fontWeight = FontWeight.Normal,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Spacer(Modifier.height(20.dp))
+                                            Text(
+                                                desktopHeroEyebrow(item),
+                                                color = Color.White.copy(alpha = 0.92f),
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                            item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
+                                                Spacer(Modifier.height(18.dp))
+                                                Text(
+                                                    ov,
+                                                    color = Color.White.copy(alpha = 0.55f),
+                                                    fontSize = 15.sp,
+                                                    lineHeight = 22.sp,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                            Spacer(Modifier.height(16.dp))
+                                            DesktopTopPickMetaRow(item)
+                                        } else {
+                                            Text(
+                                                desktopHeroEyebrow(item),
+                                                color = Color.White,
+                                                fontSize = eyebrowSp.sp,
+                                                fontWeight = FontWeight.Medium,
+                                            )
+                                            Spacer(Modifier.height(14.dp))
+                                            Text(
+                                                item.title,
+                                                color = Color.White,
+                                                fontSize = titleSp.sp,
+                                                lineHeight = titleLhSp.sp,
+                                                fontWeight = FontWeight.Light,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            // Genre shows in BOTH states (Google
+                                            // TV default already shows it). Only
+                                            // overview + CTA are focus-gated.
+                                            item.genres?.firstOrNull()?.let { g ->
+                                                Spacer(Modifier.height(18.dp))
+                                                Text(
+                                                    g,
+                                                    color = Color.White.copy(alpha = 0.92f),
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                            if (heroPaused) {
+                                                item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
+                                                    Spacer(Modifier.height(10.dp))
+                                                    Text(
+                                                        ov,
+                                                        color = Color.White.copy(alpha = 0.60f),
+                                                        fontSize = 15.sp,
+                                                        lineHeight = 22.sp,
+                                                        maxLines = 2,
+                                                        overflow = TextOverflow.Ellipsis,
+                                                    )
                                                 }
-                                                Key.DirectionDown -> {
-                                                    try { firstRowFocus.requestFocus() } catch (_: IllegalStateException) {}
-                                                    true
-                                                }
-                                                else -> false
                                             }
                                         }
-                                        .width(176.dp),
-                                    shape = RoundedCornerShape(999.dp),
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFE4F3FF),
-                                        contentColor = Color(0xFF111820),
-                                    ),
-                                ) {
-                                    Text(
-                                        if (item.type == MediaType.SERIES) "View seasons" else "Watch now",
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 16.sp,
-                                    )
-                                }
-                            }
+                                    }
 
-                            if (featured.size > 1) {
-                                Row(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(end = hPad, bottom = 20.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                                ) {
-                                    featured.indices.forEach { i ->
-                                        Box(
-                                            modifier = Modifier
-                                                .size(if (i == heroIndex) 9.dp else 7.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    if (i == heroIndex) Color.White
-                                                    else Color.White.copy(alpha = 0.24f)
+                                    if (heroPaused) Spacer(Modifier.height(24.dp))
+
+                                    // CTA + dots share one row so the dots are
+                                    // vertically centered on the CTA when expanded.
+                                    // When collapsed the CTA shrinks to 1dp so this
+                                    // row sits right under the title → dots align
+                                    // with the title's bottom. Same focusable node
+                                    // is kept alive (no swap) for D-pad Down.
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        DebugBoundsFrame(
+                                            label = "hero-cta",
+                                            color = Color(0xFF00E676),
+                                            modifier = if (heroPaused) {
+                                                Modifier.height(44.dp).width(176.dp)
+                                            } else {
+                                                Modifier.size(1.dp).alpha(0f)
+                                            },
+                                        ) {
+                                            org.jellyplus.client.ui.components.FocusableButton(
+                                                onClick = { onMediaClick(item) },
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .focusRequester(heroButtonFocus)
+                                                    .onFocusChanged {
+                                                        if (it.isFocused) {
+                                                            heroPaused = true
+                                                            scope.launch { scrollState.scrollTo(0) }
+                                                        } else {
+                                                            heroPaused = false
+                                                        }
+                                                    }
+                                                    .onKeyEvent { e ->
+                                                        if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                                        when (e.key) {
+                                                            Key.DirectionUp -> {
+                                                                onFocusExit()
+                                                                true
+                                                            }
+                                                            Key.DirectionDown -> {
+                                                                scope.launch {
+                                                                    scrollState.scrollTo(0)
+                                                                    delay(16)
+                                                                    try { firstRowFocus.requestFocus() } catch (_: IllegalStateException) {}
+                                                                    delay(16)
+                                                                    scrollState.scrollTo(0)
+                                                                }
+                                                                true
+                                                            }
+                                                            else -> false
+                                                        }
+                                                    },
+                                                shape = RoundedCornerShape(999.dp),
+                                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                                    containerColor = Color(0xFFE4F3FF),
+                                                    contentColor = Color(0xFF111820),
                                                 ),
-                                        )
+                                            ) {
+                                                Text(
+                                                    if (item.type == MediaType.SERIES) "View seasons" else "Watch now",
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 15.sp,
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(Modifier.weight(1f))
+
+                                        if (featured.size > 1 && topPickHeroItem == null) {
+                                            DebugBoundsFrame(
+                                                label = "hero-dots",
+                                                color = Color(0xFFBA68C8),
+                                                modifier = Modifier,
+                                            ) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                                                ) {
+                                                    featured.indices.forEach { i ->
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(if (i == heroDotIndex) 9.dp else 7.dp)
+                                                                .clip(CircleShape)
+                                                                .background(
+                                                                    if (i == heroDotIndex) Color.White
+                                                                    else Color.White.copy(alpha = 0.24f)
+                                                                ),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -646,7 +880,7 @@ private fun MainDashboard(
                             items = featured,
                             baseUrl = state.baseUrl,
                             horizontalPadding = hPad,
-                            cardWidth = 248.dp,
+                            cardWidth = 150.dp,
                             captionMode = CaptionMode.Always,
                             rowFocusRequester = firstRowFocus,
                             isFirstRow = true,
@@ -664,7 +898,7 @@ private fun MainDashboard(
                             items = homeState.resumeItems,
                             baseUrl = state.baseUrl,
                             horizontalPadding = hPad,
-                            cardWidth = 153.dp,
+                            cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
                             rowFocusRequester = firstRowFocus.takeIf { isFirst },
                             isFirstRow = isFirst,
@@ -681,7 +915,7 @@ private fun MainDashboard(
                             items = homeState.recentlyAddedItems,
                             baseUrl = state.baseUrl,
                             horizontalPadding = hPad,
-                            cardWidth = 153.dp,
+                            cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
                             rowFocusRequester = firstRowFocus.takeIf { isFirst },
                             isFirstRow = isFirst,
@@ -698,7 +932,7 @@ private fun MainDashboard(
                             items = items,
                             baseUrl = state.baseUrl,
                             horizontalPadding = hPad,
-                            cardWidth = 153.dp,
+                            cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
                             rowFocusRequester = firstRowFocus.takeIf { isFirst },
                             isFirstRow = isFirst,
@@ -713,6 +947,15 @@ private fun MainDashboard(
         }
     }
 }
+
+private fun desktopHeroEyebrow(item: MediaItem): String =
+    item.genres?.firstOrNull()?.takeIf { it.isNotBlank() }
+        ?: when (item.type) {
+            MediaType.MOVIE -> "Movie"
+            MediaType.SERIES -> "TV Series"
+            MediaType.EPISODE -> "Episode"
+            else -> item.type.value
+        }
 
 
 private enum class CaptionMode { None, OnFocus, Always }
@@ -743,39 +986,45 @@ private fun DesktopMediaRow(
         }
     }
     val visible = items.take(DashboardMaxVisibleItems)
-    Column(modifier = modifier.fillMaxWidth()) {
-        SectionHeader(title = title, horizontalPadding = horizontalPadding)
-        Spacer(Modifier.height(12.dp))
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .focusGroup(),
-        ) {
-            lazyListItemsIndexed(visible) { index, item ->
-                DesktopLandscapeCard(
-                    item = item,
-                    baseUrl = baseUrl,
-                    captionMode = captionMode,
-                    onClick = { onItemClick(item) },
-                    onFocus = {
-                        onItemFocus(item)
-                        alignToStart(index)
-                    },
-                    modifier = Modifier
-                        .width(cardWidth)
-                        .then(if (index == 0 && rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
-                        .onKeyEvent { e ->
-                            if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
-                            when (e.key) {
-                                Key.DirectionUp -> if (isFirstRow) { onExitUp(); true } else false
-                                Key.DirectionRight -> index == visible.lastIndex
-                                else -> false
-                            }
+    DebugBoundsFrame(
+        label = "row: $title",
+        color = if (title == "Top picks for you") Color(0xFF4DD0E1) else Color(0xFFA5D6A7),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column {
+            SectionHeader(title = title, horizontalPadding = horizontalPadding)
+            Spacer(Modifier.height(12.dp))
+            LazyRow(
+                state = listState,
+                contentPadding = PaddingValues(start = horizontalPadding, end = horizontalPadding, top = 4.dp, bottom = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusGroup(),
+            ) {
+                lazyListItemsIndexed(visible) { index, item ->
+                    DesktopLandscapeCard(
+                        item = item,
+                        baseUrl = baseUrl,
+                        captionMode = captionMode,
+                        onClick = { onItemClick(item) },
+                        onFocus = {
+                            onItemFocus(item)
+                            alignToStart(index)
                         },
-                )
+                        modifier = Modifier
+                            .width(cardWidth)
+                            .then(if (index == 0 && rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
+                            .onKeyEvent { e ->
+                                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                when (e.key) {
+                                    Key.DirectionUp -> if (isFirstRow) { onExitUp(); true } else false
+                                    Key.DirectionRight -> index == visible.lastIndex
+                                    else -> false
+                                }
+                            },
+                    )
+                }
             }
         }
     }
@@ -791,7 +1040,7 @@ private fun DesktopLandscapeCard(
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.06f else 1f, label = "cardScale")
+    val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "cardScale")
     val shape = RoundedCornerShape(8.dp)
     val showCaption = captionMode == CaptionMode.Always ||
         (captionMode == CaptionMode.OnFocus && isFocused)
@@ -976,6 +1225,58 @@ private fun buildDesktopHeroMetadata(item: MediaItem): String = buildString {
 }
 
 @Composable
+private fun DesktopTopPickMetaRow(item: MediaItem) {
+    val parts = buildList {
+        item.genres?.firstOrNull()?.let { add(it) }
+        item.year?.let { add(it.toString()) }
+        item.runTimeTicks?.let { ticks ->
+            val minutes = ticks / 10_000_000 / 60
+            if (minutes > 0) {
+                val h = minutes / 60
+                val m = minutes % 60
+                add(if (h > 0) "$h hr $m min" else "$m min")
+            }
+        }
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item.rating?.let { rating ->
+            Surface(color = Color(0xFFF5C518), shape = RoundedCornerShape(3.dp)) {
+                Text(
+                    "IMDb",
+                    color = Color.Black,
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Text(
+                rating.toString(),
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            if (parts.isNotEmpty()) {
+                Text("•", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
+            }
+        }
+        parts.forEachIndexed { i, p ->
+            Text(
+                p,
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            if (i < parts.lastIndex) {
+                Text("•", color = Color.White.copy(alpha = 0.4f), fontSize = 14.sp)
+            }
+        }
+    }
+}
+
+@Composable
 private fun DesktopHeroInfoRow(item: MediaItem) {
     Row(
         modifier = Modifier.padding(top = 12.dp),
@@ -1055,9 +1356,9 @@ private fun SectionHeader(
     ) {
         Text(
             text = title,
-            color = Color.White.copy(alpha = 0.64f),
+            color = Color.White.copy(alpha = 0.70f),
             fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = FontWeight.Normal,
             fontFamily = FontFamily.SansSerif,
         )
     }
@@ -1651,7 +1952,7 @@ private fun DesktopSearchResultRow(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "%.1f".format(r),
+                        r.format(1),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,

@@ -41,6 +41,7 @@ fun MobileManualLoginScreen(
             value = url,
             onValueChange = { url = it },
             label = { Text("Server URL") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(
@@ -55,6 +56,7 @@ fun MobileManualLoginScreen(
             value = username,
             onValueChange = { username = it },
             label = { Text("Username") },
+            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(
@@ -70,6 +72,7 @@ fun MobileManualLoginScreen(
             onValueChange = { password = it },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors =
                 TextFieldDefaults.colors(

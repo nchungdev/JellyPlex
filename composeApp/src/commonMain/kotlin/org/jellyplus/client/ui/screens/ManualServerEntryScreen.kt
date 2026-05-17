@@ -104,6 +104,7 @@ fun ManualServerEntryScreen(
             value = url,
             onValueChange = { url = it },
             enabled = !state.isValidatingServer,
+            singleLine = true,
             modifier = Modifier.fillMaxWidth(0.6f),
             placeholder = { Text("http://") },
             colors = TextFieldDefaults.colors(

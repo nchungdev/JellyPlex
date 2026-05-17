@@ -8,8 +8,8 @@ import androidx.compose.ui.unit.dp
 val DesktopContentHorizontalPadding: Dp = 58.dp
 val DesktopContentLeftPadding: Dp = DesktopContentHorizontalPadding
 val DesktopContentRightPadding: Dp = DesktopContentHorizontalPadding
-val DesktopTopNavHeight: Dp = 75.dp
-val DesktopSidebarLogoSize: Dp = 41.dp
+val DesktopTopNavHeight: Dp = 80.dp
+val DesktopSidebarLogoSize: Dp = 42.dp
 
 // Retained for the detail hero scaffold's back-button placement.
 val DesktopSidebarWidth: Dp = 64.dp

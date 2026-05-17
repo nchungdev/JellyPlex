@@ -32,10 +32,10 @@ internal fun DesktopAuthScaffold(
     ) {
         Column(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.Center)
                 .fillMaxWidth()
                 .widthIn(max = maxContentWidth),
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             MobileAuthLogo(
                 modifier = Modifier.size(logoSize),

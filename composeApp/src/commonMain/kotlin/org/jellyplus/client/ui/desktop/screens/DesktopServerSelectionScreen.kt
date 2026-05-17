@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -81,10 +84,10 @@ fun DesktopServerSelectionScreen(
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818)).padding(start = DesktopContentLeftPadding, top = 36.dp, end = DesktopContentRightPadding, bottom = 36.dp)) {
         Column(
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.Center)
                 .fillMaxWidth()
                 .widthIn(max = 860.dp),
-            horizontalAlignment = Alignment.Start,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             MobileAuthLogo(
                 modifier = Modifier.size(104.dp),
@@ -118,56 +121,51 @@ fun DesktopServerSelectionScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Server Grid
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 200.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxWidth().height(146.dp)
+            // Server cards — centered single row.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Scan / Rescan Card
-                item {
-                    ScanServerCard(
-                        isScanning = state.isScanning,
-                        onClick = onScan,
-                        focusRequester = scanFocusRequester,
-                    )
-                }
-
-                items(recentServers) { server ->
+                ScanServerCard(
+                    isScanning = state.isScanning,
+                    onClick = onScan,
+                    focusRequester = scanFocusRequester,
+                )
+                recentServers.forEach { server ->
                     ServerCard(
                         name = server.url.toServerName(),
                         address = "${server.url} - ${server.username}",
                         onClick = { onRecentServerSelected(server) }
                     )
                 }
-
-                // Discovered Servers
-                items(state.discoveredServers) { server ->
+                state.discoveredServers.forEach { server ->
                     ServerCard(
                         name = server.name,
                         address = server.address,
                         onClick = { onServerSelected(server) }
                     )
                 }
-
-                // Manual Input Card - Inspired by Plex 'Add Server'
-                item {
-                    AddServerCard(onClick = { onManualInput("") })
-                }
+                AddServerCard(onClick = { onManualInput("") })
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            var demoFocused by remember { mutableStateOf(false) }
             Text(
                 "Try demo server",
-                color = Color(0xFF00D4A8),
+                color = if (demoFocused) Color.Black else Color(0xFF00D4A8),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .onFocusChanged { demoFocused = it.isFocused }
+                    .background(if (demoFocused) Color(0xFF00D4A8) else Color.Transparent)
                     .clickable { onTryDemo() }
-                    .padding(vertical = 4.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
 
@@ -183,6 +181,7 @@ fun DesktopServerSelectionScreen(
                         TextField(
                             value = manualUrl,
                             onValueChange = { manualUrl = it },
+                            singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.White.copy(alpha = 0.1f),
@@ -214,7 +213,7 @@ fun DesktopServerSelectionScreen(
 
         if (state.isValidatingServer) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxSize().background(Color(0xFF181818).copy(alpha = 0.92f)),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = Color(0xFF00D4A8))
@@ -231,6 +230,7 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .height(130.dp)
+            .width(240.dp)
             .scale(scale)
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
@@ -265,6 +265,7 @@ fun ScanServerCard(isScanning: Boolean, onClick: () -> Unit, focusRequester: Foc
     Card(
         modifier = Modifier
             .height(130.dp)
+            .width(240.dp)
             .scale(scale)
             .clip(RoundedCornerShape(12.dp))
             .focusRequester(focusRequester)
@@ -306,6 +307,7 @@ fun AddServerCard(onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .height(130.dp)
+            .width(240.dp)
             .scale(scale)
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
