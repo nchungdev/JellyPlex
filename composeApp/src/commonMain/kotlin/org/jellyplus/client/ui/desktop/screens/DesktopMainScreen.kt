@@ -2,13 +2,18 @@ package org.jellyplus.client.ui.desktop.screens
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -68,18 +73,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -96,6 +107,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.jellyplus.client.isDebug
 import org.jellyplus.client.domain.models.MediaItem
@@ -133,6 +145,8 @@ private enum class NavDestination { ForYou, Library, Search, Settings }
 
 private enum class DashboardSectionClickMode { Detail, Play }
 
+private const val ShowDesktopLayoutBounds = false
+
 @Composable
 private fun DebugBoundsFrame(
     label: String,
@@ -142,7 +156,7 @@ private fun DebugBoundsFrame(
 ) {
     Box(modifier = modifier) {
         content()
-        if (isDebug()) {
+        if (ShowDesktopLayoutBounds && isDebug()) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
@@ -216,13 +230,14 @@ fun DesktopMainScreen(
     val navFocusRequester = remember { FocusRequester() }
     val homeScrollState = rememberScrollState()
     var homeHeroFocusRequest by remember { mutableStateOf(0) }
+    var homeRowsFocused by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     RequestInitialFocus(navFocusRequester, selectedNav)
 
-    LaunchedEffect(homeState.featuredItems, homeState.resumeItems, homeState.recentlyAddedItems) {
+    LaunchedEffect(homeState.featuredItems, homeState.topPickItems, homeState.resumeItems, homeState.recentlyAddedItems) {
         viewModel.registerItems(
-            homeState.featuredItems + homeState.resumeItems + homeState.recentlyAddedItems
+            homeState.featuredItems + homeState.topPickItems + homeState.resumeItems + homeState.recentlyAddedItems
         )
     }
     val favoriteItems = state.favoriteItems
@@ -239,7 +254,9 @@ fun DesktopMainScreen(
                     onReloadHome = { homeViewModel.loadHomeContent() },
                     scrollState = homeScrollState,
                     heroFocusRequest = homeHeroFocusRequest,
+                    onRowsFocusChanged = { homeRowsFocused = it },
                     onFocusExit = {
+                        homeRowsFocused = false
                         try { navFocusRequester.requestFocus() } catch (_: IllegalStateException) {}
                     },
                 )
@@ -267,25 +284,28 @@ fun DesktopMainScreen(
             }
         }
 
-        DesktopTopNav(
-            selected = selectedNav,
-            navFocusRequester = navFocusRequester,
-            onSelect = { onSelectedNavIndexChange(it.ordinal) },
-            onNavFocused = {
-                if (selectedNav == NavDestination.ForYou && homeScrollState.value != 0) {
-                    scope.launch { homeScrollState.scrollTo(0) }
-                }
-            },
-            onNavigateDown = {
-                if (selectedNav == NavDestination.ForYou) {
-                    homeHeroFocusRequest++
-                    true
-                } else {
-                    false
-                }
-            },
-            modifier = Modifier.align(Alignment.TopStart),
-        )
+        if (!(selectedNav == NavDestination.ForYou && homeRowsFocused)) {
+            DesktopTopNav(
+                selected = selectedNav,
+                navFocusRequester = navFocusRequester,
+                onSelect = { onSelectedNavIndexChange(it.ordinal) },
+                onNavFocused = {
+                    homeRowsFocused = false
+                    if (selectedNav == NavDestination.ForYou && homeScrollState.value != 0) {
+                        scope.launch { homeScrollState.scrollTo(0) }
+                    }
+                },
+                onNavigateDown = {
+                    if (selectedNav == NavDestination.ForYou) {
+                        homeHeroFocusRequest++
+                        true
+                    } else {
+                        false
+                    }
+                },
+                modifier = Modifier.align(Alignment.TopStart),
+            )
+        }
     }
 }
 
@@ -490,16 +510,19 @@ private fun MainDashboard(
     onReloadHome: () -> Unit,
     scrollState: androidx.compose.foundation.ScrollState,
     heroFocusRequest: Int,
+    onRowsFocusChanged: (Boolean) -> Unit,
     onFocusExit: () -> Unit,
 ) {
     val hPad = DesktopContentHorizontalPadding
     val hasHomeContent = homeState.featuredItems.isNotEmpty() ||
+        homeState.topPickItems.isNotEmpty() ||
         homeState.resumeItems.isNotEmpty() ||
         homeState.recentlyAddedItems.isNotEmpty()
     val hasMainContent = state.movies.isNotEmpty() || state.tvShows.isNotEmpty()
     val isHomeLoading = !hasHomeContent && !hasMainContent && (homeState.isLoading || state.isLoading)
 
     val featured = homeState.featuredItems
+    val topPicks = homeState.topPickItems
     val suggested = remember(featured) { featured.take(3) }
     val hotTopics = remember(featured) { featured }
 
@@ -517,34 +540,78 @@ private fun MainDashboard(
             .take(4)
             .map { it.key to it.value }
     }
+    val dashboardRowCount =
+        (if (topPicks.isNotEmpty()) 1 else 0) +
+            (if (homeState.resumeItems.isNotEmpty()) 1 else 0) +
+            (if (homeState.recentlyAddedItems.isNotEmpty()) 1 else 0) +
+            genreRows.size
+    val rowFocusRequesters = remember(dashboardRowCount) {
+        List(dashboardRowCount) { FocusRequester() }
+    }
 
     var heroIndex by remember(featured) { mutableStateOf(0) }
-    // Section 0 is ALWAYS the auto-sliding featured hero — fully independent
-    // from the Top picks row (which is just a normal section).
-    val topPickHeroItem: MediaItem? = null
-    val heroCurrent = featured.getOrNull(heroIndex)
+    // Section 0 default = auto-sliding featured hero. When a Top picks card is
+    // focused, [topPickHeroItem] holds it and the hero area previews that item
+    // with its own banner/background — a separate state from the featured carousel.
+    var topPickHeroItem by remember(featured) { mutableStateOf<MediaItem?>(null) }
+    val heroCurrent = topPickHeroItem ?: featured.getOrNull(heroIndex)
     val heroDotIndex = heroIndex
     var heroPaused by remember { mutableStateOf(false) }
+    var section0Focused by remember { mutableStateOf(false) }
+    var hideSection0HeroBackground by remember { mutableStateOf(false) }
+    var verticalScrollReason by remember { mutableStateOf("init") }
     val scope = rememberCoroutineScope()
     val heroButtonFocus = remember { FocusRequester() }
-    val firstRowFocus = remember { FocusRequester() }
+    val markVerticalScrollReason: (String) -> Unit = { reason ->
+        verticalScrollReason = reason
+        logDebug("JellyScroll", "MARK reason=$reason offset=${scrollState.value}")
+    }
+    val focusRow: (Int) -> Unit = { index ->
+        val requester = rowFocusRequesters.getOrNull(index)
+        if (requester != null) {
+            scope.launch {
+                delay(16)
+                try { requester.requestFocus() } catch (_: IllegalStateException) {}
+            }
+        }
+    }
+    val focusPreviousRowOrNav: (Int) -> Unit = { index ->
+        if (index == 0 && featured.isEmpty()) {
+            onRowsFocusChanged(false)
+            onFocusExit()
+        } else {
+            focusRow(index - 1)
+        }
+    }
 
     LaunchedEffect(Unit) {
+        markVerticalScrollReason("initial-dashboard-scroll-top")
         scrollState.scrollTo(0)
     }
 
     LaunchedEffect(heroPaused) {
-        if (heroPaused) scrollState.scrollTo(0)
+        if (heroPaused && scrollState.value != 0) {
+            markVerticalScrollReason("heroPaused-effect-scroll-top")
+            scrollState.scrollTo(0)
+        }
     }
 
-    LaunchedEffect(heroFocusRequest, featured.size) {
-        if (heroFocusRequest <= 0 || featured.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(heroFocusRequest, featured.size, rowFocusRequesters.size) {
+        if (heroFocusRequest <= 0) return@LaunchedEffect
+        if (featured.isEmpty()) {
+            focusRow(0)
+            return@LaunchedEffect
+        }
+        topPickHeroItem = null
+        hideSection0HeroBackground = false
         heroPaused = true
+        markVerticalScrollReason("top-nav-down-to-section0")
         scrollState.scrollTo(0)
         repeat(10) {
             try {
                 heroButtonFocus.requestFocus()
                 delay(24)
+                markVerticalScrollReason("top-nav-down-to-section0-after-focus")
                 scrollState.scrollTo(0)
                 return@LaunchedEffect
             } catch (_: IllegalStateException) {
@@ -553,23 +620,48 @@ private fun MainDashboard(
         }
     }
 
-    // State 1: rotate the featured hero every 5s of inactivity. Pauses while
-    // the hero action is focused so the user can act on it.
-    LaunchedEffect(heroIndex, heroPaused, featured.size, topPickHeroItem) {
-        if (!heroPaused && topPickHeroItem == null && featured.size > 1) {
+    // Rotate section 0 only while section 0 is focused.
+    LaunchedEffect(heroIndex, section0Focused, featured.size, topPickHeroItem) {
+        if (section0Focused && topPickHeroItem == null && featured.size > 1) {
             delay(5000)
             heroIndex = (heroIndex + 1) % featured.size
         }
     }
 
     val focusHero: () -> Unit = {
+        topPickHeroItem = null
+        hideSection0HeroBackground = false
         heroPaused = true
+        section0Focused = true
+        onRowsFocusChanged(false)
         scope.launch {
-            scrollState.scrollTo(0)
+            if (scrollState.value != 0) {
+                markVerticalScrollReason("top-picks-up-to-section0")
+                scrollState.scrollTo(0)
+            }
             delay(16)
             try { heroButtonFocus.requestFocus() } catch (_: IllegalStateException) {}
             delay(16)
-            scrollState.scrollTo(0)
+            if (scrollState.value != 0) {
+                markVerticalScrollReason("section0-watch-now-focus-after-request")
+                scrollState.scrollTo(0)
+            }
+        }
+    }
+
+    LaunchedEffect(scrollState) {
+        var previous = scrollState.value
+        snapshotFlow { scrollState.value }.collect { current ->
+            if (current != previous) {
+                logDebug(
+                    "JellyScroll",
+                    "VERTICAL offset $previous->$current delta=${current - previous} " +
+                        "reason=$verticalScrollReason section0Focused=$section0Focused " +
+                        "heroPaused=$heroPaused topPick=${topPickHeroItem?.id ?: "-"}",
+                )
+                previous = current
+                verticalScrollReason = "external/unknown"
+            }
         }
     }
 
@@ -579,7 +671,7 @@ private fun MainDashboard(
             animationSpec = tween(durationMillis = 420),
             label = "desktopHero",
         ) { item ->
-            if (item != null && topPickHeroItem == null) {
+            if (item != null && !hideSection0HeroBackground) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     AsyncImage(
                         model = item.getBackdropUrl(state.baseUrl) ?: item.getImageUrl(state.baseUrl),
@@ -641,6 +733,7 @@ private fun MainDashboard(
             }
 
             else -> BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val viewportHeight = maxHeight
                 // Hero wraps its content + a FIXED ~40dp gap to "Top picks" in
                 // every state (Google-TV). Content is top-anchored (122dp) so it
                 // never slides under the nav. No viewport-fraction min height —
@@ -656,7 +749,16 @@ private fun MainDashboard(
                     DebugBoundsFrame(
                         label = "section-0 hero",
                         color = Color(0xFFFFD54F),
-                        modifier = Modifier.fillMaxWidth(),
+                        // In Top-picks PREVIEW the hero is a FIXED height so the
+                        // "Top picks" row never moves between items (variable
+                        // title/overview length would otherwise shift it and make
+                        // the focused card drag the vertical scroll up). Featured
+                        // hero still wraps its content.
+                        modifier = if (topPickHeroItem != null) {
+                            Modifier.fillMaxWidth().height(viewportHeight * 0.52f)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
                     ) {
                         heroCurrent?.let { item ->
                             DebugBoundsFrame(
@@ -677,29 +779,28 @@ private fun MainDashboard(
                                     // behaviour) — the only difference on expand
                                     // is that the genre, overview and CTA appear.
                                     val eyebrowSp = 20f
-                                    val titleSp = 38f
-                                    val titleLhSp = 46f
+                                    val titleSp = 34f
+                                    val titleLhSp = 41f
                                     Column(
                                         modifier = Modifier.fillMaxWidth(
                                             if (topPickHeroItem != null) 0.5f else 0.42f
                                         )
                                     ) {
                                         if (topPickHeroItem != null) {
-                                            // Top-pick focused preview: no backdrop,
-                                            // large title → source → overview →
-                                            // IMDb·genre·year·runtime meta row.
+                                            // Top-pick focused preview: large title
+                                            // → source → overview → IMDb·genre·year·runtime meta row.
                                             Text(
                                                 item.title,
                                                 color = Color.White,
-                                                fontSize = 48.sp,
-                                                lineHeight = 54.sp,
+                                                fontSize = 40.sp,
+                                                lineHeight = 46.sp,
                                                 fontWeight = FontWeight.Normal,
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                             )
                                             Spacer(Modifier.height(20.dp))
                                             Text(
-                                                desktopHeroEyebrow(item),
+                                                desktopTopPickSource(item),
                                                 color = Color.White.copy(alpha = 0.92f),
                                                 fontSize = 17.sp,
                                                 fontWeight = FontWeight.Medium,
@@ -792,10 +893,25 @@ private fun MainDashboard(
                                                     .focusRequester(heroButtonFocus)
                                                     .onFocusChanged {
                                                         if (it.isFocused) {
+                                                            topPickHeroItem = null
+                                                            hideSection0HeroBackground = false
                                                             heroPaused = true
-                                                            scope.launch { scrollState.scrollTo(0) }
+                                                            section0Focused = true
+                                                            onRowsFocusChanged(false)
+                                                            scope.launch {
+                                                                if (scrollState.value != 0) {
+                                                                    markVerticalScrollReason("section0-watch-now-focused")
+                                                                    scrollState.scrollTo(0)
+                                                                }
+                                                                delay(16)
+                                                                if (scrollState.value != 0) {
+                                                                    markVerticalScrollReason("section0-watch-now-focused-after-frame")
+                                                                    scrollState.scrollTo(0)
+                                                                }
+                                                            }
                                                         } else {
                                                             heroPaused = false
+                                                            section0Focused = false
                                                         }
                                                     }
                                                     .onKeyEvent { e ->
@@ -809,7 +925,7 @@ private fun MainDashboard(
                                                                 scope.launch {
                                                                     scrollState.scrollTo(0)
                                                                     delay(16)
-                                                                    try { firstRowFocus.requestFocus() } catch (_: IllegalStateException) {}
+                                                                    try { rowFocusRequesters.firstOrNull()?.requestFocus() } catch (_: IllegalStateException) {}
                                                                     delay(16)
                                                                     scrollState.scrollTo(0)
                                                                 }
@@ -864,25 +980,47 @@ private fun MainDashboard(
                         }
                     }
 
-                    if (featured.isNotEmpty()) {
+                    if (topPicks.isNotEmpty()) {
+                        val currentRowIndex = 0
                         DesktopMediaRow(
                             title = "Top picks for you",
-                            items = featured,
+                            items = topPicks,
                             baseUrl = state.baseUrl,
                             horizontalPadding = hPad,
                             cardWidth = 150.dp,
-                            captionMode = CaptionMode.Always,
-                            rowFocusRequester = firstRowFocus,
-                            isFirstRow = true,
-                            onExitUp = focusHero,
-                            onItemFocus = {},
+                            captionMode = CaptionMode.None,
+                            rowFocusRequester = rowFocusRequesters.getOrNull(currentRowIndex),
+                            verticalScrollState = scrollState,
+                            onSameRowHorizontalFocus = { rowTitle, fromIndex, toIndex, verticalOffset ->
+                                markVerticalScrollReason("same-row-horizontal row=$rowTitle $fromIndex->$toIndex")
+                                logDebug(
+                                    "JellyScroll",
+                                    "HORIZONTAL focus row=$rowTitle item=$fromIndex->$toIndex verticalBefore=$verticalOffset",
+                                )
+                            },
+                            onNavigateUp = {
+                                if (featured.isNotEmpty()) {
+                                    focusHero()
+                                } else {
+                                    onRowsFocusChanged(false)
+                                    onFocusExit()
+                                }
+                            },
+                            onNavigateDown = { focusRow(currentRowIndex + 1) },
+                            onItemFocus = { item ->
+                                onRowsFocusChanged(true)
+                                section0Focused = false
+                                hideSection0HeroBackground = false
+                                heroPaused = false
+                                topPickHeroItem = item
+                            },
                             onItemClick = onMediaClick,
                         )
                     }
 
-                    var rowIndex = if (featured.isNotEmpty()) 1 else 0
+                    var rowIndex = if (topPicks.isNotEmpty()) 1 else 0
                     if (homeState.resumeItems.isNotEmpty()) {
-                        val isFirst = rowIndex == 0
+                        val currentRowIndex = rowIndex
                         DesktopMediaRow(
                             title = "Continue watching",
                             items = homeState.resumeItems,
@@ -890,16 +1028,29 @@ private fun MainDashboard(
                             horizontalPadding = hPad,
                             cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
-                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                            isFirstRow = isFirst,
-                            onExitUp = focusHero,
-                            onItemFocus = {},
+                            rowFocusRequester = rowFocusRequesters.getOrNull(currentRowIndex),
+                            verticalScrollState = scrollState,
+                            onSameRowHorizontalFocus = { rowTitle, fromIndex, toIndex, verticalOffset ->
+                                markVerticalScrollReason("same-row-horizontal row=$rowTitle $fromIndex->$toIndex")
+                                logDebug(
+                                    "JellyScroll",
+                                    "HORIZONTAL focus row=$rowTitle item=$fromIndex->$toIndex verticalBefore=$verticalOffset",
+                                )
+                            },
+                            onNavigateUp = { focusPreviousRowOrNav(currentRowIndex) },
+                            onNavigateDown = { focusRow(currentRowIndex + 1) },
+                            onItemFocus = {
+                                onRowsFocusChanged(true)
+                                section0Focused = false
+                                hideSection0HeroBackground = true
+                                topPickHeroItem = null
+                            },
                             onItemClick = onContinueWatchingClick,
                         )
                         rowIndex++
                     }
                     if (homeState.recentlyAddedItems.isNotEmpty()) {
-                        val isFirst = rowIndex == 0
+                        val currentRowIndex = rowIndex
                         DesktopMediaRow(
                             title = "Recently added",
                             items = homeState.recentlyAddedItems,
@@ -907,16 +1058,29 @@ private fun MainDashboard(
                             horizontalPadding = hPad,
                             cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
-                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                            isFirstRow = isFirst,
-                            onExitUp = focusHero,
-                            onItemFocus = {},
+                            rowFocusRequester = rowFocusRequesters.getOrNull(currentRowIndex),
+                            verticalScrollState = scrollState,
+                            onSameRowHorizontalFocus = { rowTitle, fromIndex, toIndex, verticalOffset ->
+                                markVerticalScrollReason("same-row-horizontal row=$rowTitle $fromIndex->$toIndex")
+                                logDebug(
+                                    "JellyScroll",
+                                    "HORIZONTAL focus row=$rowTitle item=$fromIndex->$toIndex verticalBefore=$verticalOffset",
+                                )
+                            },
+                            onNavigateUp = { focusPreviousRowOrNav(currentRowIndex) },
+                            onNavigateDown = { focusRow(currentRowIndex + 1) },
+                            onItemFocus = {
+                                onRowsFocusChanged(true)
+                                section0Focused = false
+                                hideSection0HeroBackground = true
+                                topPickHeroItem = null
+                            },
                             onItemClick = onMediaClick,
                         )
                         rowIndex++
                     }
                     genreRows.forEach { (genre, items) ->
-                        val isFirst = rowIndex == 0
+                        val currentRowIndex = rowIndex
                         DesktopMediaRow(
                             title = genre,
                             items = items,
@@ -924,10 +1088,23 @@ private fun MainDashboard(
                             horizontalPadding = hPad,
                             cardWidth = 150.dp,
                             captionMode = CaptionMode.OnFocus,
-                            rowFocusRequester = firstRowFocus.takeIf { isFirst },
-                            isFirstRow = isFirst,
-                            onExitUp = focusHero,
-                            onItemFocus = {},
+                            rowFocusRequester = rowFocusRequesters.getOrNull(currentRowIndex),
+                            verticalScrollState = scrollState,
+                            onSameRowHorizontalFocus = { rowTitle, fromIndex, toIndex, verticalOffset ->
+                                markVerticalScrollReason("same-row-horizontal row=$rowTitle $fromIndex->$toIndex")
+                                logDebug(
+                                    "JellyScroll",
+                                    "HORIZONTAL focus row=$rowTitle item=$fromIndex->$toIndex verticalBefore=$verticalOffset",
+                                )
+                            },
+                            onNavigateUp = { focusPreviousRowOrNav(currentRowIndex) },
+                            onNavigateDown = { focusRow(currentRowIndex + 1) },
+                            onItemFocus = {
+                                onRowsFocusChanged(true)
+                                section0Focused = false
+                                hideSection0HeroBackground = true
+                                topPickHeroItem = null
+                            },
                             onItemClick = onMediaClick,
                         )
                         rowIndex++
@@ -950,6 +1127,18 @@ private fun desktopHeroEyebrow(item: MediaItem): String =
 
 private enum class CaptionMode { None, OnFocus, Always }
 
+private val LandscapeCardFocusGap = 2.5.dp
+private val LandscapeCardCornerRadius = 8.dp
+private val LandscapeCardMetadataTopGap = 10.dp
+private val LandscapeCardTitleLineHeight = 16.dp
+private val LandscapeCardSubtitleLineHeight = 15.dp
+private val LandscapeCardMetadataTitleSubtitleGap = 4.dp
+private val LandscapeCardMetadataHeight =
+    LandscapeCardMetadataTopGap +
+        LandscapeCardTitleLineHeight * 2 +
+        LandscapeCardMetadataTitleSubtitleGap +
+        LandscapeCardSubtitleLineHeight
+
 @Composable
 private fun DesktopMediaRow(
     title: String,
@@ -959,8 +1148,10 @@ private fun DesktopMediaRow(
     cardWidth: androidx.compose.ui.unit.Dp,
     captionMode: CaptionMode,
     rowFocusRequester: FocusRequester?,
-    isFirstRow: Boolean,
-    onExitUp: () -> Unit,
+    verticalScrollState: ScrollState? = null,
+    onSameRowHorizontalFocus: (rowTitle: String, fromIndex: Int, toIndex: Int, verticalOffset: Int?) -> Unit = { _, _, _, _ -> },
+    onNavigateUp: () -> Unit,
+    onNavigateDown: () -> Unit,
     onItemFocus: (MediaItem) -> Unit,
     onItemClick: (MediaItem) -> Unit,
     modifier: Modifier = Modifier,
@@ -968,6 +1159,9 @@ private fun DesktopMediaRow(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var scrollJob by remember { mutableStateOf<Job?>(null) }
+    var rowFocusReleaseJob by remember { mutableStateOf<Job?>(null) }
+    var lastFocusedIndex by remember(items) { mutableStateOf(0) }
+    var rowFocused by remember { mutableStateOf(false) }
     fun alignToStart(index: Int) {
         scrollJob?.cancel()
         scrollJob = scope.launch {
@@ -982,7 +1176,11 @@ private fun DesktopMediaRow(
         modifier = modifier.fillMaxWidth(),
     ) {
         Column {
-            SectionHeader(title = title, horizontalPadding = horizontalPadding)
+            SectionHeader(
+                title = title,
+                horizontalPadding = horizontalPadding,
+                focused = captionMode == CaptionMode.OnFocus && rowFocused,
+            )
             Spacer(Modifier.height(12.dp))
             LazyRow(
                 state = listState,
@@ -997,18 +1195,65 @@ private fun DesktopMediaRow(
                         item = item,
                         baseUrl = baseUrl,
                         captionMode = captionMode,
+                        rowFocused = rowFocused,
                         onClick = { onItemClick(item) },
+                        onFocusedChange = { focused ->
+                            if (focused) {
+                                rowFocusReleaseJob?.cancel()
+                                rowFocused = true
+                            } else {
+                                rowFocusReleaseJob?.cancel()
+                                rowFocusReleaseJob = scope.launch {
+                                    delay(80)
+                                    rowFocused = false
+                                }
+                            }
+                        },
                         onFocus = {
+                            val sameRowItemChange = rowFocused && index != lastFocusedIndex
+                            val previousVerticalScroll = verticalScrollState?.value
+                            if (sameRowItemChange) {
+                                onSameRowHorizontalFocus(title, lastFocusedIndex, index, previousVerticalScroll)
+                            }
+                            lastFocusedIndex = index
                             onItemFocus(item)
                             alignToStart(index)
+                            if (sameRowItemChange && previousVerticalScroll != null) {
+                                scope.launch {
+                                    delay(16)
+                                    if (verticalScrollState.value != previousVerticalScroll) {
+                                        logDebug(
+                                            "JellyScroll",
+                                            "RESTORE vertical after horizontal row=$title target=$previousVerticalScroll actual=${verticalScrollState.value} pass=1",
+                                        )
+                                        verticalScrollState.scrollTo(previousVerticalScroll)
+                                    }
+                                    delay(16)
+                                    if (verticalScrollState.value != previousVerticalScroll) {
+                                        logDebug(
+                                            "JellyScroll",
+                                            "RESTORE vertical after horizontal row=$title target=$previousVerticalScroll actual=${verticalScrollState.value} pass=2",
+                                        )
+                                        verticalScrollState.scrollTo(previousVerticalScroll)
+                                    }
+                                }
+                            }
                         },
                         modifier = Modifier
                             .width(cardWidth)
-                            .then(if (index == 0 && rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
+                            .then(if (index == lastFocusedIndex && rowFocusRequester != null) Modifier.focusRequester(rowFocusRequester) else Modifier)
                             .onKeyEvent { e ->
                                 if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
                                 when (e.key) {
-                                    Key.DirectionUp -> if (isFirstRow) { onExitUp(); true } else false
+                                    Key.DirectionUp -> {
+                                        onNavigateUp()
+                                        true
+                                    }
+                                    Key.DirectionDown -> {
+                                        onNavigateDown()
+                                        true
+                                    }
+                                    Key.DirectionLeft -> index == 0
                                     Key.DirectionRight -> index == visible.lastIndex
                                     else -> false
                                 }
@@ -1025,82 +1270,125 @@ private fun DesktopLandscapeCard(
     item: MediaItem,
     baseUrl: String,
     captionMode: CaptionMode,
+    rowFocused: Boolean,
     onClick: () -> Unit,
+    onFocusedChange: (Boolean) -> Unit,
     onFocus: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isFocused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (isFocused) 1.08f else 1f, label = "cardScale")
-    val shape = RoundedCornerShape(8.dp)
+    val heartbeat by rememberInfiniteTransition(label = "cardFocusHeartbeat").animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 720),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cardFocusHeartbeatAlpha",
+    )
+    val shape = RoundedCornerShape(LandscapeCardCornerRadius)
     val showCaption = captionMode == CaptionMode.Always ||
         (captionMode == CaptionMode.OnFocus && isFocused)
+    val glowColor = remember(item.id, item.imageTags, item.backdropImageTags, item.parentBackdropImageTags) {
+        item.focusGlowColor()
+    }
+    val imageAlpha = when {
+        isFocused -> 1f
+        rowFocused -> 0.78f
+        else -> 0.42f
+    }
     Column(modifier = modifier) {
-        Surface(
-            onClick = onClick,
-            shape = shape,
-            color = Color.White.copy(alpha = 0.05f),
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .onFocusChanged {
-                    isFocused = it.isFocused
-                    if (it.isFocused) onFocus()
-                }
                 .zIndex(if (isFocused) 10f else 0f)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0f, 0.5f)
-                }
-                .border(
-                    width = if (isFocused) 2.dp else 0.dp,
-                    color = if (isFocused) Color.White else Color.Transparent,
-                    shape = shape,
-                ),
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
-                    contentDescription = item.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-                if (captionMode == CaptionMode.OnFocus && isFocused) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Transparent,
-                                    0.55f to Color.Transparent,
-                                    1.0f to Color.Black.copy(alpha = 0.82f),
-                                )
-                            )
+                .drawBehind {
+                    if (isFocused) {
+                        val strokePx = (1f + heartbeat * 0.6f).dp.toPx()
+                        val gapPx = LandscapeCardFocusGap.toPx()
+                        val outset = gapPx + strokePx / 2f
+                        val corner = LandscapeCardCornerRadius.toPx() + gapPx
+                        val glowBrush = Brush.radialGradient(
+                            colors = listOf(
+                                glowColor.copy(alpha = 0.26f * heartbeat),
+                                glowColor.copy(alpha = 0.12f * heartbeat),
+                                Color.Transparent,
+                            ),
+                            center = Offset(size.width * 0.5f, size.height * 0.5f),
+                            radius = maxOf(size.width, size.height) * 0.78f,
                         )
+                        listOf(
+                            28.dp.toPx() to 0.18f,
+                            18.dp.toPx() to 0.28f,
+                            9.dp.toPx() to 0.36f,
+                        ).forEach { (glowStroke, alpha) ->
+                            val glowOutset = gapPx + glowStroke / 2f
+                            drawRoundRect(
+                                brush = glowBrush,
+                                topLeft = Offset(-glowOutset, -glowOutset),
+                                size = Size(size.width + glowOutset * 2f, size.height + glowOutset * 2f),
+                                cornerRadius = CornerRadius(LandscapeCardCornerRadius.toPx() + gapPx, LandscapeCardCornerRadius.toPx() + gapPx),
+                                style = Stroke(width = glowStroke * alpha),
+                            )
+                        }
+                        drawRoundRect(
+                            color = Color.White.copy(alpha = 0.58f + heartbeat * 0.42f),
+                            topLeft = Offset(-outset, -outset),
+                            size = Size(size.width + outset * 2f, size.height + outset * 2f),
+                            cornerRadius = CornerRadius(corner, corner),
+                            style = Stroke(width = strokePx),
+                        )
+                    }
+                },
+        ) {
+            Surface(
+                onClick = onClick,
+                shape = shape,
+                color = Color.White.copy(alpha = 0.05f),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onFocusChanged {
+                        isFocused = it.isFocused
+                        onFocusedChange(it.isFocused)
+                        if (it.isFocused) onFocus()
+                    },
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
+                        contentDescription = item.title,
+                        modifier = Modifier.fillMaxSize().alpha(imageAlpha),
+                        contentScale = ContentScale.Crop,
                     )
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                    ) {
+                }
+            }
+        }
+        if (captionMode == CaptionMode.OnFocus && rowFocused) {
+            Box(modifier = Modifier.height(LandscapeCardMetadataHeight)) {
+                if (isFocused) {
+                    Column {
+                        Spacer(Modifier.height(LandscapeCardMetadataTopGap))
                         Text(
                             item.title,
-                            color = Color.White,
-                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.94f),
+                            fontSize = 13.sp,
+                            lineHeight = LandscapeCardTitleLineHeight.value.sp,
                             fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(LandscapeCardMetadataTitleSubtitleGap))
+                        Text(
+                            desktopCardSubtitle(item).orEmpty(),
+                            color = Color.White.copy(alpha = 0.66f),
+                            fontSize = 12.sp,
+                            lineHeight = LandscapeCardSubtitleLineHeight.value.sp,
+                            fontWeight = FontWeight.Medium,
+                            minLines = 1,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        desktopCardSubtitle(item)?.let {
-                            Text(
-                                it,
-                                color = Color.White.copy(alpha = 0.72f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
                     }
                 }
             }
@@ -1110,8 +1398,8 @@ private fun DesktopLandscapeCard(
             Text(
                 item.title,
                 color = Color.White.copy(alpha = if (isFocused) 1f else 0.85f),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontSize = if (isFocused) 14.sp else 12.sp,
+                fontWeight = if (isFocused) FontWeight.Bold else FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1142,6 +1430,27 @@ private fun desktopCardSubtitle(item: MediaItem): String? {
     return s.takeIf { it.isNotBlank() }
 }
 
+private fun MediaItem.focusGlowColor(): Color {
+    val seed = buildString {
+        imageTags?.entries?.sortedBy { it.key }?.forEach { append(it.key).append(it.value) }
+        backdropImageTags?.forEach { append(it) }
+        parentBackdropImageTags?.forEach { append(it) }
+        append(id)
+        append(title)
+    }
+    val hash = seed.fold(0x45D9F3B) { acc, c -> acc * 31 + c.code }
+    fun channel(shift: Int): Float = 0.32f + (((hash ushr shift) and 0xFF) / 255f) * 0.58f
+    val r = channel(0)
+    val g = channel(8)
+    val b = channel(16)
+    val max = maxOf(r, g, b)
+    return Color(
+        red = r + (max - r) * 0.18f,
+        green = g + (max - g) * 0.18f,
+        blue = b + (max - b) * 0.18f,
+    )
+}
+
 @Composable
 private fun DesktopLibraryScreen(
     favorites: List<MediaItem>,
@@ -1151,14 +1460,22 @@ private fun DesktopLibraryScreen(
     onContinueWatchingClick: (MediaItem) -> Unit,
 ) {
     val scrollState = rememberScrollState()
-    val firstRowFocus = remember { FocusRequester() }
     val rows = remember(favorites, watchLater) {
         buildList {
             if (favorites.isNotEmpty()) add("Favorites" to favorites)
             if (watchLater.isNotEmpty()) add("Watch later" to watchLater)
         }
     }
-    if (rows.isNotEmpty()) RequestInitialFocus(firstRowFocus, rows.size)
+    val rowFocusRequesters = remember(rows.size) { List(rows.size) { FocusRequester() } }
+    val scope = rememberCoroutineScope()
+    fun focusRow(index: Int) {
+        val requester = rowFocusRequesters.getOrNull(index) ?: return
+        scope.launch {
+            delay(16)
+            try { requester.requestFocus() } catch (_: IllegalStateException) {}
+        }
+    }
+    rowFocusRequesters.firstOrNull()?.let { RequestInitialFocus(it, rows.size) }
     if (rows.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1184,9 +1501,10 @@ private fun DesktopLibraryScreen(
                 horizontalPadding = DesktopContentHorizontalPadding,
                 cardWidth = 248.dp,
                 captionMode = CaptionMode.OnFocus,
-                rowFocusRequester = firstRowFocus.takeIf { index == 0 },
-                isFirstRow = index == 0,
-                onExitUp = {},
+                rowFocusRequester = rowFocusRequesters.getOrNull(index),
+                verticalScrollState = scrollState,
+                onNavigateUp = { focusRow(index - 1) },
+                onNavigateDown = { focusRow(index + 1) },
                 onItemFocus = {},
                 onItemClick = if (title == "Watch later") onContinueWatchingClick else onMediaClick,
             )
@@ -1213,6 +1531,11 @@ private fun buildDesktopHeroMetadata(item: MediaItem): String = buildString {
     }
     item.year?.let { append("   $it") }
 }
+
+private fun desktopTopPickSource(item: MediaItem): String =
+    item.studios?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+        ?: item.seriesName?.takeIf { it.isNotBlank() }
+        ?: "Jellyfin"
 
 @Composable
 private fun DesktopTopPickMetaRow(item: MediaItem) {
@@ -1335,6 +1658,7 @@ private fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     horizontalPadding: androidx.compose.ui.unit.Dp = 28.dp,
+    focused: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -1346,9 +1670,9 @@ private fun SectionHeader(
     ) {
         Text(
             text = title,
-            color = Color.White.copy(alpha = 0.70f),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Normal,
+            color = Color.White.copy(alpha = if (focused) 0.92f else 0.58f),
+            fontSize = if (focused) 18.sp else 13.sp,
+            fontWeight = if (focused) FontWeight.Medium else FontWeight.Normal,
             fontFamily = FontFamily.SansSerif,
         )
     }

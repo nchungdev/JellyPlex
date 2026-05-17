@@ -403,9 +403,26 @@ class JellyfinApi(
                 parameter("Filters", "IsUnplayed")
                 parameter("SortBy", "Random")
                 parameter("Limit", 12)
-                parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear")
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear,Genres,RunTimeTicks,Studios")
             }.body()
             logDebug("JellyPerf", "API home.featured count=${response.items.size} total=${response.totalRecordCount}")
+            response.items
+        }
+    }
+
+    suspend fun getTopPickItems(userId: String): List<MediaItem> {
+        return timedApiCall("home.topPicks rating limit=12") {
+            val response: ItemResponse = client.get {
+                apiUrl("Users", userId, "Items")
+                parameter("Recursive", true)
+                parameter("IncludeItemTypes", "${MediaType.MOVIE.value},${MediaType.SERIES.value}")
+                parameter("Filters", "IsUnplayed")
+                parameter("SortBy", "CommunityRating")
+                parameter("SortOrder", "Descending")
+                parameter("Limit", 12)
+                parameter("Fields", "PrimaryImageAspectRatio,CanDelete,Overview,BackdropImageTags,UserData,CommunityRating,ProductionYear,Genres,RunTimeTicks,Studios")
+            }.body()
+            logDebug("JellyPerf", "API home.topPicks count=${response.items.size} total=${response.totalRecordCount}")
             response.items
         }
     }

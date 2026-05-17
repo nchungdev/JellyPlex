@@ -71,12 +71,16 @@ class MediaRepository(
                 val featuredDeferred = async {
                     runCatching { remoteDataSource.getHomeFeatured(userId) }.getOrDefault(emptyList())
                 }
+                val topPicksDeferred = async {
+                    runCatching { remoteDataSource.getHomeTopPicks(userId) }.getOrDefault(emptyList())
+                }
                 val resumeDeferred = async { remoteDataSource.getHomeResume(userId) }
                 val recentlyAddedDeferred = async { remoteDataSource.getHomeRecentlyAdded(userId) }
 
                 localDataSource.saveHomeCache(
                     HomeContent(
                         featuredItems = featuredDeferred.await(),
+                        topPickItems = topPicksDeferred.await(),
                         resumeItems = resumeDeferred.await(),
                         recentlyAddedItems = recentlyAddedDeferred.await(),
                     )

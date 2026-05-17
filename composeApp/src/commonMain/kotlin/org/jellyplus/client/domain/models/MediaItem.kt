@@ -26,6 +26,7 @@ data class MediaItem(
     @SerialName("Genres") val genres: List<String>? = null,
     @SerialName("CommunityRating") val rating: Float? = null,
     @SerialName("People") val people: List<Person>? = null,
+    @SerialName("Studios") val studios: List<MediaStudio>? = null,
     @SerialName("BackdropImageTags") val backdropImageTags: List<String>? = null,
     @SerialName("ParentBackdropImageTags") val parentBackdropImageTags: List<String>? = null,
     @SerialName("ParentBackdropItemId") val parentBackdropItemId: String? = null,
@@ -62,6 +63,12 @@ data class MediaItem(
         }
     }
 }
+
+@Serializable
+data class MediaStudio(
+    @SerialName("Name") val name: String,
+    @SerialName("Id") val id: String? = null,
+)
 
 @Serializable
 data class Person(

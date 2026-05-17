@@ -15,6 +15,7 @@ import kotlin.time.TimeSource
 
 data class HomeState(
     val featuredItems: List<MediaItem> = emptyList(),
+    val topPickItems: List<MediaItem> = emptyList(),
     val resumeItems: List<MediaItem> = emptyList(),
     val recentlyAddedItems: List<MediaItem> = emptyList(),
     val baseUrl: String = "",
@@ -42,6 +43,7 @@ class HomeViewModel(
                 if (content != null) {
                     _state.value = _state.value.copy(
                         featuredItems = content.featuredItems,
+                        topPickItems = content.topPickItems,
                         resumeItems = content.resumeItems,
                         recentlyAddedItems = content.recentlyAddedItems,
                         baseUrl = getBaseUrlUseCase()
@@ -68,8 +70,9 @@ class HomeViewModel(
                 _state.value = _state.value.copy(isLoading = false, hasLoaded = true)
                 logDebug(
                     "JellyPerf",
-                    "VM Home loadHomeContent <- success ${mark.elapsedNow().inWholeMilliseconds}ms " +
-                        "featured=${_state.value.featuredItems.size} resume=${_state.value.resumeItems.size} recent=${_state.value.recentlyAddedItems.size}"
+                        "VM Home loadHomeContent <- success ${mark.elapsedNow().inWholeMilliseconds}ms " +
+                        "featured=${_state.value.featuredItems.size} topPicks=${_state.value.topPickItems.size} " +
+                        "resume=${_state.value.resumeItems.size} recent=${_state.value.recentlyAddedItems.size}"
                 )
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message, isLoading = false, hasLoaded = true)
