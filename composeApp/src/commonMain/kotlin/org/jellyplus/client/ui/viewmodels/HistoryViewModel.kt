@@ -33,14 +33,40 @@ class HistoryViewModel(
     val state: StateFlow<HistoryState> = _state.asStateFlow()
 
     init {
+        var firstEmission = true
         viewModelScope.launch {
             getHomeContentUseCase().collect { content ->
                 if (content != null) {
                     _state.value = _state.value.copy(resumeItems = content.resumeItems)
                 }
+                // The home/resume cache re-emits after playback stops (the
+                // player refreshes it). Treat that as a signal that the
+                // watched list may have changed and refresh it too — but skip
+                // the first emission (initial cache) since loadHistory()
+                // already fetches it, and never call the home refresh here so
+                // this can't loop with loadHistory().
+                if (firstEmission) {
+                    firstEmission = false
+                } else {
+                    refreshWatchedItems()
+                }
             }
         }
         loadHistory()
+    }
+
+    private fun refreshWatchedItems() {
+        val userId = getUserIdUseCase() ?: return
+        if (!hasSessionUseCase()) return
+        viewModelScope.launch(dispatchers.io) {
+            runCatching { getWatchHistoryUseCase(userId) }
+                .onSuccess { items ->
+                    _state.value = _state.value.copy(
+                        watchedItems = items,
+                        baseUrl = getBaseUrlUseCase(),
+                    )
+                }
+        }
     }
 
     fun loadHistory() {

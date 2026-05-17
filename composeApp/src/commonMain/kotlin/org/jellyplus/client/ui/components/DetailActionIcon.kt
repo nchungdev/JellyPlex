@@ -3,7 +3,6 @@ package org.jellyplus.client.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -35,7 +34,9 @@ fun DetailActionIcon(
     Box(
         modifier = modifier
             .size(56.dp)
-            .focusable(interactionSource = interactionSource)
+            // `clickable` is itself focusable; do NOT also add `.focusable()`
+            // or the element gets two stacked focus targets (a phantom no-op
+            // D-pad stop that breaks up/down accuracy).
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

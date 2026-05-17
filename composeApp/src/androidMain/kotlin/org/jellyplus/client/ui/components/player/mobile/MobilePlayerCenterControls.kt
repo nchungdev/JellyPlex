@@ -61,7 +61,7 @@ internal fun MobilePlayerCenterControls(
 
         if (isBuffering) {
             Box(
-                modifier = Modifier.size(80.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
+                modifier = Modifier.size(64.dp).background(Color.Black.copy(alpha = 0.34f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(modifier = Modifier.size(54.dp), color = Color.White, strokeWidth = 3.dp)

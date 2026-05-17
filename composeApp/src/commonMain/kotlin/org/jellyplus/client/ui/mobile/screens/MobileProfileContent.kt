@@ -89,8 +89,8 @@ internal fun ProfileContent(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier.fillMaxSize().padding(bottom = 96.dp),
-        contentPadding = PaddingValues(bottom = 40.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding() + 24.dp),
     ) {
         // Hero avatar card
         item { ProfileHeroCard(userName, userInitial, serverHost, collapseProgress) }

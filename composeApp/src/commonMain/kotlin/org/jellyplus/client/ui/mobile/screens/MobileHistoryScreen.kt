@@ -59,7 +59,7 @@ fun MobileHistoryScreen(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             top = paddingValues.calculateTopPadding(),
-            bottom = paddingValues.calculateBottomPadding(),
+            bottom = paddingValues.calculateBottomPadding() + 24.dp,
         )
     ) {
         when {

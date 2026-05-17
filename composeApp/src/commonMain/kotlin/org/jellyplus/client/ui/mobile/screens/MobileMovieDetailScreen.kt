@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -84,6 +85,7 @@ fun MobileMovieDetailScreen(
             .fillMaxSize()
             .background(Color(0xFF181818))
             .verticalScroll(rememberScrollState())
+            .navigationBarsPadding()
     ) {
         // ── Backdrop + overlaid info ─────────────────────────────────────────
         Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f)) {
@@ -137,16 +139,18 @@ fun MobileMovieDetailScreen(
             // Info overlay at bottom
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     text = fullItem.title,
                     color = Color.White,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 28.sp
+                    lineHeight = 28.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 Spacer(Modifier.height(6.dp))
                 Row(
@@ -180,33 +184,18 @@ fun MobileMovieDetailScreen(
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                    DetailActionButton(
-                        icon = Icons.Default.Add,
-                        label = "Later",
-                        tint = if (watchLater) MaterialTheme.colorScheme.primary else Color.White,
-                        onClick = { onToggleWatchLater(fullItem) }
-                    )
-                    DetailActionButton(
-                        icon = if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        label = "Favorite",
-                        tint = if (favorite) MaterialTheme.colorScheme.primary else Color.White,
-                        onClick = { onToggleFavorite(fullItem) }
-                    )
-                    DetailActionButton(Icons.Default.Download, "Download")
+                fullItem.genres?.takeIf { it.isNotEmpty() }?.let { gs ->
+                    Spacer(Modifier.height(10.dp))
+                    GenreChipsRow(gs)
                 }
-                Spacer(Modifier.height(10.dp))
-                Button(
-                    onClick = { onPlay(fullItem) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(50.dp)
-                ) {
-                    Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                }
+                Spacer(Modifier.height(12.dp))
+                HeroActionRow(
+                    isWatchLater = watchLater,
+                    isFavorite = favorite,
+                    onPlay = { onPlay(fullItem) },
+                    onToggleWatchLater = { onToggleWatchLater(fullItem) },
+                    onToggleFavorite = { onToggleFavorite(fullItem) },
+                )
             }
         }
 
@@ -259,7 +248,7 @@ fun MobileMovieDetailScreen(
                         item = related,
                         baseUrl = baseUrl,
                         onClick = { onRecommendedClick(related) },
-                        modifier = Modifier.width(118.dp)
+                        modifier = Modifier.width(120.dp)
                     )
                 }
             }
@@ -272,8 +261,25 @@ fun MobileMovieDetailScreen(
 // ── Shared detail-screen helpers ─────────────────────────────────────────────
 
 @Composable
-private fun MetaDot() {
+internal fun MetaDot() {
     Text("•", color = Color.White.copy(alpha = 0.35f), fontSize = 13.sp)
+}
+
+@Composable
+internal fun GenreChipsRow(genres: List<String>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        genres.take(3).forEach { genre ->
+            Text(
+                genre,
+                color = Color.White.copy(alpha = 0.85f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            )
+        }
+    }
 }
 
 @Composable
@@ -288,6 +294,60 @@ internal fun DetailActionButton(
             Icon(icon, null, tint = tint, modifier = Modifier.size(26.dp))
         }
         Text(label, color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp)
+    }
+}
+
+@Composable
+internal fun HeroActionRow(
+    isWatchLater: Boolean,
+    isFavorite: Boolean,
+    onPlay: () -> Unit,
+    onToggleWatchLater: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    playLabel: String = "Play",
+    compactPlay: Boolean = false,
+) {
+    Row(
+        // Compact (home hero): wrap content & left-align so the page indicator
+        // can sit on the right of the same row. Detail: full-width weighted.
+        modifier = if (compactPlay) Modifier else Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(
+            onClick = onPlay,
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            shape = RoundedCornerShape(if (compactPlay) 24.dp else 10.dp),
+            contentPadding = if (compactPlay) PaddingValues(horizontal = 22.dp) else PaddingValues(0.dp),
+            modifier = if (compactPlay) Modifier.height(44.dp) else Modifier.weight(1f).height(48.dp),
+        ) {
+            Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(playLabel, color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        HeroCircleButton(
+            icon = Icons.Default.Add,
+            tint = if (isWatchLater) MaterialTheme.colorScheme.primary else Color.White,
+            onClick = onToggleWatchLater,
+        )
+        HeroCircleButton(
+            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            tint = if (isFavorite) MaterialTheme.colorScheme.primary else Color.White,
+            onClick = onToggleFavorite,
+        )
+    }
+}
+
+@Composable
+private fun HeroCircleButton(icon: ImageVector, tint: Color, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(48.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.12f))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
     }
 }
 

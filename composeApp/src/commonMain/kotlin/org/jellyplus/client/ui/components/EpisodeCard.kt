@@ -3,7 +3,6 @@ package org.jellyplus.client.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -57,8 +56,7 @@ fun EpisodeCard(
                     scaleY = scale
                     transformOrigin = TransformOrigin(0f, 0.5f)
                 }
-                .clickable(onClick = onPlay)
-                .focusable(),
+                .clickable(onClick = onPlay),
     ) {
         Box(
             modifier =

@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -27,14 +30,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -101,7 +99,10 @@ fun MobileSeriesDetailScreen(
     ) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp,
+            ),
         ) {
             // ── Backdrop + overlaid info ─────────────────────────────────────────
             item {
@@ -139,20 +140,22 @@ fun MobileSeriesDetailScreen(
                 // Info overlay at bottom
                 Column(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 16.dp)
                         .graphicsLayer {
                             alpha = (1f - collapseProgress * 1.35f).coerceIn(0f, 1f)
                             translationY = -28f * collapseProgress
-                        }
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         text = item.title,
                         color = Color.White,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        lineHeight = 28.sp
+                        lineHeight = 28.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                     Spacer(Modifier.height(6.dp))
                     Row(
@@ -185,39 +188,22 @@ fun MobileSeriesDetailScreen(
                             Text("${(rating * 10).toInt() / 10f}", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                        DetailActionButton(
-                            icon = Icons.Default.Add,
-                            label = "Later",
-                            tint = if (watchLater) MaterialTheme.colorScheme.primary else Color.White,
-                            onClick = { onToggleWatchLater(item) }
-                        )
-                        DetailActionButton(
-                            icon = if (favorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            label = "Favorite",
-                            tint = if (favorite) MaterialTheme.colorScheme.primary else Color.White,
-                            onClick = { onToggleFavorite(item) }
-                        )
-                        DetailActionButton(Icons.Default.Download, "Download")
+                    item.genres?.takeIf { it.isNotEmpty() }?.let { gs ->
+                        Spacer(Modifier.height(10.dp))
+                        GenreChipsRow(gs)
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Button(
-                        onClick = {
+                    Spacer(Modifier.height(12.dp))
+                    HeroActionRow(
+                        isWatchLater = watchLater,
+                        isFavorite = favorite,
+                        playLabel = "Play ${state.selectedSeason?.title ?: "Season 1"}",
+                        onPlay = {
                             val firstEpisode = state.episodes.firstOrNull()
                             if (firstEpisode != null) onPlayEpisode(firstEpisode, item, state.episodes) else onPlay()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth().height(50.dp)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            "Play ${state.selectedSeason?.title ?: "Season 1"}",
-                            color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp
-                        )
-                    }
+                        onToggleWatchLater = { onToggleWatchLater(item) },
+                        onToggleFavorite = { onToggleFavorite(item) },
+                    )
                 }
             }
             }
@@ -315,7 +301,7 @@ fun MobileSeriesDetailScreen(
                                 item = related,
                                 baseUrl = baseUrl,
                                 onClick = { onRecommendedClick(related) },
-                                modifier = Modifier.width(118.dp)
+                                modifier = Modifier.width(120.dp)
                             )
                         }
                     }
@@ -427,7 +413,7 @@ fun MobileEpisodeItem(
         modifier = modifier.fillMaxWidth().clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.width(140.dp).height(80.dp).clip(RoundedCornerShape(8.dp))) {
+        Box(modifier = Modifier.width(140.dp).height(64.dp).clip(RoundedCornerShape(8.dp))) {
             AsyncImage(
                 model = episode.getImageUrl(baseUrl),
                 contentDescription = null,

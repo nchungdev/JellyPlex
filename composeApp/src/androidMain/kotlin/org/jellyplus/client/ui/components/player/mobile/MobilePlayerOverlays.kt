@@ -115,7 +115,7 @@ internal fun BoxScope.MobilePlayerOverlays(
                 Box(Modifier.weight(0.5f), contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(64.dp)
                             .background(Color.White.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {

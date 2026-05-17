@@ -28,6 +28,9 @@ data class MainState(
     val hasMoreTvShows: Boolean = true,
     val watchLaterIds: Set<String> = emptySet(),
     val watchLaterItems: List<MediaItem> = emptyList(),
+    val favoriteIds: Set<String> = emptySet(),
+    val favoriteItems: List<MediaItem> = emptyList(),
+    val toggledFavoriteIds: Set<String> = emptySet(),
     val error: String? = null
 )
 
@@ -48,6 +51,31 @@ class MainViewModel(
     val state: StateFlow<MainState> = _state.asStateFlow()
     private val pageSize = 10
 
+    // Registry of every MediaItem the VM has seen (loaded lists, hero/featured
+    // items fed by screens, toggled items) so Favorites / Watch Later can
+    // resolve their ids to items even when the item isn't in the loaded page.
+    private val itemRegistry = LinkedHashMap<String, MediaItem>()
+
+    private fun register(items: List<MediaItem>) {
+        items.forEach { itemRegistry[it.id] = it }
+    }
+
+    /** Screens feed hero/featured/resume/recent items here so toggling
+     *  favorite/watch-later on them is reflected in the dedicated screens. */
+    fun registerItems(items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        register(items)
+        recomputeLists()
+    }
+
+    private fun recomputeLists() {
+        val s = _state.value
+        _state.value = s.copy(
+            favoriteItems = s.favoriteIds.mapNotNull { itemRegistry[it] },
+            watchLaterItems = s.watchLaterIds.mapNotNull { itemRegistry[it] },
+        )
+    }
+
     init {
         observeWatchLater()
         loadData()
@@ -58,7 +86,7 @@ class MainViewModel(
             getWatchLaterIdsUseCase().collectLatest { ids ->
                 _state.value = _state.value.copy(
                     watchLaterIds = ids,
-                    watchLaterItems = _state.value.items.filter { it.id in ids },
+                    watchLaterItems = ids.mapNotNull { itemRegistry[it] },
                 )
             }
         }
@@ -86,17 +114,20 @@ class MainViewModel(
             if (moviesResult.isSuccess && tvShowsResult.isSuccess) {
                 val moviesPage = moviesResult.getOrThrow()
                 val tvShowsPage = tvShowsResult.getOrThrow()
+                val loaded = moviesPage.items + tvShowsPage.items
+                register(loaded)
                 _state.value = _state.value.copy(
-                    items = moviesPage.items + tvShowsPage.items,
+                    items = loaded,
                     movies = moviesPage.items,
                     tvShows = tvShowsPage.items,
-                    watchLaterItems = (moviesPage.items + tvShowsPage.items).filter { it.id in _state.value.watchLaterIds },
+                    favoriteIds = seedFavorites(loaded),
                     baseUrl = getBaseUrlUseCase(),
                     isLoading = false,
                     hasLoaded = true,
                     hasMoreMovies = moviesPage.items.size < moviesPage.totalRecordCount,
                     hasMoreTvShows = tvShowsPage.items.size < tvShowsPage.totalRecordCount,
                 )
+                recomputeLists()
                 logDebug(
                     "JellyPerf",
                     "VM Main loadData <- success ${mark.elapsedNow().inWholeMilliseconds}ms " +
@@ -127,13 +158,15 @@ class MainViewModel(
             val result = getMoviesPageUseCase(startIndex = startIndex, limit = pageSize)
             result.onSuccess { page ->
                 val nextMovies = (_state.value.movies + page.items).distinctBy { it.id }
+                register(page.items)
                 _state.value = _state.value.copy(
                     movies = nextMovies,
                     items = nextMovies + _state.value.tvShows,
-                    watchLaterItems = (nextMovies + _state.value.tvShows).filter { it.id in _state.value.watchLaterIds },
+                    favoriteIds = seedFavorites(nextMovies + _state.value.tvShows),
                     isLoadingMoreMovies = false,
                     hasMoreMovies = nextMovies.size < page.totalRecordCount,
                 )
+                recomputeLists()
                 logDebug("JellyPerf", "VM Main loadMoreMovies <- success ${mark.elapsedNow().inWholeMilliseconds}ms loaded=${nextMovies.size}/${page.totalRecordCount}")
             }.onFailure { e ->
                 _state.value = _state.value.copy(isLoadingMoreMovies = false, error = e.message)
@@ -157,13 +190,15 @@ class MainViewModel(
             val result = getTvShowsPageUseCase(startIndex = startIndex, limit = pageSize)
             result.onSuccess { page ->
                 val nextShows = (_state.value.tvShows + page.items).distinctBy { it.id }
+                register(page.items)
                 _state.value = _state.value.copy(
                     tvShows = nextShows,
                     items = _state.value.movies + nextShows,
-                    watchLaterItems = (_state.value.movies + nextShows).filter { it.id in _state.value.watchLaterIds },
+                    favoriteIds = seedFavorites(_state.value.movies + nextShows),
                     isLoadingMoreTvShows = false,
                     hasMoreTvShows = nextShows.size < page.totalRecordCount,
                 )
+                recomputeLists()
                 logDebug("JellyPerf", "VM Main loadMoreTvShows <- success ${mark.elapsedNow().inWholeMilliseconds}ms loaded=${nextShows.size}/${page.totalRecordCount}")
             }.onFailure { e ->
                 _state.value = _state.value.copy(isLoadingMoreTvShows = false, error = e.message)
@@ -175,7 +210,18 @@ class MainViewModel(
         }
     }
 
+    private fun seedFavorites(items: List<MediaItem>): Set<String> {
+        val s = _state.value
+        return s.favoriteIds +
+            items.filter { it.userData?.isFavorite == true && it.id !in s.toggledFavoriteIds }.map { it.id }
+    }
+
     fun isFavorite(item: MediaItem): Boolean {
+        val s = _state.value
+        if (item.id in s.favoriteIds) return true
+        // Once the user has toggled an item this session, favoriteIds is the
+        // single source of truth (don't trust the now-stale passed userData).
+        if (item.id in s.toggledFavoriteIds) return false
         return findItem(item.id)?.userData?.isFavorite ?: item.userData?.isFavorite ?: false
     }
 
@@ -183,6 +229,7 @@ class MainViewModel(
 
     fun toggleFavorite(item: MediaItem) {
         val userId = getUserIdUseCase() ?: return
+        register(listOf(item))
         val next = !isFavorite(item)
         updateFavoriteState(item.id, next)
         viewModelScope.launch(dispatchers.io) {
@@ -192,19 +239,20 @@ class MainViewModel(
     }
 
     fun toggleWatchLater(item: MediaItem) {
+        register(listOf(item))
         val next = !isWatchLater(item)
         setWatchLaterUseCase(item.id, next)
-        val knownItem = findItem(item.id) ?: item
         _state.value = _state.value.copy(
             watchLaterItems = if (next) {
-                (_state.value.watchLaterItems + knownItem).distinctBy { it.id }
+                (_state.value.watchLaterItems + item).distinctBy { it.id }
             } else {
                 _state.value.watchLaterItems.filterNot { it.id == item.id }
             }
         )
     }
 
-    private fun findItem(itemId: String): MediaItem? = _state.value.items.firstOrNull { it.id == itemId }
+    private fun findItem(itemId: String): MediaItem? =
+        _state.value.items.firstOrNull { it.id == itemId } ?: itemRegistry[itemId]
 
     private fun updateFavoriteState(itemId: String, favorite: Boolean) {
         fun List<MediaItem>.updated() = map { if (it.id == itemId) it.withFavorite(favorite) else it }
@@ -216,6 +264,13 @@ class MainViewModel(
             tvShows = tvShows,
             items = items,
             watchLaterItems = _state.value.watchLaterItems.updated(),
+            favoriteIds = if (favorite) {
+                _state.value.favoriteIds + itemId
+            } else {
+                _state.value.favoriteIds - itemId
+            },
+            toggledFavoriteIds = _state.value.toggledFavoriteIds + itemId,
         )
+        recomputeLists()
     }
 }

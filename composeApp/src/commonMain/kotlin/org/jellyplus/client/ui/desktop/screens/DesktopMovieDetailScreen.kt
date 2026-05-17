@@ -37,6 +37,8 @@ fun DesktopMovieDetailScreen(
     onToggleFavorite: (MediaItem) -> Unit,
     isWatchLater: (MediaItem) -> Boolean,
     onToggleWatchLater: (MediaItem) -> Unit,
+    recommendedItems: List<MediaItem> = emptyList(),
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val fullItem = state.fullItem ?: item
@@ -45,7 +47,7 @@ fun DesktopMovieDetailScreen(
         item = fullItem,
         baseUrl = baseUrl,
         primaryLabel = "Watch",
-        metadata = fullItem.genres?.take(3)?.joinToString("   ") ?: "Movie",
+        metadata = "Movie",
         onBack = onBack,
         onPrimaryAction = { onPlay(fullItem) },
         isFavorite = isFavorite(fullItem),
@@ -53,17 +55,25 @@ fun DesktopMovieDetailScreen(
         onToggleFavorite = { onToggleFavorite(fullItem) },
         onToggleWatchLater = { onToggleWatchLater(fullItem) },
         overview = fullItem.overview,
-    ) {
-        if (state.cast.isNotEmpty()) {
-            Column {
-                Text("Cast", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(6.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(state.cast.take(10)) { person ->
-                        CastCard(person, baseUrl)
+        detailContentSpacing = 28.dp,
+        focusScrollBottomClearance = 32.dp,
+    ) { backFocusRequester ->
+        Column(verticalArrangement = Arrangement.spacedBy(32.dp)) {
+            if (state.cast.isNotEmpty()) {
+                Column {
+                    Text("Cast", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 32.dp),
+                    ) {
+                        items(state.cast.take(10)) { person ->
+                            CastCard(person, baseUrl)
+                        }
                     }
                 }
             }
+            DesktopSimilarSection(recommendedItems, baseUrl, onRecommendedClick, backFocusRequester)
         }
     }
 }

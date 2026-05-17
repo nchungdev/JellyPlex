@@ -34,6 +34,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,17 +72,24 @@ fun MobileMainScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val homeViewModel: HomeViewModel = koinViewModel()
+    val homeState by homeViewModel.state.collectAsState()
     val prefsViewModel: PlaybackPreferencesViewModel = koinViewModel()
     val prefsState by prefsViewModel.state.collectAsState()
+
+    LaunchedEffect(homeState.featuredItems, homeState.resumeItems, homeState.recentlyAddedItems) {
+        viewModel.registerItems(
+            homeState.featuredItems + homeState.resumeItems + homeState.recentlyAddedItems
+        )
+    }
     var homeHeaderAlpha by remember { mutableStateOf(0f) }
     var profileHeaderAlpha by remember { mutableStateOf(0f) }
 
     Scaffold(
         topBar = {
             MobileTopHeader(
-                title = when (selectedTab) { 1 -> "Favorites"; 2 -> "Watch Later"; 3 -> "History"; 4 -> "Profile"; else -> null },
-                backgroundAlpha = when (selectedTab) { 0 -> homeHeaderAlpha; 4 -> profileHeaderAlpha; else -> 1f },
-                showSearchButton = selectedTab != 4,
+                title = when (selectedTab) { 1 -> "Favorites"; 2 -> "Library"; 3 -> "Profile"; else -> null },
+                backgroundAlpha = when (selectedTab) { 0 -> homeHeaderAlpha; 3 -> profileHeaderAlpha; else -> 1f },
+                showSearchButton = selectedTab != 3,
                 onSearch = onSearch,
             )
         },
@@ -89,9 +97,8 @@ fun MobileMainScreen(
             NavigationBar(containerColor = Color.Black.copy(alpha = 0.95f), contentColor = Color.White, tonalElevation = 0.dp) {
                 NavigationBarItem(selectedTab == 0, { onSelectedTabChange(0) }, icon = { Icon(Icons.Default.Home, null) }, label = { Text("Home") }, colors = navigationColors())
                 NavigationBarItem(selectedTab == 1, { onSelectedTabChange(1) }, icon = { Icon(Icons.Default.Favorite, null) }, label = { Text("Favorites") }, colors = navigationColors())
-                NavigationBarItem(selectedTab == 2, { onSelectedTabChange(2) }, icon = { Icon(Icons.Default.Bookmark, null) }, label = { Text("Later") }, colors = navigationColors())
-                NavigationBarItem(selectedTab == 3, { onSelectedTabChange(3) }, icon = { Icon(Icons.Default.History, null) }, label = { Text("History") }, colors = navigationColors())
-                NavigationBarItem(selectedTab == 4, { onSelectedTabChange(4) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 2, { onSelectedTabChange(2) }, icon = { Icon(Icons.Default.Bookmark, null) }, label = { Text("Library") }, colors = navigationColors())
+                NavigationBarItem(selectedTab == 3, { onSelectedTabChange(3) }, icon = { Icon(Icons.Default.Person, null) }, label = { Text("Profile") }, colors = navigationColors())
             }
         },
         containerColor = Color(0xFF181818),
@@ -102,22 +109,29 @@ fun MobileMainScreen(
                     viewModel = viewModel, homeViewModel = homeViewModel,
                     state = state, baseUrl = state.baseUrl,
                     onMediaClick = onMediaClick, onContinueWatchingClick = onContinueWatchingClick,
-                    onContinueWatchingHeaderClick = { onSelectedTabChange(2) },
+                    onContinueWatchingHeaderClick = { onSelectedTabChange(2) }, // Library
                     onViewAll = onViewAll, onViewAllGenre = onViewAllGenre,
                     onToggleWatchLater = { viewModel.toggleWatchLater(it) },
                     isWatchLater = { viewModel.isWatchLater(it) },
+                    isFavorite = { viewModel.isFavorite(it) },
+                    onToggleFavorite = { viewModel.toggleFavorite(it) },
                     paddingValues = paddingValues,
                     homeSectionOrder = prefsState.homeSectionOrder,
                     homeEnabledSections = prefsState.homeEnabledSections,
                     onHeaderAlphaChange = { homeHeaderAlpha = it },
                 )
-                1 -> MediaCollectionContent("No favorites yet", state.items.filter { viewModel.isFavorite(it) }, state.baseUrl, onMediaClick, paddingValues)
-                2 -> MediaCollectionContent("Nothing saved for later", state.watchLaterItems, state.baseUrl, onMediaClick, paddingValues)
-                3 -> MobileHistoryScreen(paddingValues = paddingValues, onMediaClick = onContinueWatchingClick)
-                4 -> ProfileContent(
+                1 -> MediaCollectionContent("No favorites yet", state.favoriteItems, state.baseUrl, onMediaClick, paddingValues)
+                2 -> MobileLibraryScreen(
+                    watchLaterItems = state.watchLaterItems,
+                    baseUrl = state.baseUrl,
+                    onMediaClick = onMediaClick,
+                    onContinueWatchingClick = onContinueWatchingClick,
+                    paddingValues = paddingValues,
+                )
+                3 -> ProfileContent(
                     state = state, baseUrl = state.baseUrl, sessionViewModel = sessionViewModel,
                     onMediaClick = onMediaClick, onFavorites = { onSelectedTabChange(1) },
-                    onHistory = { onSelectedTabChange(3) }, onSettings = onSettings,
+                    onHistory = { onSelectedTabChange(2) }, onSettings = onSettings,
                     onSwitchServer = { sessionViewModel.switchServer() },
                     onHeaderAlphaChange = { profileHeaderAlpha = it },
                     onLogout = { sessionViewModel.logout() }, paddingValues = paddingValues,
@@ -164,6 +178,54 @@ private fun MobileTopHeader(
     }
 }
 
+// ── Library tab (Watch Later + History) ───────────────────────────────────────
+
+@Composable
+private fun MobileLibraryScreen(
+    watchLaterItems: List<MediaItem>,
+    baseUrl: String,
+    onMediaClick: (MediaItem) -> Unit,
+    onContinueWatchingClick: (MediaItem) -> Unit,
+    paddingValues: PaddingValues,
+) {
+    var sub by remember { mutableStateOf(0) } // 0 = Watch Later, 1 = History
+    Column(modifier = Modifier.fillMaxSize().padding(top = paddingValues.calculateTopPadding())) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            LibraryTab("Watch Later", sub == 0) { sub = 0 }
+            LibraryTab("History", sub == 1) { sub = 1 }
+        }
+        Box(Modifier.weight(1f)) {
+            val innerPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding())
+            if (sub == 0) {
+                MediaCollectionContent("Nothing saved for later", watchLaterItems, baseUrl, onMediaClick, innerPadding)
+            } else {
+                MobileHistoryScreen(paddingValues = innerPadding, onMediaClick = onContinueWatchingClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryTab(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (selected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.08f))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text,
+            color = if (selected) Color.Black else Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
 // ── Favorites tab ─────────────────────────────────────────────────────────────
 
 @Composable
@@ -174,7 +236,7 @@ private fun MediaCollectionContent(
     onMediaClick: (MediaItem) -> Unit,
     paddingValues: PaddingValues,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp, vertical = 24.dp)) {
         if (items.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(emptyText, color = Color.White.copy(alpha = 0.5f))
@@ -197,7 +259,7 @@ private fun FavoriteItemCard(item: MediaItem, baseUrl: String, onClick: (MediaIt
     ) {
         AsyncImage(
             model = item.getImageUrl(baseUrl), contentDescription = null,
-            modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+            modifier = Modifier.size(64.dp).clip(RoundedCornerShape(8.dp)),
             contentScale = ContentScale.Crop,
         )
         Spacer(Modifier.size(16.dp))

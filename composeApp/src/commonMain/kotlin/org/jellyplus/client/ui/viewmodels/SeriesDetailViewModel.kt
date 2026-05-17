@@ -12,6 +12,7 @@ import org.jellyplus.client.domain.models.AppDispatchers
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.usecases.GetBaseUrlUseCase
 import org.jellyplus.client.domain.usecases.GetEpisodesUseCase
+import org.jellyplus.client.domain.usecases.GetHomeContentUseCase
 import org.jellyplus.client.domain.usecases.GetSeasonsUseCase
 
 data class SeriesDetailState(
@@ -31,6 +32,7 @@ class SeriesDetailViewModel(
     private val getSeasonsUseCase: GetSeasonsUseCase,
     private val getEpisodesUseCase: GetEpisodesUseCase,
     private val getBaseUrlUseCase: GetBaseUrlUseCase,
+    private val getHomeContentUseCase: GetHomeContentUseCase,
     private val dispatchers: AppDispatchers,
 ) : ViewModel() {
     private val _state = MutableStateFlow(SeriesDetailState())
@@ -50,9 +52,11 @@ class SeriesDetailViewModel(
         }
 
         if (_state.value.seriesId == seriesId && _state.value.seasons.isNotEmpty()) {
-            // Series already loaded — still honour focusSeasonId if provided
-            if (focusSeasonId != null) {
-                val target = _state.value.seasons.find { it.id == focusSeasonId }
+            // Series already loaded — focus the explicit season, otherwise the
+            // season of the most recently played episode (e.g. back navigation).
+            val targetId = focusSeasonId ?: resumeSeasonIdFor(seriesId, _state.value.seasons)
+            if (targetId != null) {
+                val target = _state.value.seasons.find { it.id == targetId }
                 if (target != null && target.id != _state.value.selectedSeason?.id) {
                     selectSeason(target, debounce = false)
                 }
@@ -78,8 +82,11 @@ class SeriesDetailViewModel(
 
             result.onSuccess { seasons ->
                 val lastSelectedSeasonId = _state.value.selectedSeason?.id
-                // focusSeasonId takes highest priority (opened from episode context)
+                val resumeSeasonId = resumeSeasonIdFor(seriesId, seasons)
+                // Priority: explicit focus → season of last played episode →
+                // last selected → first unwatched → first.
                 val seasonToSelect = seasons.find { it.id == focusSeasonId }
+                    ?: seasons.find { it.id == resumeSeasonId }
                     ?: seasons.find { it.id == lastSelectedSeasonId }
                     ?: seasons.find { !it.isPlayed }
                     ?: seasons.firstOrNull()
@@ -97,6 +104,18 @@ class SeriesDetailViewModel(
                 _state.value = _state.value.copy(isLoadingSeasons = false, error = e.message)
             }
         }
+    }
+
+    /**
+     * The season id containing the most recently played (resume) episode for
+     * this series, derived from the shared home/resume cache. Falls back to
+     * matching the episode's season number when the season id is absent.
+     */
+    private fun resumeSeasonIdFor(seriesId: String, seasons: List<MediaItem>): String? {
+        val resumeEpisode = getHomeContentUseCase().value?.resumeItems
+            ?.firstOrNull { it.seriesId == seriesId } ?: return null
+        return resumeEpisode.seasonId
+            ?: seasons.firstOrNull { it.index != null && it.index == resumeEpisode.parentIndexNumber }?.id
     }
 
     fun selectTabIndex(index: Int) {

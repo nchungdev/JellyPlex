@@ -41,6 +41,8 @@ fun SeriesDetailScreen(
             onToggleFavorite = onToggleFavorite,
             isWatchLater = isWatchLater,
             onToggleWatchLater = onToggleWatchLater,
+            recommendedItems = recommendedItems,
+            onRecommendedClick = onRecommendedClick,
         )
     } else {
         MobileSeriesDetailScreen(

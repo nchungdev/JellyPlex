@@ -152,7 +152,7 @@ fun MainScreen(
     }
 
     org.jellyplus.client.AppBackHandler(enabled = currentScreen is Screen.Settings) {
-        homeTabIndex = 4
+        homeTabIndex = 3
         currentScreen = Screen.Home
     }
 
@@ -189,7 +189,7 @@ fun MainScreen(
             MobileMainScreen(
                 viewModel = mainViewModel,
                 sessionViewModel = sessionViewModel,
-                selectedTab = homeTabIndex.coerceIn(0, 4),
+                selectedTab = homeTabIndex.coerceIn(0, 3),
                 onSelectedTabChange = { homeTabIndex = it },
                 onMediaClick = { navigateTo(it) },
                 onContinueWatchingClick = { playItem(it, homeTabIndex) },
@@ -205,7 +205,7 @@ fun MainScreen(
                 },
                 onSearch = { currentScreen = Screen.Search },
                 onSettings = {
-                    homeTabIndex = 4
+                    homeTabIndex = 3
                     currentScreen = Screen.Settings
                 },
             )
@@ -319,7 +319,7 @@ fun MainScreen(
                 SettingsScreen(
                     sessionViewModel = sessionViewModel,
                     onBack = {
-                        homeTabIndex = 4
+                        homeTabIndex = 3
                         currentScreen = Screen.Home
                     },
                 )

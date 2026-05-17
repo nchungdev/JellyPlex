@@ -107,6 +107,7 @@ fun DesktopVideoPlayer(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val playFocusRequester = remember { FocusRequester() }
+    val outerFocusRequester = remember { FocusRequester() }
 
     var isControlsVisible by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -212,6 +213,8 @@ fun DesktopVideoPlayer(
         if (isControlsVisible) {
             try { playFocusRequester.requestFocus() } catch (_: Exception) {}
             delay(5000); isControlsVisible = false
+        } else {
+            try { outerFocusRequester.requestFocus() } catch (_: Exception) {}
         }
     }
     LaunchedEffect(isPlaying) { while (isPlaying) { currentPosition = exoPlayer.currentPosition; delay(500) } }
@@ -281,8 +284,8 @@ fun DesktopVideoPlayer(
                     else false
                 } else false
             }
-            .focusable()
-            .focusRequester(playFocusRequester),
+            .focusRequester(outerFocusRequester)
+            .focusable(),
     ) {
         AndroidView(
             factory = { ctx -> PlayerView(ctx).apply { player = exoPlayer; useController = false } },

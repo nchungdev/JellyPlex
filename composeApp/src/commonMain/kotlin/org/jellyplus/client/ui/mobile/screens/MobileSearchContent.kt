@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,7 +69,7 @@ internal fun SearchContent(paddingValues: PaddingValues, onMediaClick: (MediaIte
     LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
     LaunchedEffect(state.results) { if (state.results.isNotEmpty()) keyboardController?.hide() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(paddingValues).navigationBarsPadding().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
         // Search bar
         TextField(
             value = state.query,

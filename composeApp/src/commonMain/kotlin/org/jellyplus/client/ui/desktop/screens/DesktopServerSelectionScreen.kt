@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -222,9 +221,8 @@ fun DemoServerCard(onClick: () -> Unit) {
         modifier = Modifier
             .height(130.dp)
             .scale(scale)
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable()
             .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
             .border(
                 width = 2.dp,
                 color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
@@ -256,9 +254,8 @@ fun ServerCard(name: String, address: String, onClick: () -> Unit) {
         modifier = Modifier
             .height(130.dp)
             .scale(scale)
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable()
             .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
             .border(
                 width = 2.dp,
                 color = if (isFocused) Color(0xFF00D4A8) else Color.Transparent,
@@ -290,9 +287,8 @@ fun AddServerCard(onClick: () -> Unit) {
         modifier = Modifier
             .height(130.dp)
             .scale(scale)
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable()
             .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
             .border(
                 width = 2.dp,
                 color = if (isFocused) Color(0xFF00D4A8) else Color.White.copy(alpha = 0.1f),

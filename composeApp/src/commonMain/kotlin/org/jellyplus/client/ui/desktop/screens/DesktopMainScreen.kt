@@ -6,7 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,6 +88,13 @@ import kotlinx.coroutines.launch
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
 import org.jellyplus.client.ui.navigation.DpadSectionNavigator
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import org.jellyplus.client.logDebug
+import org.jellyplus.client.ui.navigation.RequestInitialFocus
 import org.jellyplus.client.ui.navigation.gridItemDpadHandler
 import org.jellyplus.client.ui.navigation.rememberDpadGridNavigator
 import org.jellyplus.client.ui.navigation.rememberDpadSectionNavigator
@@ -158,11 +165,12 @@ fun DesktopMainScreen(
     val selectedNav = NavDestination.entries.getOrElse(selectedNavIndex) { NavDestination.Home }
     val sidebarFocusRequester = remember { FocusRequester() }
 
-    val favoriteItems = remember(state.movies, state.tvShows, state.items) {
-        (state.movies + state.tvShows + state.items)
-            .filter { viewModel.isFavorite(it) }
-            .distinctBy { it.id }
+    LaunchedEffect(homeState.featuredItems, homeState.resumeItems, homeState.recentlyAddedItems) {
+        viewModel.registerItems(
+            homeState.featuredItems + homeState.resumeItems + homeState.recentlyAddedItems
+        )
     }
+    val favoriteItems = state.favoriteItems
 
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF181818))) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -188,10 +196,12 @@ fun DesktopMainScreen(
                 NavDestination.WatchLater -> MediaGrid("Watch Later", state.watchLaterItems, state.baseUrl, onMediaClick)
                 NavDestination.Profile -> {
                     val sv = sessionViewModel ?: koinViewModel()
-                    org.jellyplus.client.ui.screens.SettingsScreen(
-                        sessionViewModel = sv,
-                        onBack = {},
-                    )
+                    Box(modifier = Modifier.fillMaxSize().padding(start = DesktopContentLeftPadding)) {
+                        org.jellyplus.client.ui.screens.SettingsScreen(
+                            sessionViewModel = sv,
+                            onBack = {},
+                        )
+                    }
                 }
             }
         }
@@ -290,13 +300,25 @@ private fun MainDashboard(
     }
     var focusedMediaItem by remember { mutableStateOf<MediaItem?>(null) }
     var focusedSectionIndex by remember { mutableStateOf(0) }
-    val navigator = rememberDpadSectionNavigator(count = dashboardSections.size.coerceAtLeast(1), onExitTop = onFocusExit)
+    val navigator = rememberDpadSectionNavigator(
+        count = dashboardSections.size.coerceAtLeast(1),
+        onExitTop = onFocusExit,
+    )
 
     LaunchedEffect(dashboardSections.size) {
         if (dashboardSections.isNotEmpty()) {
             kotlinx.coroutines.delay(100)
+            logDebug("JellyDpad", "INITIAL focusSection(0) firing — dashboardSections.size=${dashboardSections.size}")
             navigator.focusSection(0)
         }
+    }
+
+    LaunchedEffect(dashboardSections) {
+        logDebug(
+            "JellyDpad",
+            "dashboardSections REBUILT — size=${dashboardSections.size} " +
+                "titles=${dashboardSections.map { it.title }}",
+        )
     }
 
     LaunchedEffect(homeState.featuredItems, dashboardSections) {
@@ -419,17 +441,19 @@ private fun MainDashboard(
                     modifier = Modifier.align(Alignment.Center).fillMaxWidth().padding(64.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
+                    Icon(Icons.Default.Search, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
                     Text("Connection Error", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(homeState.error ?: "Unable to connect to server", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp)
                     Spacer(Modifier.height(24.dp))
+                    val retryFocus = remember { FocusRequester() }
+                    RequestInitialFocus(retryFocus, homeState.error)
                     org.jellyplus.client.ui.components.FocusableButton(
                         onClick = {
                             onReloadHome()
                             viewModel.loadData()
                         },
-                        modifier = Modifier.width(160.dp).height(48.dp)
+                        modifier = Modifier.width(160.dp).height(48.dp).focusRequester(retryFocus)
                     ) {
                         Text("Retry", color = Color.Black, fontWeight = FontWeight.Bold)
                     }
@@ -442,6 +466,18 @@ private fun MainDashboard(
                     Icon(Icons.Default.Inbox, null, tint = Color.White.copy(alpha = 0.1f), modifier = Modifier.size(100.dp))
                     Spacer(Modifier.height(24.dp))
                     Text("Library is empty", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(24.dp))
+                    val reloadFocus = remember { FocusRequester() }
+                    RequestInitialFocus(reloadFocus)
+                    org.jellyplus.client.ui.components.FocusableButton(
+                        onClick = {
+                            onReloadHome()
+                            viewModel.loadData()
+                        },
+                        modifier = Modifier.width(160.dp).height(48.dp).focusRequester(reloadFocus)
+                    ) {
+                        Text("Reload", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
                 }
             } else {
                 dashboardSections.forEachIndexed { index, section ->
@@ -547,7 +583,16 @@ private fun DashboardSection(
                     bottom = DashboardSectionRowBottomPadding,
                 ),
                 horizontalArrangement = Arrangement.spacedBy(DashboardItemSpacing),
-                modifier = Modifier.fillMaxWidth().padding(start = horizontalPadding),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = horizontalPadding)
+                    // Attach the section's FocusRequester to the ROW (a stable
+                    // focus group) — NOT a recyclable item. focusRestorer()
+                    // remembers/restores the last focused child, so returning
+                    // to a section (D-pad Up/Down) reliably lands focus even
+                    // after the row scrolled or item 0 was recycled.
+                    .focusRequester(navigator.requesters[sectionIndex])
+                    .focusGroup(),
             ) {
                 lazyListItemsIndexed(visibleItems) { index, item ->
                     MediaPoster(
@@ -555,6 +600,7 @@ private fun DashboardSection(
                         baseUrl = baseUrl,
                         onClick = { onItemClick(item) },
                         onFocus = {
+                            logDebug("JellyDpad", "FOCUS GAINED section=$sectionIndex item=$index '${item.title}'")
                             onItemFocus(item)
                             alignFocusedItemToStart(index)
                         },
@@ -562,10 +608,6 @@ private fun DashboardSection(
                         showLabel = itemAspectRatio > 1f,
                         modifier = Modifier
                             .width(itemWidth)
-                            .then(
-                                if (index == 0) Modifier.focusRequester(navigator.requesters[sectionIndex])
-                                else Modifier
-                            )
                             .sectionItemDpadHandler(
                                 itemIndex = index,
                                 itemCount = rowItemCount,
@@ -754,7 +796,6 @@ private fun ViewMoreCard(
                 isFocused = it.isFocused
                 if (it.isFocused) onFocus()
             }
-            .focusable()
             .zIndex(if (isFocused) 10f else 0f)
             .graphicsLayer {
                 scaleX = scale
@@ -859,6 +900,8 @@ private fun DesktopHistoryScreen(
             .distinctBy { it.id }
     }
     val hasContent = state.resumeItems.isNotEmpty() || watchedItems.isNotEmpty()
+    val historyFirstFocus = remember { FocusRequester() }
+    if (hasContent) RequestInitialFocus(historyFirstFocus, hasContent)
     val continueWatchingListState = rememberLazyListState()
     val continueWatchingScope = rememberCoroutineScope()
     var continueWatchingCenterJob by remember { mutableStateOf<Job?>(null) }
@@ -901,7 +944,7 @@ private fun DesktopHistoryScreen(
                     SectionHeader(title = "Continue Watching", horizontalPadding = 0.dp)
                     LazyRow(
                         state = continueWatchingListState,
-                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                        modifier = Modifier.fillMaxWidth().height(164.dp),
                         contentPadding = PaddingValues(start = 0.dp, end = DashboardFocusGutter, top = 18.dp, bottom = 22.dp),
                         horizontalArrangement = Arrangement.spacedBy(DashboardItemSpacing),
                     ) {
@@ -913,7 +956,18 @@ private fun DesktopHistoryScreen(
                                 onFocus = { alignContinueWatchingItemToStart(index) },
                                 aspectRatio = 16f / 9f,
                                 showLabel = true,
-                                modifier = Modifier.width(DashboardWideItemWidth),
+                                modifier = Modifier
+                                    .width(DashboardWideItemWidth)
+                                    .then(if (index == 0) Modifier.focusRequester(historyFirstFocus) else Modifier)
+                                    .onKeyEvent { e ->
+                                        if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                        when (e.key) {
+                                            // Top row: nothing above → consume Up so focus stays.
+                                            Key.DirectionUp -> true
+                                            Key.DirectionRight -> index == state.resumeItems.lastIndex
+                                            else -> false
+                                        }
+                                    },
                             )
                         }
                     }
@@ -931,13 +985,33 @@ private fun DesktopHistoryScreen(
                     ) {
                         items(watchedItems.size) { index ->
                             val item = watchedItems[index]
+                            val lastRow = (watchedItems.size - 1) / 4
+                            val rowIndex = index / 4
+                            val noResume = state.resumeItems.isEmpty()
                             MediaPoster(
                                 item = item,
                                 baseUrl = state.baseUrl,
                                 onClick = { onMediaClick(item) },
                                 aspectRatio = 16f / 9f,
                                 showLabel = true,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (index == 0 && noResume) Modifier.focusRequester(historyFirstFocus)
+                                        else Modifier
+                                    )
+                                    .onKeyEvent { e ->
+                                        if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                        when (e.key) {
+                                            // Last grid row: nothing below → consume Down.
+                                            Key.DirectionDown -> rowIndex == lastRow
+                                            // Very last item: consume Right.
+                                            Key.DirectionRight -> index == watchedItems.size - 1
+                                            // Top of screen (no Continue Watching above) → consume Up.
+                                            Key.DirectionUp -> rowIndex == 0 && noResume
+                                            else -> false
+                                        }
+                                    },
                             )
                         }
                     }
@@ -1156,8 +1230,13 @@ private fun DesktopSearchContent(onMediaClick: (MediaItem) -> Unit) {
                 androidx.compose.foundation.lazy.LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    items(state.displayResults) { item ->
-                        DesktopSearchResultRow(item = item, baseUrl = state.baseUrl, onClick = { onMediaClick(item) })
+                    lazyListItemsIndexed(state.displayResults) { index, item ->
+                        DesktopSearchResultRow(
+                            item = item,
+                            baseUrl = state.baseUrl,
+                            onClick = { onMediaClick(item) },
+                            isLast = index == state.displayResults.lastIndex,
+                        )
                     }
                 }
             }
@@ -1166,12 +1245,28 @@ private fun DesktopSearchContent(onMediaClick: (MediaItem) -> Unit) {
 }
 
 @Composable
-private fun DesktopSearchResultRow(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
+private fun DesktopSearchResultRow(
+    item: MediaItem,
+    baseUrl: String,
+    onClick: () -> Unit,
+    isLast: Boolean = false,
+) {
     Surface(
         onClick = onClick,
         color = Color.White.copy(alpha = 0.0f),
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (e.key) {
+                    // Single-column list: Right has no target → no-op.
+                    Key.DirectionRight -> true
+                    // Last result: nothing below → consume Down.
+                    Key.DirectionDown -> isLast
+                    else -> false
+                }
+            },
     ) {
         Row(
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
@@ -1284,7 +1379,7 @@ private fun DesktopSearchResultRow(item: MediaItem, baseUrl: String, onClick: ()
 private fun DesktopProfilePlaceholder() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Person, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(80.dp))
+            Icon(Icons.Default.Person, null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.size(64.dp))
             Spacer(Modifier.height(16.dp))
             Text("Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
@@ -1305,9 +1400,8 @@ private fun NavIcon(
         modifier = Modifier
             .size(44.dp)
             .scale(scale)
-            .onFocusChanged { isFocused = it.isFocused }
-            .focusable()
             .clickable { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
             .background(
                 color = if (isFocused) Color.White.copy(alpha = 0.15f) else Color.Transparent,
                 shape = RoundedCornerShape(8.dp)

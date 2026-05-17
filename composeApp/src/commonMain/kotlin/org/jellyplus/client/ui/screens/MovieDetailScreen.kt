@@ -43,6 +43,8 @@ fun MovieDetailScreen(
             onToggleFavorite = onToggleFavorite,
             isWatchLater = isWatchLater,
             onToggleWatchLater = onToggleWatchLater,
+            recommendedItems = recommendedItems,
+            onRecommendedClick = onRecommendedClick,
         )
     } else {
         MobileMovieDetailScreen(

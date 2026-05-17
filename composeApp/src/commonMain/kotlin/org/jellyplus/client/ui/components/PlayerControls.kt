@@ -107,7 +107,7 @@ fun PlayerControls(
                     modifier =
                         Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(bottom = 80.dp, end = 24.dp),
+                            .padding(bottom = 64.dp, end = 24.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                     shape = RoundedCornerShape(4.dp),
                 ) {

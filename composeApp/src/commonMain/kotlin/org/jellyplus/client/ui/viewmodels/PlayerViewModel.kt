@@ -19,6 +19,7 @@ import org.jellyplus.client.domain.usecases.PlayerPreferencesUseCases
 import org.jellyplus.client.domain.usecases.ReportPlaybackProgressUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackStartUseCase
 import org.jellyplus.client.domain.usecases.ReportPlaybackStoppedUseCase
+import org.jellyplus.client.domain.usecases.RefreshHomeContentUseCase
 import org.jellyplus.client.domain.usecases.ResolveStreamConfigUseCase
 
 data class PlayerState(
@@ -59,6 +60,7 @@ class PlayerViewModel(
     private val reportPlaybackStartUseCase: ReportPlaybackStartUseCase,
     private val reportPlaybackProgressUseCase: ReportPlaybackProgressUseCase,
     private val reportPlaybackStoppedUseCase: ReportPlaybackStoppedUseCase,
+    private val refreshHomeContentUseCase: RefreshHomeContentUseCase,
     private val markItemAsPlayedUseCase: MarkItemAsPlayedUseCase,
     private val playerPrefs: PlayerPreferencesUseCases,
     private val getIntroMarkersUseCase: GetIntroMarkersUseCase,
@@ -250,6 +252,14 @@ class PlayerViewModel(
                 reportPlaybackStoppedUseCase(itemId, playSessionId, positionTicks)
             } catch (e: Exception) {
                 android.util.Log.e("PlayerViewModel", "reportStopped failed: ${e.message}", e)
+            }
+            // Refresh the shared home cache so Continue Watching / History
+            // reactively reflect the new progress (or removal once finished).
+            getUserIdUseCase()?.let { userId ->
+                runCatching {
+                    kotlinx.coroutines.delay(400)
+                    refreshHomeContentUseCase(userId)
+                }
             }
         }
     }

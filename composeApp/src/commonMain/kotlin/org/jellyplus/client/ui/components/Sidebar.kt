@@ -2,7 +2,6 @@ package org.jellyplus.client.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -95,9 +94,8 @@ fun SidebarItem(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(backgroundColor)
-                .onFocusChanged { isFocused = it.isFocused }
-                .focusable()
                 .clickable { onClick() }
+                .onFocusChanged { isFocused = it.isFocused }
                 .padding(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

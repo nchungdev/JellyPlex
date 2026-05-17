@@ -30,12 +30,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import org.jellyplus.client.logDebug
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,13 +61,15 @@ fun DesktopSeriesDetailScreen(
     onToggleFavorite: (MediaItem) -> Unit,
     isWatchLater: (MediaItem) -> Boolean,
     onToggleWatchLater: (MediaItem) -> Unit,
+    recommendedItems: List<MediaItem> = emptyList(),
+    onRecommendedClick: (MediaItem) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     val baseUrl = state.baseUrl
     val scope = rememberCoroutineScope()
     val seasonListState = rememberLazyListState()
     val episodeListState = rememberLazyListState()
-    val episodeRowHeight = 180.dp
+    val episodeRowHeight = 164.dp
     val episodeWideItemWidth = 232.dp
     val episodeItemSpacing = 12.dp
     var episodeCenterJob by remember { mutableStateOf<Job?>(null) }
@@ -82,20 +87,17 @@ fun DesktopSeriesDetailScreen(
         }
     }
 
-    LaunchedEffect(state.selectedSeason?.id) {
+    LaunchedEffect(state.selectedSeason?.id, state.seasons) {
         episodeListState.scrollToItem(0)
+        val idx = state.seasons.indexOfFirst { it.id == state.selectedSeason?.id }
+        if (idx >= 0) seasonListState.animateScrollToItem(idx)
     }
 
     DesktopHeroDetailScaffold(
         item = item,
         baseUrl = baseUrl,
         primaryLabel = "Watch",
-        metadata = buildString {
-            val genres = item.genres?.take(3)?.joinToString("   ")
-            if (!genres.isNullOrBlank()) append(genres) else append("TV Series")
-            item.year?.let { append("   $it") }
-            if (state.seasons.isNotEmpty()) append("   ${state.seasons.size} Seasons")
-        },
+        metadata = "TV Series",
         onBack = onBack,
         onPrimaryAction = {
             val firstEpisode = state.episodes.firstOrNull()
@@ -106,9 +108,10 @@ fun DesktopSeriesDetailScreen(
         onToggleFavorite = { onToggleFavorite(item) },
         onToggleWatchLater = { onToggleWatchLater(item) },
         overview = item.overview,
-        detailContentSpacing = 72.dp,
-        focusScrollBottomClearance = 24.dp,
-    ) {
+        detailContentSpacing = 28.dp,
+        focusScrollBottomClearance = 32.dp,
+    ) { backFocusRequester ->
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(32.dp)) {
         if (state.seasons.isNotEmpty() || state.episodes.isNotEmpty()) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (state.seasons.isNotEmpty()) {
@@ -116,6 +119,7 @@ fun DesktopSeriesDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         state = seasonListState,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(end = 32.dp),
                     ) {
                         itemsIndexed(state.seasons, key = { _, season -> season.id }) { index, season ->
                             SeasonChip(
@@ -123,12 +127,22 @@ fun DesktopSeriesDetailScreen(
                                 selected = season.id == state.selectedSeason?.id,
                                 onClick = { viewModel.selectSeason(season) },
                                 onFocus = {
+                                    logDebug("JellyDpad", "FOCUS GAINED detail=SeasonChip index=$index '${season.title}'")
                                     scope.launch { seasonListState.animateScrollToItem(index) }
                                 },
+                                modifier = Modifier
+                                    .then(
+                                        if (index == 0) Modifier.focusProperties { left = backFocusRequester }
+                                        else Modifier
+                                    )
+                                    .onKeyEvent { e ->
+                                        e.type == KeyEventType.KeyDown &&
+                                            e.key == Key.DirectionRight &&
+                                            index == state.seasons.lastIndex
+                                    },
                             )
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
                 }
 
                 Box(
@@ -142,7 +156,7 @@ fun DesktopSeriesDetailScreen(
                             LazyRow(
                                 modifier = Modifier.fillMaxSize(),
                                 state = episodeListState,
-                                contentPadding = PaddingValues(top = 18.dp, bottom = 22.dp),
+                                contentPadding = PaddingValues(top = 12.dp, bottom = 22.dp, end = 32.dp),
                                 horizontalArrangement = Arrangement.spacedBy(episodeItemSpacing),
                             ) {
                                 itemsIndexed(state.episodes, key = { _, episode -> episode.id }) { index, episode ->
@@ -150,15 +164,28 @@ fun DesktopSeriesDetailScreen(
                                         item = episode,
                                         baseUrl = baseUrl,
                                         onClick = { onPlayEpisode(episode, item, state.episodes) },
-                                        onFocus = { alignEpisodeToStart(index) },
+                                        onFocus = {
+                                            logDebug("JellyDpad", "FOCUS GAINED detail=Episode index=$index/${state.episodes.size}")
+                                            alignEpisodeToStart(index)
+                                        },
                                         aspectRatio = 16f / 9f,
                                         showLabel = true,
                                         modifier = Modifier
                                             .width(episodeWideItemWidth)
+                                            .then(
+                                                if (index == 0) Modifier.focusProperties { left = backFocusRequester }
+                                                else Modifier
+                                            )
                                             .onKeyEvent { event ->
-                                                event.type == KeyEventType.KeyDown &&
-                                                    event.key == Key.DirectionRight &&
-                                                    index == state.episodes.lastIndex
+                                                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                                                logDebug("JellyDpad", "KEY ${event.key} @ detail=Episode index=$index/${state.episodes.size}")
+                                                when (event.key) {
+                                                    Key.DirectionRight -> index == state.episodes.lastIndex
+                                                    // No Similar below → episodes is the last
+                                                    // row: consume Down so focus stays.
+                                                    Key.DirectionDown -> recommendedItems.isEmpty()
+                                                    else -> false
+                                                }
                                             },
                                     )
                                 }
@@ -168,6 +195,8 @@ fun DesktopSeriesDetailScreen(
                     }
                 }
             }
+        }
+        DesktopSimilarSection(recommendedItems, baseUrl, onRecommendedClick, backFocusRequester)
         }
     }
 }
@@ -207,6 +236,7 @@ private fun SeasonChip(
     selected: Boolean,
     onClick: () -> Unit,
     onFocus: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var focused by remember { mutableStateOf(false) }
     Surface(
@@ -225,7 +255,7 @@ private fun SeasonChip(
                 else -> Color.Transparent
             },
         ),
-        modifier = Modifier
+        modifier = modifier
             .onFocusChanged {
                 focused = it.isFocused
                 if (it.isFocused) {

@@ -70,7 +70,7 @@ fun DesktopSearchScreen(
             Text("No results found for '${state.query}'", color = Color.Gray, fontSize = 20.sp)
         } else {
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 180.dp),
+                columns = GridCells.Adaptive(minSize = 164.dp),
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),

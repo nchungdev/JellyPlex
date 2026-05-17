@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -55,6 +58,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import org.jellyplus.client.ui.navigation.RequestInitialFocus
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,7 +188,11 @@ fun MediaListingScreen(
                 .padding(top = if (isDesktop) 28.dp else 8.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            val backFocus = remember { FocusRequester() }
+            if (filteredItems.isEmpty() && !isLoadingMore) {
+                RequestInitialFocus(backFocus, filteredItems.isEmpty())
+            }
+            IconButton(onClick = onBack, modifier = Modifier.focusRequester(backFocus)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
             }
             Spacer(Modifier.width(4.dp))
@@ -303,7 +313,11 @@ fun MediaListingScreen(
                     state = gridState,
                     columns = GridCells.Fixed(columns),
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = if (hasMore && !filter.isActive) 96.dp else 32.dp),
+                    contentPadding = PaddingValues(
+                        top = 8.dp,
+                        bottom = (if (hasMore && !filter.isActive) 96.dp else 32.dp) +
+                            WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(if (isDesktop) 18.dp else 10.dp),
                     verticalArrangement = Arrangement.spacedBy(if (isDesktop) 24.dp else 16.dp),
                 ) {

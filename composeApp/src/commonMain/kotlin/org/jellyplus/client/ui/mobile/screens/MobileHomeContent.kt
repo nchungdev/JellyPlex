@@ -17,18 +17,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -43,6 +43,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,11 +54,16 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import org.jellyplus.client.ui.mobile.screens.HeroActionRow
+import org.jellyplus.client.ui.mobile.screens.MetaDot
 import org.jellyplus.client.domain.models.MediaItem
 import org.jellyplus.client.domain.models.MediaType
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import org.jellyplus.client.ui.components.MediaPoster
 import org.jellyplus.client.ui.home.HomeSectionIdContinue
 import org.jellyplus.client.ui.home.HomeSectionIdGenreRows
@@ -85,6 +91,8 @@ internal fun HomeContent(
     onViewAllGenre: (String) -> Unit = {},
     onToggleWatchLater: (MediaItem) -> Unit = {},
     isWatchLater: (MediaItem) -> Boolean = { false },
+    isFavorite: (MediaItem) -> Boolean = { false },
+    onToggleFavorite: (MediaItem) -> Unit = {},
     paddingValues: PaddingValues,
     homeSectionOrder: String,
     homeEnabledSections: String,
@@ -126,7 +134,7 @@ internal fun HomeContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 0.dp, bottom = paddingValues.calculateBottomPadding()),
+        contentPadding = PaddingValues(top = 0.dp, bottom = paddingValues.calculateBottomPadding() + 24.dp),
     ) {
         when {
             homeState.error != null && !hasHomeContent && !hasMainContent -> item {
@@ -143,69 +151,143 @@ internal fun HomeContent(
                 val allGenres = (homeState.recentlyAddedItems + state.movies + state.tvShows)
                     .flatMap { it.genres ?: emptyList() }.distinct().sorted()
 
+                // The hero banner already has 16.dp internal bottom padding, so
+                // the section right after it uses a reduced top spacer to keep
+                // the hero→section gap equal to the section→section gap (20.dp).
+                var afterHero = false
+                fun topGap(base: Dp = 20.dp): Dp = if (afterHero) (base - 16.dp).coerceAtLeast(0.dp) else base
                 orderedSections.filter { it in enabledSections }.forEach { sectionId ->
                     when (sectionId) {
-                        HomeSectionIdHero -> homeState.featuredItems.firstOrNull()?.let { hero ->
-                            item { HeroBanner(hero, baseUrl, onMediaClick, onContinueWatchingClick, onToggleWatchLater, isWatchLater) }
-                        }
-                        HomeSectionIdContinue -> if (homeState.resumeItems.isNotEmpty()) item {
-                            Spacer(Modifier.height(20.dp))
-                            SectionHeader("Continue Watching", onViewAll = onContinueWatchingHeaderClick)
-                            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                items(homeState.resumeItems) { item ->
-                                    MobileContinueWatchingCard(item, baseUrl, onClick = { onContinueWatchingClick(item) })
-                                }
-                            }
-                        }
-                        HomeSectionIdRecent -> if (homeState.recentlyAddedItems.isNotEmpty()) item {
-                            Spacer(Modifier.height(20.dp))
-                            SectionHeader("Recently Added")
-                            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                items(homeState.recentlyAddedItems) { item ->
-                                    MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
-                                }
-                            }
-                        }
-                        HomeSectionIdGenreRows -> topGenres.forEach { (genre, genreItems) ->
+                        HomeSectionIdHero -> if (homeState.featuredItems.isNotEmpty()) {
+                            val heroes = homeState.featuredItems.take(5)
                             item {
-                                Spacer(Modifier.height(20.dp))
-                                SectionHeader(genre)
-                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    items(genreItems.take(10)) { item ->
-                                        MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                                HeroPager(
+                                    items = heroes,
+                                    baseUrl = baseUrl,
+                                    onMediaClick = onMediaClick,
+                                    onContinueWatchingClick = onContinueWatchingClick,
+                                    onToggleWatchLater = onToggleWatchLater,
+                                    isWatchLater = isWatchLater,
+                                    isFavorite = isFavorite,
+                                    onToggleFavorite = onToggleFavorite,
+                                )
+                            }
+                            afterHero = true
+                        }
+                        HomeSectionIdContinue -> if (homeState.resumeItems.isNotEmpty()) {
+                            val gap = topGap(); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader("Continue Watching", onViewAll = onContinueWatchingHeaderClick)
+                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    items(homeState.resumeItems) { item ->
+                                        MobileContinueWatchingCard(item, baseUrl, onClick = { onContinueWatchingClick(item) })
                                     }
                                 }
                             }
                         }
-                        HomeSectionIdMovies -> if (state.movies.isNotEmpty()) item {
-                            Spacer(Modifier.height(20.dp))
-                            SectionHeader("Movies", onViewAll = { onViewAll(MediaType.MOVIE, "Movies") })
-                            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                items(state.movies) { item ->
-                                    MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                        HomeSectionIdRecent -> if (homeState.recentlyAddedItems.isNotEmpty()) {
+                            val gap = topGap(); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader("Recently Added")
+                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    items(homeState.recentlyAddedItems) { item ->
+                                        MobilePosterCard(item, baseUrl, onClick = { onMediaClick(item) })
+                                    }
                                 }
                             }
                         }
-                        HomeSectionIdTv -> if (state.tvShows.isNotEmpty()) item {
-                            Spacer(Modifier.height(20.dp))
-                            SectionHeader("TV Series", onViewAll = { onViewAll(MediaType.SERIES, "TV Series") })
-                            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                items(state.tvShows) { item ->
-                                    MediaPoster(item, baseUrl, onClick = { onMediaClick(item) }, modifier = Modifier.width(120.dp))
+                        HomeSectionIdGenreRows -> topGenres.forEach { (genre, genreItems) ->
+                            val gap = topGap(); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader(genre)
+                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    items(genreItems.take(10)) { item ->
+                                        MobilePosterCard(item, baseUrl, onClick = { onMediaClick(item) })
+                                    }
                                 }
                             }
                         }
-                        HomeSectionIdGenres -> if (allGenres.isNotEmpty()) item {
-                            Spacer(Modifier.height(28.dp))
-                            SectionHeader("Genres")
-                            Spacer(Modifier.height(12.dp))
-                            GenreGrid(allGenres.take(10), allGenres.size > 10, onViewAllGenre)
+                        HomeSectionIdMovies -> if (state.movies.isNotEmpty()) {
+                            val gap = topGap(); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader("Movies", onViewAll = { onViewAll(MediaType.MOVIE, "Movies") })
+                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    items(state.movies) { item ->
+                                        MobilePosterCard(item, baseUrl, onClick = { onMediaClick(item) })
+                                    }
+                                }
+                            }
+                        }
+                        HomeSectionIdTv -> if (state.tvShows.isNotEmpty()) {
+                            val gap = topGap(); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader("TV Series", onViewAll = { onViewAll(MediaType.SERIES, "TV Series") })
+                                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    items(state.tvShows) { item ->
+                                        MobilePosterCard(item, baseUrl, onClick = { onMediaClick(item) })
+                                    }
+                                }
+                            }
+                        }
+                        HomeSectionIdGenres -> if (allGenres.isNotEmpty()) {
+                            val gap = topGap(28.dp); afterHero = false
+                            item {
+                                Spacer(Modifier.height(gap))
+                                SectionHeader("Genres")
+                                Spacer(Modifier.height(12.dp))
+                                GenreGrid(allGenres.take(10), allGenres.size > 10, onViewAllGenre)
+                            }
                         }
                     }
                 }
             }
         }
-        item { Spacer(Modifier.height(32.dp)) }
+    }
+}
+
+// ── Hero pager ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun HeroPager(
+    items: List<MediaItem>,
+    baseUrl: String,
+    onMediaClick: (MediaItem) -> Unit,
+    onContinueWatchingClick: (MediaItem) -> Unit,
+    onToggleWatchLater: (MediaItem) -> Unit,
+    isWatchLater: (MediaItem) -> Boolean,
+    isFavorite: (MediaItem) -> Boolean,
+    onToggleFavorite: (MediaItem) -> Unit,
+) {
+    val pagerState = rememberPagerState(pageCount = { items.size })
+    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+        HeroBanner(
+            items[page], baseUrl, onMediaClick, onContinueWatchingClick,
+            onToggleWatchLater, isWatchLater, isFavorite, onToggleFavorite,
+            pageCount = items.size, currentPage = pagerState.currentPage,
+        )
+    }
+}
+
+@Composable
+private fun HeroPageDots(pageCount: Int, currentPage: Int) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        repeat(pageCount) { i ->
+            val selected = currentPage == i
+            Box(
+                modifier = Modifier
+                    .size(width = if (selected) 18.dp else 6.dp, height = 6.dp)
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.primary
+                        else Color.White.copy(alpha = 0.4f),
+                        RoundedCornerShape(3.dp),
+                    ),
+            )
+        }
     }
 }
 
@@ -219,28 +301,34 @@ private fun HeroBanner(
     onContinueWatchingClick: (MediaItem) -> Unit,
     onToggleWatchLater: (MediaItem) -> Unit,
     isWatchLater: (MediaItem) -> Boolean,
+    isFavorite: (MediaItem) -> Boolean,
+    onToggleFavorite: (MediaItem) -> Unit,
+    pageCount: Int = 1,
+    currentPage: Int = 0,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable { onMediaClick(item) }) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+            ) { onMediaClick(item) },
+    ) {
         AsyncImage(
             model = item.getBackdropUrl(baseUrl) ?: item.getImageUrl(baseUrl),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )
-        // Top gradient — status bar readability
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .align(Alignment.TopCenter)
+                .fillMaxWidth().fillMaxHeight(0.3f).align(Alignment.TopCenter)
                 .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent)))
         )
-        // Bottom scrim — blends into page background
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.65f)
-                .align(Alignment.BottomCenter)
+                .fillMaxWidth().fillMaxHeight(0.65f).align(Alignment.BottomCenter)
                 .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xFF181818))))
         )
         Column(
@@ -248,40 +336,71 @@ private fun HeroBanner(
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.Start,
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    Icons.Default.Star, null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    "FEATURED TODAY",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
             Text(
                 item.title,
                 color = Color.White,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.ExtraBold,
                 lineHeight = 28.sp,
-                maxLines = 3,
+                maxLines = 2,
+                textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-                DetailActionButton(
-                    icon = Icons.Default.Add,
-                    label = "Later",
-                    tint = if (isWatchLater(item)) MaterialTheme.colorScheme.primary else Color.White,
-                    onClick = { onToggleWatchLater(item) },
-                )
-                DetailActionButton(
-                    icon = Icons.Default.Info,
-                    label = "Info",
-                    onClick = { onMediaClick(item) },
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Button(
-                onClick = { onContinueWatchingClick(item) },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+            Spacer(Modifier.height(6.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(22.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Play", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                item.year?.let {
+                    Text("$it", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                    MetaDot()
+                }
+                item.genres?.firstOrNull()?.let {
+                    Text(it, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                    MetaDot()
+                }
+                Text(
+                    "HD",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                )
+                item.rating?.let { rating ->
+                    MetaDot()
+                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(13.dp))
+                    Text("${(rating * 10).toInt() / 10f}", color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
+                }
             }
+            Spacer(Modifier.height(12.dp))
+            HeroActionRow(
+                isWatchLater = isWatchLater(item),
+                isFavorite = isFavorite(item),
+                onPlay = { onContinueWatchingClick(item) },
+                onToggleWatchLater = { onToggleWatchLater(item) },
+                onToggleFavorite = { onToggleFavorite(item) },
+                compactPlay = true,
+            )
         }
     }
 }
@@ -292,7 +411,7 @@ private fun HeroBanner(
 private fun HomeErrorState(error: String?, onRetry: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 100.dp, start = 32.dp, end = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.Default.CloudOff, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(80.dp))
+        Icon(Icons.Default.CloudOff, null, tint = Color.White.copy(alpha = 0.3f), modifier = Modifier.size(64.dp))
         Spacer(Modifier.height(24.dp))
         Text("Connection Error", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Text(error ?: "Unable to reach server", color = Color.White.copy(alpha = 0.5f), textAlign = TextAlign.Center)
@@ -362,8 +481,8 @@ internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClic
     val progress = if (item.runTimeTicks != null && item.runTimeTicks > 0)
         item.playbackPositionTicks.toFloat() / item.runTimeTicks.toFloat() else 0f
 
-    Column(modifier = Modifier.width(256.dp).background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp)).clickable { onClick() }) {
-        Box(modifier = Modifier.height(144.dp).fillMaxWidth()) {
+    Column(modifier = Modifier.width(164.dp).clickable { onClick() }) {
+        Box(modifier = Modifier.height(101.dp).fillMaxWidth().clip(RoundedCornerShape(8.dp))) {
             AsyncImage(model = item.getBackdropUrl(baseUrl), contentDescription = null,
                 modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             if (progress > 0) {
@@ -372,10 +491,26 @@ internal fun MobileContinueWatchingCard(item: MediaItem, baseUrl: String, onClic
                 }
             }
         }
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(item.title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-            val subText = if (item.type == MediaType.EPISODE) "S${item.parentIndexNumber ?: 0}E${item.index ?: 0}" else "Resume watching"
-            Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp, maxLines = 1)
-        }
+        Spacer(Modifier.height(6.dp))
+        Text(item.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        val subText = if (item.type == MediaType.EPISODE) "S${item.parentIndexNumber ?: 0}E${item.index ?: 0}" else "Resume watching"
+        Text(subText, color = Color.White.copy(alpha = 0.5f), fontSize = 11.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun MobilePosterCard(item: MediaItem, baseUrl: String, onClick: () -> Unit) {
+    Column(modifier = Modifier.width(120.dp)) {
+        MediaPoster(item, baseUrl, onClick = onClick, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(6.dp))
+        Text(
+            item.title,
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            lineHeight = 15.sp,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
