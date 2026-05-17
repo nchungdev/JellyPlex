@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -52,6 +53,7 @@ fun MediaPoster(
     aspectRatio: Float = 2f / 3f,
     @Suppress("UNUSED_PARAMETER") focusGutter: Dp = 0.dp,
     showLabel: Boolean = false,
+    progress: Float? = null,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -112,6 +114,23 @@ fun MediaPoster(
                             )
                         )
                 )
+            }
+
+            progress?.takeIf { it > 0f }?.let { p ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(Color.White.copy(alpha = 0.28f)),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(p.coerceIn(0f, 1f))
+                            .fillMaxSize()
+                            .background(Color(0xFF00D4A8)),
+                    )
+                }
             }
 
             if (showLabel) {

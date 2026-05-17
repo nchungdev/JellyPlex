@@ -100,7 +100,6 @@ internal fun DesktopHeroDetailScaffold(
     focusScrollBottomClearance: Dp = 0.dp,
     bottomContent: @Composable (backFocusRequester: FocusRequester) -> Unit = {},
 ) {
-    val backFocusRequester = remember { FocusRequester() }
     val playFocusRequester = remember { FocusRequester() }
     var showOverviewDialog by remember { mutableStateOf(false) }
     val bottomClearancePx = with(LocalDensity.current) { focusScrollBottomClearance.toPx() }
@@ -148,19 +147,6 @@ internal fun DesktopHeroDetailScaffold(
                         )
                     )
                 )
-        )
-
-        HeroBackButton(
-            onBack = onBack,
-            onFocused = scrollToTop,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(
-                    start = (DesktopSidebarWidth - DesktopSidebarLogoSize) / 2,
-                    top = DesktopSidebarTopPadding,
-                )
-                .focusRequester(backFocusRequester)
-                .focusProperties { down = playFocusRequester },
         )
 
         @Composable
@@ -219,7 +205,6 @@ internal fun DesktopHeroDetailScaffold(
                             .height(50.dp)
                             .width(150.dp)
                             .focusRequester(playFocusRequester)
-                            .focusProperties { up = backFocusRequester }
                             .onFocusChanged { if (it.isFocused) logDebug("JellyDpad", "FOCUS GAINED detail=PlayButton") }
                             .onKeyEvent { e ->
                                 if (e.type == KeyEventType.KeyDown) {
@@ -307,7 +292,7 @@ internal fun DesktopHeroDetailScaffold(
                 // No right padding: section rows (Similar / episodes) bleed to
                 // the screen edge like a TV carousel. Hero text is width-capped
                 // and left-aligned, so it's unaffected.
-                contentPadding = PaddingValues(start = DesktopContentLeftPadding, end = 0.dp, top = 64.dp, bottom = 64.dp),
+                contentPadding = PaddingValues(start = DesktopContentLeftPadding, end = 0.dp, top = 48.dp, bottom = 56.dp),
                 verticalArrangement = Arrangement.spacedBy(detailContentSpacing),
             ) {
                 item(key = "hero") {
@@ -316,7 +301,7 @@ internal fun DesktopHeroDetailScaffold(
 
                 item(key = "detail-content") {
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        bottomContent(backFocusRequester)
+                        bottomContent(playFocusRequester)
                     }
                 }
             }
@@ -429,32 +414,3 @@ internal fun DesktopSimilarSection(
     }
 }
 
-@Composable
-private fun HeroBackButton(onBack: () -> Unit, onFocused: () -> Unit = {}, modifier: Modifier = Modifier) {
-    var isBackFocused by remember { mutableStateOf(false) }
-    Box(
-        modifier = modifier
-            .size(DesktopSidebarLogoSize)
-            .clickable { onBack() }
-            .onFocusChanged {
-                isBackFocused = it.isFocused
-                if (it.isFocused) {
-                    logDebug("JellyDpad", "FOCUS GAINED detail=BackButton")
-                    onFocused()
-                }
-            }
-            .background(
-                if (isBackFocused) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.44f),
-                CircleShape,
-            )
-            .border(2.dp, if (isBackFocused) Color.White else Color.Transparent, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Back",
-            tint = if (isBackFocused) Color.Black else Color.White,
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}

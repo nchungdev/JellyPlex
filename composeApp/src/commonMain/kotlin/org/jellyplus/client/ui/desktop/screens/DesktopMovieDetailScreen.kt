@@ -46,7 +46,7 @@ fun DesktopMovieDetailScreen(
     DesktopHeroDetailScaffold(
         item = fullItem,
         baseUrl = baseUrl,
-        primaryLabel = "Watch",
+        primaryLabel = "Play",
         metadata = "Movie",
         onBack = onBack,
         onPrimaryAction = { onPlay(fullItem) },

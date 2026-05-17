@@ -39,12 +39,6 @@ fun DesktopQuickConnectScreen(
         if (state.error != null) {
             Text("Error: ${state.error}", color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
         }
-        Spacer(modifier = Modifier.height(32.dp))
-        org.jellyplus.client.ui.components.FocusableOutlinedButton(
-            onClick = onBack,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-        ) {
-            Text("Back", fontSize = 16.sp)
-        }
     }
+    org.jellyplus.client.AppBackHandler(enabled = true, onBack = onBack)
 }

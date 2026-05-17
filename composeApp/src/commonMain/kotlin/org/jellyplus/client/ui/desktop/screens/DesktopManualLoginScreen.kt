@@ -49,6 +49,8 @@ fun DesktopManualLoginScreen(
 
     val formWidth = 380.dp
 
+    org.jellyplus.client.AppBackHandler(enabled = true, onBack = onBack)
+
     DesktopAuthScaffold(maxContentWidth = 4000.dp) {
       Column(
           modifier = Modifier.width(formWidth).align(Alignment.CenterHorizontally),
@@ -126,15 +128,6 @@ fun DesktopManualLoginScreen(
                 modifier = Modifier.fillMaxWidth().height(54.dp),
             ) {
                 Text("Login", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            FocusableOutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth().height(54.dp),
-            ) {
-                Text("Back", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         if (state.error != null) {

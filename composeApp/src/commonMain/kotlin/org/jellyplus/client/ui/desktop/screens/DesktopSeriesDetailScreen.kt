@@ -96,7 +96,7 @@ fun DesktopSeriesDetailScreen(
     DesktopHeroDetailScaffold(
         item = item,
         baseUrl = baseUrl,
-        primaryLabel = "Watch",
+        primaryLabel = "Seasons",
         metadata = "TV Series",
         onBack = onBack,
         onPrimaryAction = {
@@ -170,6 +170,9 @@ fun DesktopSeriesDetailScreen(
                                         },
                                         aspectRatio = 16f / 9f,
                                         showLabel = true,
+                                        progress = episode.runTimeTicks?.takeIf { it > 0 }?.let {
+                                            (episode.playbackPositionTicks.toFloat() / it.toFloat())
+                                        },
                                         modifier = Modifier
                                             .width(episodeWideItemWidth)
                                             .then(
