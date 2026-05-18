@@ -1,9 +1,15 @@
 package org.jellyplus.client.ui.desktop.screens
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.RepeatMode
@@ -14,6 +20,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -292,7 +299,12 @@ fun DesktopMainScreen(
                 onNavFocused = {
                     homeRowsFocused = false
                     if (selectedNav == NavDestination.ForYou && homeScrollState.value != 0) {
-                        scope.launch { homeScrollState.scrollTo(0) }
+                        scope.launch {
+                            homeScrollState.animateScrollTo(
+                                value = 0,
+                                animationSpec = DesktopVerticalScrollAnimation,
+                            )
+                        }
                     }
                 },
                 onNavigateDown = {
@@ -554,6 +566,7 @@ private fun MainDashboard(
     // focused, [topPickHeroItem] holds it and the hero area previews that item
     // with its own banner/background — a separate state from the featured carousel.
     var topPickHeroItem by remember(featured) { mutableStateOf<MediaItem?>(null) }
+    var topPickHeroInfoExpanded by remember { mutableStateOf(false) }
     val heroCurrent = topPickHeroItem ?: featured.getOrNull(heroIndex)
     val heroDotIndex = heroIndex
     var heroPaused by remember { mutableStateOf(false) }
@@ -592,7 +605,10 @@ private fun MainDashboard(
     LaunchedEffect(heroPaused) {
         if (heroPaused && scrollState.value != 0) {
             markVerticalScrollReason("heroPaused-effect-scroll-top")
-            scrollState.scrollTo(0)
+            scrollState.animateScrollTo(
+                value = 0,
+                animationSpec = DesktopVerticalScrollAnimation,
+            )
         }
     }
 
@@ -603,16 +619,23 @@ private fun MainDashboard(
             return@LaunchedEffect
         }
         topPickHeroItem = null
+        topPickHeroInfoExpanded = false
         hideSection0HeroBackground = false
         heroPaused = true
         markVerticalScrollReason("top-nav-down-to-section0")
-        scrollState.scrollTo(0)
+        scrollState.animateScrollTo(
+            value = 0,
+            animationSpec = DesktopVerticalScrollAnimation,
+        )
         repeat(10) {
             try {
                 heroButtonFocus.requestFocus()
                 delay(24)
                 markVerticalScrollReason("top-nav-down-to-section0-after-focus")
-                scrollState.scrollTo(0)
+                scrollState.animateScrollTo(
+                    value = 0,
+                    animationSpec = DesktopVerticalScrollAnimation,
+                )
                 return@LaunchedEffect
             } catch (_: IllegalStateException) {
                 delay(24)
@@ -628,8 +651,19 @@ private fun MainDashboard(
         }
     }
 
+    LaunchedEffect(topPickHeroItem?.id) {
+        if (topPickHeroItem == null) {
+            topPickHeroInfoExpanded = false
+        } else {
+            topPickHeroInfoExpanded = false
+            delay(90)
+            topPickHeroInfoExpanded = true
+        }
+    }
+
     val focusHero: () -> Unit = {
         topPickHeroItem = null
+        topPickHeroInfoExpanded = false
         hideSection0HeroBackground = false
         heroPaused = true
         section0Focused = true
@@ -637,14 +671,32 @@ private fun MainDashboard(
         scope.launch {
             if (scrollState.value != 0) {
                 markVerticalScrollReason("top-picks-up-to-section0")
-                scrollState.scrollTo(0)
+                scrollState.animateScrollTo(
+                    value = 0,
+                    animationSpec = DesktopVerticalScrollAnimation,
+                )
             }
             delay(16)
             try { heroButtonFocus.requestFocus() } catch (_: IllegalStateException) {}
             delay(16)
             if (scrollState.value != 0) {
                 markVerticalScrollReason("section0-watch-now-focus-after-request")
-                scrollState.scrollTo(0)
+                scrollState.animateScrollTo(
+                    value = 0,
+                    animationSpec = DesktopVerticalScrollAnimation,
+                )
+            }
+        }
+    }
+
+    val keepTopPickHeroInfoVisible: () -> Unit = {
+        scope.launch {
+            listOf(0L, 16L, 48L).forEach { delayMs ->
+                if (delayMs > 0) delay(delayMs)
+                if (scrollState.value != 0) {
+                    markVerticalScrollReason("top-picks-keep-hero-info-visible")
+                    scrollState.scrollTo(0)
+                }
             }
         }
     }
@@ -805,19 +857,29 @@ private fun MainDashboard(
                                                 fontSize = 17.sp,
                                                 fontWeight = FontWeight.Medium,
                                             )
-                                            item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
-                                                Spacer(Modifier.height(18.dp))
-                                                Text(
-                                                    ov,
-                                                    color = Color.White.copy(alpha = 0.55f),
-                                                    fontSize = 15.sp,
-                                                    lineHeight = 22.sp,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
+                                            AnimatedVisibility(
+                                                visible = topPickHeroInfoExpanded,
+                                                enter = fadeIn(animationSpec = tween(220)) +
+                                                    expandVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)),
+                                                exit = fadeOut(animationSpec = tween(120)) +
+                                                    shrinkVertically(animationSpec = tween(160, easing = FastOutSlowInEasing)),
+                                            ) {
+                                                Column {
+                                                    item.overview?.takeIf { it.isNotBlank() }?.let { ov ->
+                                                        Spacer(Modifier.height(18.dp))
+                                                        Text(
+                                                            ov,
+                                                            color = Color.White.copy(alpha = 0.55f),
+                                                            fontSize = 15.sp,
+                                                            lineHeight = 22.sp,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                        )
+                                                    }
+                                                    Spacer(Modifier.height(16.dp))
+                                                    DesktopTopPickMetaRow(item)
+                                                }
                                             }
-                                            Spacer(Modifier.height(16.dp))
-                                            DesktopTopPickMetaRow(item)
                                         } else {
                                             Text(
                                                 desktopHeroEyebrow(item),
@@ -901,12 +963,18 @@ private fun MainDashboard(
                                                             scope.launch {
                                                                 if (scrollState.value != 0) {
                                                                     markVerticalScrollReason("section0-watch-now-focused")
-                                                                    scrollState.scrollTo(0)
+                                                                    scrollState.animateScrollTo(
+                                                                        value = 0,
+                                                                        animationSpec = DesktopVerticalScrollAnimation,
+                                                                    )
                                                                 }
                                                                 delay(16)
                                                                 if (scrollState.value != 0) {
                                                                     markVerticalScrollReason("section0-watch-now-focused-after-frame")
-                                                                    scrollState.scrollTo(0)
+                                                                    scrollState.animateScrollTo(
+                                                                        value = 0,
+                                                                        animationSpec = DesktopVerticalScrollAnimation,
+                                                                    )
                                                                 }
                                                             }
                                                         } else {
@@ -923,11 +991,19 @@ private fun MainDashboard(
                                                             }
                                                             Key.DirectionDown -> {
                                                                 scope.launch {
-                                                                    scrollState.scrollTo(0)
+                                                                    scrollState.animateScrollTo(
+                                                                        value = 0,
+                                                                        animationSpec = DesktopVerticalScrollAnimation,
+                                                                    )
                                                                     delay(16)
                                                                     try { rowFocusRequesters.firstOrNull()?.requestFocus() } catch (_: IllegalStateException) {}
                                                                     delay(16)
-                                                                    scrollState.scrollTo(0)
+                                                                    if (scrollState.value != 0) {
+                                                                        scrollState.animateScrollTo(
+                                                                            value = 0,
+                                                                            animationSpec = DesktopVerticalScrollAnimation,
+                                                                        )
+                                                                    }
                                                                 }
                                                                 true
                                                             }
@@ -1012,7 +1088,11 @@ private fun MainDashboard(
                                 section0Focused = false
                                 hideSection0HeroBackground = false
                                 heroPaused = false
+                                if (topPickHeroItem?.id != item.id) {
+                                    topPickHeroInfoExpanded = false
+                                }
                                 topPickHeroItem = item
+                                keepTopPickHeroInfoVisible()
                             },
                             onItemClick = onMediaClick,
                         )
@@ -1043,6 +1123,7 @@ private fun MainDashboard(
                                 onRowsFocusChanged(true)
                                 section0Focused = false
                                 hideSection0HeroBackground = true
+                                topPickHeroInfoExpanded = false
                                 topPickHeroItem = null
                             },
                             onItemClick = onContinueWatchingClick,
@@ -1073,6 +1154,7 @@ private fun MainDashboard(
                                 onRowsFocusChanged(true)
                                 section0Focused = false
                                 hideSection0HeroBackground = true
+                                topPickHeroInfoExpanded = false
                                 topPickHeroItem = null
                             },
                             onItemClick = onMediaClick,
@@ -1103,6 +1185,7 @@ private fun MainDashboard(
                                 onRowsFocusChanged(true)
                                 section0Focused = false
                                 hideSection0HeroBackground = true
+                                topPickHeroInfoExpanded = false
                                 topPickHeroItem = null
                             },
                             onItemClick = onMediaClick,
@@ -1138,6 +1221,10 @@ private val LandscapeCardMetadataHeight =
         LandscapeCardTitleLineHeight * 2 +
         LandscapeCardMetadataTitleSubtitleGap +
         LandscapeCardSubtitleLineHeight
+private val DesktopVerticalScrollAnimation = tween<Float>(
+    durationMillis = 360,
+    easing = FastOutSlowInEasing,
+)
 
 @Composable
 private fun DesktopMediaRow(
@@ -1165,8 +1252,24 @@ private fun DesktopMediaRow(
     fun alignToStart(index: Int) {
         scrollJob?.cancel()
         scrollJob = scope.launch {
-            delay(35)
-            listState.animateScrollToItem(index)
+            val itemInfo = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+            if (itemInfo != null) {
+                // LazyRow item offsets are measured in content coordinates; offset 0
+                // is exactly where item 0 sits with the row's start padding applied.
+                // Keep every focused item pinned to that same left anchor.
+                val delta = itemInfo.offset
+                if (delta != 0) {
+                    listState.animateScrollBy(
+                        value = delta.toFloat(),
+                        animationSpec = tween(
+                            durationMillis = 260,
+                            easing = FastOutSlowInEasing,
+                        ),
+                    )
+                }
+            } else {
+                listState.animateScrollToItem(index)
+            }
         }
     }
     val visible = items.take(DashboardMaxVisibleItems)
@@ -1309,29 +1412,37 @@ private fun DesktopLandscapeCard(
                         val gapPx = LandscapeCardFocusGap.toPx()
                         val outset = gapPx + strokePx / 2f
                         val corner = LandscapeCardCornerRadius.toPx() + gapPx
+                        val glowOutsetX = size.width * 0.52f
+                        val glowOutsetY = size.height * 0.62f
                         val glowBrush = Brush.radialGradient(
                             colors = listOf(
-                                glowColor.copy(alpha = 0.26f * heartbeat),
-                                glowColor.copy(alpha = 0.12f * heartbeat),
+                                glowColor.copy(alpha = 0.30f * heartbeat),
+                                glowColor.copy(alpha = 0.16f * heartbeat),
+                                glowColor.copy(alpha = 0.06f * heartbeat),
                                 Color.Transparent,
                             ),
                             center = Offset(size.width * 0.5f, size.height * 0.5f),
-                            radius = maxOf(size.width, size.height) * 0.78f,
+                            radius = maxOf(size.width, size.height) * 1.45f,
                         )
-                        listOf(
-                            28.dp.toPx() to 0.18f,
-                            18.dp.toPx() to 0.28f,
-                            9.dp.toPx() to 0.36f,
-                        ).forEach { (glowStroke, alpha) ->
-                            val glowOutset = gapPx + glowStroke / 2f
-                            drawRoundRect(
-                                brush = glowBrush,
-                                topLeft = Offset(-glowOutset, -glowOutset),
-                                size = Size(size.width + glowOutset * 2f, size.height + glowOutset * 2f),
-                                cornerRadius = CornerRadius(LandscapeCardCornerRadius.toPx() + gapPx, LandscapeCardCornerRadius.toPx() + gapPx),
-                                style = Stroke(width = glowStroke * alpha),
-                            )
-                        }
+                        drawRoundRect(
+                            brush = glowBrush,
+                            topLeft = Offset(-glowOutsetX, -glowOutsetY),
+                            size = Size(size.width + glowOutsetX * 2f, size.height + glowOutsetY * 2f),
+                            cornerRadius = CornerRadius(
+                                LandscapeCardCornerRadius.toPx() + glowOutsetY,
+                                LandscapeCardCornerRadius.toPx() + glowOutsetY,
+                            ),
+                        )
+                        drawRoundRect(
+                            brush = glowBrush,
+                            topLeft = Offset(-glowOutsetX * 0.62f, -glowOutsetY * 0.62f),
+                            size = Size(size.width + glowOutsetX * 1.24f, size.height + glowOutsetY * 1.24f),
+                            cornerRadius = CornerRadius(
+                                LandscapeCardCornerRadius.toPx() + glowOutsetY * 0.62f,
+                                LandscapeCardCornerRadius.toPx() + glowOutsetY * 0.62f,
+                            ),
+                            style = Stroke(width = 22.dp.toPx()),
+                        )
                         drawRoundRect(
                             color = Color.White.copy(alpha = 0.58f + heartbeat * 0.42f),
                             topLeft = Offset(-outset, -outset),
